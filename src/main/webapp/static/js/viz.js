@@ -29,7 +29,8 @@
   V.isPrim = function (v) { return v === null || typeof v !== 'object'; };
 
   var P_KEYS = ['p_value', 'f_pvalue', 'pvalue'];
-  function stars(p) { return p < 0.001 ? '***' : p < 0.01 ? '**' : p < 0.05 ? '*' : ''; }
+  /** 유의수준 별표: 숫자와 구분되도록 작은 위첨자 */
+  function stars(p) { var st = p < 0.001 ? '***' : p < 0.01 ? '**' : p < 0.05 ? '*' : ''; return st ? '<sup class="ml-0.5 text-xs font-bold text-amber-600 tracking-tighter">' + st + '</sup>' : ''; }
 
   /** 스칼라 값만 정사각형 칩으로 (중첩 객체는 제외) */
   V.metricsGrid = function (obj, limit) {
@@ -37,11 +38,11 @@
     if (!keys.length) return '';
     return '<div class="flex flex-wrap gap-2">' + keys.map(function (k, i) {
       var v = obj[k], isP = P_KEYS.indexOf(k) >= 0 && typeof v === 'number';
-      var text = V.fmt(v) + (isP ? stars(v) : '');
+      var text = A.esc(V.fmt(v)) + (isP ? stars(v) : '');
       var hi = i === 0;
-      return '<div class="w-20 h-20 shrink-0 flex flex-col items-center justify-center text-center gap-0.5 rounded-xl border px-1 ' + (hi ? 'bg-blue-50/70 border-blue-200' : 'bg-slate-50 border-slate-200/80') + '">' +
-        '<span class="text-[10px] font-semibold leading-tight line-clamp-2 ' + (hi ? 'text-blue-700/80' : 'text-slate-500') + '" title="' + A.esc(k) + '">' + A.esc(V.label(k)) + '</span>' +
-        '<span class="text-sm font-extrabold font-mono ' + (hi ? 'text-blue-800' : 'text-slate-900') + '">' + text + '</span></div>';
+      return '<div class="w-20 h-20 shrink-0 flex flex-col items-center justify-center text-center gap-0.5 rounded-xl border px-1 ' + (hi ? 'bg-blue-50/70 border-blue-200' : 'bg-paper-3 border-rule/80') + '">' +
+        '<span class="text-xs font-semibold leading-tight line-clamp-2 ' + (hi ? 'text-blue-700/80' : 'text-ink-3') + '" title="' + A.esc(k) + '">' + A.esc(V.label(k)) + '</span>' +
+        '<span class="text-sm font-extrabold font-mono ' + (hi ? 'text-blue-800' : 'text-ink') + '">' + text + '</span></div>';
     }).join('') + '</div>';
   };
 
@@ -55,28 +56,28 @@
   }
   function tableCell(v) {
     if (V.isPrim(v)) return V.fmt(v);
-    if (isPlainObjAllPrim(v)) return '<span class="text-slate-600">' + A.esc(compactObj(v)) + '</span>';
-    if (isPrimArray(v)) return '<span class="text-slate-600">[' + v.slice(0, 5).map(V.fmt).join(', ') + (v.length > 5 ? ' …' : '') + ']</span>';
-    return '<span class="text-slate-400">' + A.esc(JSON.stringify(v).slice(0, 60)) + '</span>';
+    if (isPlainObjAllPrim(v)) return '<span class="text-ink-2">' + A.esc(compactObj(v)) + '</span>';
+    if (isPrimArray(v)) return '<span class="text-ink-2">[' + v.slice(0, 5).map(V.fmt).join(', ') + (v.length > 5 ? ' …' : '') + ']</span>';
+    return '<span class="text-ink-4">' + A.esc(JSON.stringify(v).slice(0, 60)) + '</span>';
   }
 
-  var TH_CLS = 'py-2 px-2.5 font-bold text-slate-700 whitespace-nowrap border border-slate-200 bg-slate-100 text-center';
-  var TD_CLS = 'py-1.5 px-2.5 whitespace-nowrap text-slate-700 border border-slate-200/90';
+  var TH_CLS = 'py-2 px-2.5 font-bold text-ink-1 whitespace-nowrap border border-rule bg-paper-2 text-center';
+  var TD_CLS = 'py-1.5 px-2.5 whitespace-nowrap text-ink-1 border border-rule/90';
 
   /** 객체 배열 → 표 (SPSS 스타일 격자) */
   V.table = function (rows, maxRows) {
     rows = rows || [];
-    if (!rows.length) return '<div class="text-[11px] text-slate-400 p-2">데이터 없음</div>';
+    if (!rows.length) return '<div class="text-xs text-ink-4 p-2">데이터 없음</div>';
     var cols = [];
     rows.slice(0, 30).forEach(function (r) { Object.keys(r || {}).forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
     var shown = rows.slice(0, maxRows || 200);
-    return '<div class="overflow-x-auto max-h-96 overflow-y-auto border border-slate-200 rounded-lg"><table class="w-full text-[11px] text-left border-collapse"><thead class="sticky top-0"><tr>' +
+    return '<div class="overflow-x-auto max-h-96 overflow-y-auto border border-rule rounded-lg"><table class="w-full text-body text-left border-collapse"><thead class="sticky top-0"><tr>' +
       cols.map(function (c) { return '<th class="' + TH_CLS + '">' + A.esc(V.label(c)) + '</th>'; }).join('') + '</tr></thead><tbody class="font-mono">' +
       shown.map(function (r) {
         return '<tr class="hover:bg-blue-50/40 transition-colors">' + cols.map(function (c) {
           return '<td class="' + TD_CLS + '">' + tableCell(r[c]) + '</td>';
         }).join('') + '</tr>';
-      }).join('') + '</tbody></table></div>' + (rows.length > shown.length ? '<div class="text-[10px] text-slate-400 mt-1">상위 ' + shown.length + ' / ' + rows.length + '행 표시</div>' : '');
+      }).join('') + '</tbody></table></div>' + (rows.length > shown.length ? '<div class="text-xs text-ink-4 mt-1">상위 ' + shown.length + ' / ' + rows.length + '행 표시</div>' : '');
   };
 
   function isRowArray(v) { return Array.isArray(v) && v.length && v.every(function (x) { return x && typeof x === 'object' && !Array.isArray(x); }); }
@@ -85,19 +86,19 @@
   /** 임의 JSON → 접이식 트리 */
   V.tree = function (val, depth, open) {
     depth = depth || 0;
-    if (V.isPrim(val)) return '<span class="font-mono text-slate-800">' + V.fmt(val) + '</span>';
+    if (V.isPrim(val)) return '<span class="font-mono text-ink-0">' + V.fmt(val) + '</span>';
     if (isPrimArray(val)) {
       var s = val.slice(0, 40).map(V.fmt).join(', ');
-      return '<span class="font-mono text-slate-700 text-[11px]">[' + s + (val.length > 40 ? ' … (' + val.length + '개)' : '') + ']</span>';
+      return '<span class="font-mono text-ink-1 text-xs">[' + s + (val.length > 40 ? ' … (' + val.length + '개)' : '') + ']</span>';
     }
-    if (isMatrix(val)) return '<div class="overflow-x-auto"><table class="text-[11px] font-mono border-collapse"><tbody>' + val.slice(0, 50).map(function (r) { return '<tr>' + r.slice(0, 30).map(function (c) { return '<td class="px-2 py-1 border border-slate-200 text-center">' + V.fmt(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+    if (isMatrix(val)) return '<div class="overflow-x-auto"><table class="text-body font-mono border-collapse"><tbody>' + val.slice(0, 50).map(function (r) { return '<tr>' + r.slice(0, 30).map(function (c) { return '<td class="px-2 py-1 border border-rule text-center">' + V.fmt(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
     if (isRowArray(val)) return V.table(val);
     var entries = Array.isArray(val) ? val.map(function (x, i) { return [String(i), x]; }) : Object.keys(val).map(function (k) { return [k, val[k]]; });
-    return '<div class="space-y-1.5 ' + (depth ? 'pl-3 border-l-2 border-slate-100' : '') + '">' + entries.map(function (e) {
+    return '<div class="space-y-1.5 ' + (depth ? 'pl-3 border-l-2 border-paper-2' : '') + '">' + entries.map(function (e) {
       var v = e[1];
-      if (V.isPrim(v)) return '<div class="flex gap-2 text-[11px] py-0.5"><span class="text-slate-500 shrink-0 min-w-[110px] font-medium">' + A.esc(V.label(e[0])) + '</span><span class="font-mono text-slate-900 font-semibold">' + V.fmt(v) + '</span></div>';
-      if (isPrimArray(v)) return '<div class="flex gap-2 text-[11px] py-0.5"><span class="text-slate-500 shrink-0 min-w-[110px] font-medium">' + A.esc(V.label(e[0])) + '</span>' + V.tree(v, depth + 1) + '</div>';
-      return '<details class="text-[11px] bg-slate-50/60 rounded-lg px-2.5 py-1.5 border border-slate-100"' + (open || depth < 1 ? ' open' : '') + '><summary class="cursor-pointer font-bold text-slate-800 py-0.5">' + A.esc(V.label(e[0])) + ' <span class="text-slate-400 font-normal">' + (Array.isArray(v) ? '(' + v.length + ')' : '') + '</span></summary><div class="pt-1.5">' + V.tree(v, depth + 1) + '</div></details>';
+      if (V.isPrim(v)) return '<div class="flex gap-2 text-xs py-0.5"><span class="text-ink-3 shrink-0 min-w-[110px] font-medium">' + A.esc(V.label(e[0])) + '</span><span class="font-mono text-ink font-semibold">' + V.fmt(v) + '</span></div>';
+      if (isPrimArray(v)) return '<div class="flex gap-2 text-xs py-0.5"><span class="text-ink-3 shrink-0 min-w-[110px] font-medium">' + A.esc(V.label(e[0])) + '</span>' + V.tree(v, depth + 1) + '</div>';
+      return '<details class="text-xs bg-paper-3/60 rounded-lg px-2.5 py-1.5 border border-paper-2"' + (open || depth < 1 ? ' open' : '') + '><summary class="cursor-pointer font-bold text-ink-0 py-0.5">' + A.esc(V.label(e[0])) + ' <span class="text-ink-4 font-normal">' + (Array.isArray(v) ? '(' + v.length + ')' : '') + '</span></summary><div class="pt-1.5">' + V.tree(v, depth + 1) + '</div></details>';
     }).join('') + '</div>';
   };
 })();

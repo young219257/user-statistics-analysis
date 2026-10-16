@@ -1,23 +1,48 @@
-/* 교육데이터 이용자통계분석 서비스 - 공통 스타일 (React 원본 index.css 이식) */
+/* Hallmark · macrostructure: Workbench · genre: modern-minimal · tone: utilitarian · anchor hue: navy 272
+ * design-system: design.md · pre-emit critique: P4 H4 E5 S4 R5 V3 */
+/* 교육데이터 이용자통계분석 서비스 - 공통 스타일 */
 :root {
-  --edmgr-navy: #003876;
-  --edmgr-navy-dark: #00224d;
-  --edmgr-navy-light: #004b9e;
-  --edmgr-blue: #2563eb;
-  --edmgr-primary: #1d4ed8;
-  --edmgr-primary-light: #eff6ff;
-  --edmgr-bg: #f8fafc;
-  --edmgr-card: #ffffff;
-  --edmgr-border: #e2e8f0;
-  --edmgr-border-subtle: #f1f5f9;
+  /* design.md 토큰 — 화면 코드는 이 값(또는 Tailwind 이름 brand/link/ink/rule…)만 쓴다 */
+  --color-brand: #1e2c5d;
+  --color-brand-dark: #151f42;
+  --color-brand-soft: #eef2fe;
+  --color-link: #256ef4;
+  --color-ink: #1e2124;
+  --color-ink-2: #464c53;
+  --color-ink-3: #6d7882;
+  --color-ink-4: #8a949e;
+  --color-rule: #dfe3eb;
+  --color-paper: #ffffff;
+  --color-paper-2: #f1f3f5;
+  --color-focus: #256ef4;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --color-ink-0: #2a2f34;
+  --color-ink-1: #363c42;
+  --color-rule-3: #cdd1d5;
+  --color-paper-3: #f8f9fa;
+  /* 상태색 (design.md: 성공 emerald · 경고 amber · 오류 rose) */
+  --color-ok: #059669;
+  --color-warn: #d97706;
+  --color-err: #be123c;
+  --color-ok-on-dark: #34d399;
+  --color-err-on-dark: #fb7185;
+  /* 차트 계열색: link · rose(강조선) · emerald · amber · brand · 중립. charts.js·report.js 가 App.tok 으로 읽는다 */
+  --color-chart-1: #256ef4;
+  --color-chart-2: #e11d48;
+  --color-chart-3: #059669;
+  --color-chart-4: #d97706;
+  --color-chart-5: #1e2c5d;
+  --color-chart-6: #8a949e;
 }
 
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, "Segoe UI", Roboto, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
+  /* 교육데이터플랫폼 포털과 같은 글꼴 우선순위 (Pretendard → 맑은 고딕) */
+  font-family: "Pretendard", "Pretendard GOV", "Malgun Gothic", "맑은 고딕", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", system-ui, sans-serif;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
   letter-spacing: -0.015em;
   font-size: 13.5px;
   line-height: 1.6;
@@ -26,65 +51,25 @@ body {
 }
 
 .card-modern {
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.85);
-  border-radius: 16px;
-  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.02), 0 4px 16px -2px rgba(15, 23, 42, 0.03);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-md);
 }
-.card-modern:hover { border-color: rgba(203, 213, 225, 0.9); }
-
-.card-interactive {
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.85);
-  border-radius: 14px;
-  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.02);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.card-interactive:hover {
-  border-color: #93c5fd;
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.08);
-}
-
-.divider-subtle { border-color: rgba(241, 245, 249, 0.9); }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-thumb { background: var(--color-rule-3); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink-4); }
 
 /* 애니메이션 (tailwind animate-in 대체) */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .anim-in { animation: fadeIn .18s ease-out both; }
 .hidden-x { display: none !important; }
 
-/* 표준 통계 결과표 (SPSS 스타일) */
-.std-table { width: 100%; border-collapse: collapse; font-size: 11px; background: #fff; }
-.std-table th { padding: 8px 12px; font-weight: 700; color: #0f172a; border: 1px solid #cbd5e1; background: #f1f5f9; text-align: center; white-space: nowrap; letter-spacing: -0.01em; }
-.std-table td { padding: 7px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #1e293b; border: 1px solid rgba(226, 232, 240, 0.95); }
-.std-table td.l { font-family: inherit; text-align: left; }
-.std-table td.c { text-align: center; font-family: inherit; }
-.std-table td.r { text-align: right; }
-.std-table td.b { font-weight: 700; color: #0f172a; }
-.std-table td.sig { font-weight: 700; color: #1d4ed8; }
-.std-table tbody tr:hover td { background: rgba(239, 246, 255, 0.5); }
-
-/* 의사결정나무 다이어그램 */
-.tree-wrap { display: flex; flex-direction: column; align-items: center; }
-.tree-children { display: flex; justify-content: center; gap: 24px; position: relative; padding-top: 12px; }
-.tree-children::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; height: 2px; background: #cbd5e1; }
-.tree-child { display: flex; flex-direction: column; align-items: center; position: relative; }
-.tree-child::before { content: ""; width: 2px; height: 10px; background: #cbd5e1; }
-.tree-stem { width: 2px; height: 12px; background: #cbd5e1; }
-
 /* 스피너 */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 1s linear infinite; }
 .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-
-/* 차트 캔버스 */
-.chart-box { position: relative; width: 100%; }
 canvas { max-width: 100%; }
 
 /* 인쇄 */
@@ -95,6 +80,33 @@ canvas { max-width: 100%; }
 
 /* 행렬 표(상관행렬·혼동행렬·적재값 등): 기본 높이를 넘으면 스크롤, 머리행·첫 열 고정 */
 .matrix-scroll{max-height:420px;overflow:auto}
-.matrix-scroll thead th{position:sticky;top:0;z-index:2;background:#f8fafc}
-.matrix-scroll .mx-sticky{position:sticky;left:0;z-index:1;background:#fff}
-.matrix-scroll thead .mx-sticky{z-index:3;background:#f8fafc}
+.matrix-scroll thead th{position:sticky;top:0;z-index:2;background:var(--color-paper-3)}
+.matrix-scroll .mx-sticky{position:sticky;left:0;z-index:1;background:var(--color-paper)}
+.matrix-scroll thead .mx-sticky{z-index:3;background:var(--color-paper-3)}
+
+/* ---------------- design.md 공통 규칙 ---------------- */
+/* 키보드 포커스: 즉시 표시(전환 없음). 입력칸은 각자 focus ring 을 쓰므로 제외 */
+:where(button, a, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  transition: none;
+}
+/* 숫자는 고정폭 글꼴 대신 Pretendard 의 고정폭 숫자로. 코드·JSON(pre/code)만 고정폭 글꼴 유지 */
+.font-mono:not(pre):not(code) {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+table { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; scroll-behavior: auto !important; }
+}
+
+/* 가로 스크롤 표: 오른쪽에 더 있다는 단서(가장자리 그림자). 스크롤이 끝나면 사라진다 */
+.overflow-x-auto, .matrix-scroll {
+  background:
+    linear-gradient(to right, var(--color-paper) 30%, transparent) left center / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--color-paper) 30%, transparent) right center / 24px 100% no-repeat local,
+    linear-gradient(to right, rgba(30,33,36,.14), transparent) left center / 10px 100% no-repeat scroll,
+    linear-gradient(to left, rgba(30,33,36,.14), transparent) right center / 10px 100% no-repeat scroll;
+}

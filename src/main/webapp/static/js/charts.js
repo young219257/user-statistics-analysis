@@ -4,7 +4,11 @@
 (function () {
   'use strict';
   var A = window.App;
-  var PALETTE = ['#2563eb', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+  // 색은 design.md 토큰에서 읽는다 (app.css :root --color-*)
+  var C = { link: A.tok('link'), brand: A.tok('brand'), brandSoft: A.tok('brand-soft'), neg: A.tok('chart-2'),
+    ink: A.tok('ink'), ink1: A.tok('ink-1'), ink2: A.tok('ink-2'), ink3: A.tok('ink-3'), ink4: A.tok('ink-4'),
+    rule: A.tok('rule'), rule3: A.tok('rule-3'), paper: A.tok('paper'), paper2: A.tok('paper-2') };
+  var PALETTE = [1, 2, 3, 4, 5, 6].map(function (i) { return A.tok('chart-' + i); });
 
   var KIND_LABEL = { histogram: '히스토그램', boxplot: '상자그림', bar: '막대차트', scatter: '산점도', scatter_with_fit: '산점도+회귀선', heatmap: '히트맵', line: '선 그래프', residual: '잔차도', roc_curve: 'ROC 곡선', confusion_matrix: '혼동행렬', tree_diagram: '트리 다이어그램', feature_importance: '변수 중요도', cluster_scatter: '군집 산점도', elbow: '엘보 곡선', dendrogram: '덴드로그램', scree: '스크리 플롯', missing_matrix: '결측 행렬', means_plot: '평균 도표', random_effects: '랜덤효과', variance_components: '분산 성분', trajectory: '성장 궤적', ps_distribution: '성향점수 분포', love_plot: 'Love Plot' };
   var LINE_KINDS = ['line', 'elbow', 'scree', 'trajectory', 'roc_curve'];
@@ -17,10 +21,10 @@
       chart: { style: { fontFamily: 'inherit' }, spacing: [8, 8, 8, 8] },
       credits: { enabled: false },
       title: { text: undefined },
-      legend: { itemStyle: { fontSize: '11px' } },
-      xAxis: { gridLineColor: '#f1f5f9', lineColor: '#e2e8f0', labels: { style: { fontSize: '10px' } } },
-      yAxis: { gridLineColor: '#f1f5f9', title: { style: { fontSize: '10px' } }, labels: { style: { fontSize: '10px' } } },
-      tooltip: { backgroundColor: '#fff', borderColor: '#e2e8f0', style: { fontSize: '11px' } }
+      legend: { itemStyle: { fontSize: '12px' } },
+      xAxis: { gridLineColor: C.paper2, lineColor: C.rule, labels: { style: { fontSize: '12px' } } },
+      yAxis: { gridLineColor: C.paper2, title: { style: { fontSize: '12px' } }, labels: { style: { fontSize: '12px' } } },
+      tooltip: { backgroundColor: C.paper, borderColor: C.rule, style: { fontSize: '12px' } }
     });
   }
 
@@ -76,13 +80,13 @@
       html: heatBox(uid, xc.length, yc.length, 34),
       draw: function (el) {
         return Highcharts.chart(el, baseHc('heatmap', {
-          xAxis: { categories: xc, labels: { style: { fontSize: '10px' } } },
-          yAxis: { categories: yc, title: { text: null }, reversed: true, labels: { style: { fontSize: '10px' } } },
+          xAxis: { categories: xc, labels: { style: { fontSize: '12px' } } },
+          yAxis: { categories: yc, title: { text: null }, reversed: true, labels: { style: { fontSize: '12px' } } },
           colorAxis: conf
-            ? { min: 0, minColor: '#eff6ff', maxColor: '#1d4ed8' }
-            : { min: -1, max: 1, stops: [[0, '#ef4444'], [0.5, '#ffffff'], [1, '#2563eb']] },
+            ? { min: 0, minColor: C.brandSoft, maxColor: C.brand }
+            : { min: -1, max: 1, stops: [[0, C.neg], [0.5, C.paper], [1, C.link]] },
           legend: { enabled: true, align: 'right', layout: 'vertical', verticalAlign: 'middle' },
-          series: [{ data: data, dataLabels: { enabled: true, style: { fontSize: '10px', textOutline: 'none' }, format: '{point.value:.2f}' }, borderWidth: 1, borderColor: '#fff' }],
+          series: [{ data: data, dataLabels: { enabled: true, style: { fontSize: '12px', textOutline: 'none' }, format: '{point.value:.2f}' }, borderWidth: 1, borderColor: C.paper }],
           tooltip: { formatter: function () { return xc[this.point.x] + ' × ' + yc[this.point.y] + ': <b>' + this.point.value + '</b>'; } }
         }));
       }
@@ -97,14 +101,14 @@
     var pts = nodes.map(function (n) {
       var pred = typeof n.predicted === 'number' ? Number(n.predicted.toFixed(3)) : n.predicted;
       return { id: String(n.id), parent: n.parent === null || n.parent === undefined ? undefined : String(n.parent), name: n.is_leaf ? '예측 ' + pred : n.label,
-        branch: n.branch === 'yes' ? '참' : n.branch === 'no' ? '거짓' : '', n: n.n_samples, impurity: n.impurity, pred: pred, color: n.is_leaf ? PALETTE[0] : '#64748b' };
+        branch: n.branch === 'yes' ? '참' : n.branch === 'no' ? '거짓' : '', n: n.n_samples, impurity: n.impurity, pred: pred, color: n.is_leaf ? PALETTE[0] : C.ink3 };
     });
     return { html: '<div id="' + uid + '" style="height:' + Math.max(256, leaves * 48) + 'px"></div>', draw: function (el) {
       return Highcharts.chart(el, {
         chart: { inverted: true, spacingRight: 110 }, title: { text: null }, legend: { enabled: false },
         tooltip: { pointFormatter: function () { return (this.branch ? '분기: ' + this.branch + '<br/>' : '') + '<b>' + this.name + '</b><br/>표본수: ' + this.n + '<br/>불순도: ' + (this.impurity != null ? Number(this.impurity).toFixed(4) : '-') + '<br/>예측값: ' + this.pred; } },
-        series: [{ type: 'treegraph', data: pts, marker: { symbol: 'circle', radius: 5 }, link: { color: '#cbd5e1', lineWidth: 1.5 },
-          dataLabels: { pointFormat: '{point.name}<br/><span style="font-weight:400;color:#64748b">n={point.n}</span>', align: 'left', x: 8, crop: false, overflow: 'allow', style: { fontSize: '10px', fontWeight: '600', color: '#0f172a', textOutline: 'none', whiteSpace: 'nowrap' } } }]
+        series: [{ type: 'treegraph', data: pts, marker: { symbol: 'circle', radius: 5 }, link: { color: C.rule3, lineWidth: 1.5 },
+          dataLabels: { pointFormat: '{point.name}<br/><span style="font-weight:400;color:' + C.ink3 + '">n={point.n}</span>', align: 'left', x: 8, crop: false, overflow: 'allow', style: { fontSize: '12px', fontWeight: '600', color: C.ink, textOutline: 'none', whiteSpace: 'nowrap' } } }]
       });
     } };
   }
@@ -148,9 +152,9 @@
       return Highcharts.chart(el, baseHc('heatmap', {
         xAxis: { categories: xc, title: { text: o.xTitle || null } },
         yAxis: { categories: yc, title: { text: o.yTitle || null }, reversed: true },
-        colorAxis: o.diverging ? { min: o.domain ? o.domain[0] : -1, max: o.domain ? o.domain[1] : 1, stops: [[0, '#ef4444'], [0.5, '#ffffff'], [1, '#2563eb']] } : { min: 0, minColor: '#eff6ff', maxColor: '#1d4ed8' },
+        colorAxis: o.diverging ? { min: o.domain ? o.domain[0] : -1, max: o.domain ? o.domain[1] : 1, stops: [[0, C.neg], [0.5, C.paper], [1, C.link]] } : { min: 0, minColor: C.brandSoft, maxColor: C.brand },
         legend: { enabled: true, align: 'right', layout: 'vertical', verticalAlign: 'middle' },
-        series: [{ data: pts, borderWidth: 1, borderColor: '#fff', dataLabels: { enabled: pts.length <= 150, style: { fontSize: '10px', textOutline: 'none' }, format: o.integer ? '{point.value}' : '{point.value:.2f}' } }],
+        series: [{ data: pts, borderWidth: 1, borderColor: C.paper, dataLabels: { enabled: pts.length <= 150, style: { fontSize: '12px', textOutline: 'none' }, format: o.integer ? '{point.value}' : '{point.value:.2f}' } }],
         tooltip: { formatter: function () { return (o.yTitle ? o.yTitle + ' ' : '') + yc[this.point.y] + ' × ' + (o.xTitle ? o.xTitle + ' ' : '') + xc[this.point.x] + ': <b>' + fx(this.point.value) + '</b>'; } }
       }));
     };
@@ -179,7 +183,7 @@
   function planScatterPairs(rec, data, uid) {
     var o = opt(rec), pk = o.points || 'points';
     if (!rowsOf(data) || !Array.isArray(data[0][pk])) return null;
-    var sel = '<select id="' + uid + '-sel" class="mb-1.5 w-full text-[11px] border border-slate-200 rounded-md px-2 py-1 bg-white">' + data.map(function (p, i) { return '<option value="' + i + '">' + A.esc(p[o.group_by || 'pair'] || ('쌍 ' + (i + 1))) + (isNum(p.coefficient) ? ' (r = ' + p.coefficient.toFixed(3) + ')' : '') + '</option>'; }).join('') + '</select>';
+    var sel = '<select id="' + uid + '-sel" class="mb-1.5 w-full text-xs border border-rule rounded-md px-2 py-1 bg-white">' + data.map(function (p, i) { return '<option value="' + i + '">' + A.esc(p[o.group_by || 'pair'] || ('쌍 ' + (i + 1))) + (isNum(p.coefficient) ? ' (r = ' + p.coefficient.toFixed(3) + ')' : '') + '</option>'; }).join('') + '</select>';
     function cfg(p) {
       var pts = p[pk].map(function (q) { return [q.x, q.y]; }), fit = o.fit_line ? ols(pts) : null, xs = extent(pts.map(function (q) { return q[0]; }));
       var s = [{ type: 'scatter', name: p.pair, data: pts, color: PALETTE[0] + 'aa', marker: { radius: 2.5, symbol: 'circle' } }];
@@ -207,7 +211,7 @@
     var pts = rows.map(function (r) { return [r[e.x], r[e.y]]; });
     var xs = extent(pts.map(function (p) { return p[0]; })), ys = extent(pts.map(function (p) { return p[1]; }));
     var s = [{ type: 'scatter', name: '관측치', data: pts, color: PALETTE[0] + 'aa', marker: { radius: 2.5, symbol: 'circle' } }];
-    if (o.identity_line) { var lo = Math.min(xs[0], ys[0]), hi = Math.max(xs[1], ys[1]); s.push({ type: 'line', name: '기준선 (y = x)', data: [[lo, lo], [hi, hi]], color: '#94a3b8', dashStyle: 'Dash', marker: { enabled: false }, enableMouseTracking: false }); }
+    if (o.identity_line) { var lo = Math.min(xs[0], ys[0]), hi = Math.max(xs[1], ys[1]); s.push({ type: 'line', name: '기준선 (y = x)', data: [[lo, lo], [hi, hi]], color: C.ink4, dashStyle: 'Dash', marker: { enabled: false }, enableMouseTracking: false }); }
     var fit = o.fit_line ? ols(pts) : null;
     if (fit) s.push({ type: 'line', name: '회귀선', data: [[xs[0], fit.a + fit.b * xs[0]], [xs[1], fit.a + fit.b * xs[1]]], color: PALETTE[1], marker: { enabled: false }, enableMouseTracking: false });
     var ref = isNum(o.reference_line) ? [{ value: o.reference_line, color: PALETTE[1], width: 1.5, dashStyle: 'Dash', zIndex: 3 }] : [];
@@ -225,7 +229,7 @@
     var w = rows.length > 1 && isNum(rows[0].bin_start) ? rows[0].bin_end - rows[0].bin_start : undefined;
     return { html: box(uid), draw: function (el) {
       return Highcharts.chart(el, baseHc('column', { xAxis: { title: { text: null } }, yAxis: { title: { text: '빈도' } },
-        plotOptions: { column: { pointPadding: 0, groupPadding: 0, borderWidth: 0.5, borderColor: '#fff', pointRange: w } },
+        plotOptions: { column: { pointPadding: 0, groupPadding: 0, borderWidth: 0.5, borderColor: C.paper, pointRange: w } },
         tooltip: { pointFormatter: function () { return (isNum(this.lo) ? fx(this.lo) + ' ~ ' + fx(this.hi) : fx(this.x)) + '<br/>빈도: <b>' + this.y + '</b>'; } },
         series: [{ data: pts, color: PALETTE[0] }] }));
     } };
@@ -241,7 +245,7 @@
     var ref = isNum(opt(rec).reference_line) ? opt(rec).reference_line : 1;
     return { html: sized(uid, Math.max(256, terms.length * rc.length * 16 + 90)), draw: function (el) {
       return Highcharts.chart(el, baseHc('bar', { legend: { enabled: true }, xAxis: { categories: terms },
-        yAxis: { title: { text: '오즈비 (Exp(B))' }, plotLines: [{ value: ref, color: '#64748b', width: 1, dashStyle: 'Dash', zIndex: 3, label: { text: '기준 ' + ref, style: { fontSize: '10px', color: '#64748b' } } }] },
+        yAxis: { title: { text: '오즈비 (Exp(B))' }, plotLines: [{ value: ref, color: C.ink3, width: 1, dashStyle: 'Dash', zIndex: 3, label: { text: '기준 ' + ref, style: { fontSize: '12px', color: C.ink3 } } }] },
         tooltip: { shared: true, valueDecimals: 3 },
         series: rc.map(function (c, i) { return { name: '범주 ' + c.class, color: PALETTE[i % PALETTE.length], data: terms.map(function (t) { var x = c.terms.filter(function (y) { return y.term === t; })[0]; return x ? fx(x.odds_ratio) : null; }) }; }) }));
     } };
@@ -252,13 +256,13 @@
     if (!rows) return planMultinomialOdds(rec, uid, ctx || {});
     var f0 = rows[0], isPctFmt = o.format === 'percent';
     var valFmt = function (v) { return isPctFmt ? pct(v) : fx(v); };
-    var ref = isNum(o.reference_line) ? [{ value: o.reference_line, color: '#64748b', width: 1, dashStyle: 'Dash', zIndex: 3 }] : [];
+    var ref = isNum(o.reference_line) ? [{ value: o.reference_line, color: C.ink3, width: 1, dashStyle: 'Dash', zIndex: 3 }] : [];
     // 묶음 막대: 값 필드가 {변수: 값} 객체 (군집 프로파일)
     var objF = [e.x, e.y].filter(function (f) { return f && isObj(f0[f]); })[0];
     if (objF) {
       var feats = Object.keys(f0[objF]);
       return { html: sized(uid, Math.max(256, feats.length * rows.length * 14 + 80)), draw: function (el) {
-        return Highcharts.chart(el, baseHc('bar', { legend: { enabled: true }, xAxis: { categories: feats }, yAxis: { title: { text: objF }, plotLines: o.diverging || isNum(o.reference_line) ? [{ value: o.reference_line || 0, color: '#64748b', width: 1 }] : [] },
+        return Highcharts.chart(el, baseHc('bar', { legend: { enabled: true }, xAxis: { categories: feats }, yAxis: { title: { text: objF }, plotLines: o.diverging || isNum(o.reference_line) ? [{ value: o.reference_line || 0, color: C.ink3, width: 1 }] : [] },
           series: rows.map(function (r, i) { return { name: String(r.label || r[e.color] || ('그룹 ' + (i + 1))), color: PALETTE[i % PALETTE.length], data: feats.map(function (k) { return fx(r[objF][k]); }) }; }) }));
       } };
     }
@@ -269,16 +273,16 @@
     var cats = catF ? rows.map(function (r) { return String(r[catF]); }) : rows.length === 1 ? [A.viz.label(valF)] : rows.map(function (_, i) { return String(i + 1); });
     var horiz = catF === e.y;   // 범주가 y 축으로 지정되면 가로 막대
     var boolColor = e.color && typeof f0[e.color] === 'boolean';
-    var pts = rows.map(function (r) { return { y: r[valF], color: boolColor ? (r[e.color] ? PALETTE[0] : '#cbd5e1') : undefined }; });
+    var pts = rows.map(function (r) { return { y: r[valF], color: boolColor ? (r[e.color] ? PALETTE[0] : C.rule3) : undefined }; });
     var series = [{ name: valF, data: pts, color: PALETTE[0] }];
     var eb = o.error_bars;
-    if (Array.isArray(eb) && eb.length === 2 && isNum(f0[eb[0]])) series.push({ type: 'errorbar', name: '95% 신뢰구간', data: rows.map(function (r) { return [r[eb[0]], r[eb[1]]]; }), color: '#334155', whiskerLength: '40%' });
+    if (Array.isArray(eb) && eb.length === 2 && isNum(f0[eb[0]])) series.push({ type: 'errorbar', name: '95% 신뢰구간', data: rows.map(function (r) { return [r[eb[0]], r[eb[1]]]; }), color: C.ink1, whiskerLength: '40%' });
     return { html: sized(uid, horiz ? Math.max(256, cats.length * 26 + 70) : 256), draw: function (el) {
       return Highcharts.chart(el, baseHc(horiz ? 'bar' : 'column', {
         xAxis: { categories: cats }, yAxis: { title: { text: null }, plotLines: ref, labels: { formatter: function () { return isPctFmt ? pct(this.value) : this.value; } } },
         legend: { enabled: !!boolColor, labelFormatter: function () { return this.name; } },
         tooltip: { shared: true, formatter: function () { var r = rows[this.points ? this.points[0].point.index : this.point.index], s = '<b>' + A.esc(this.x !== undefined ? this.x : cats[0]) + '</b><br/>' + valF + ': <b>' + valFmt(r[valF]) + '</b>'; if (eb && isNum(r[eb[0]])) s += '<br/>95% CI: [' + fx(r[eb[0]]) + ', ' + fx(r[eb[1]]) + ']'; if (isNum(r.p_value)) s += '<br/>p = ' + fx(r.p_value, 4); return s; } },
-        series: boolColor ? series.concat([{ name: '유의 (p<.05)', color: PALETTE[0], data: [] }, { name: '비유의', color: '#cbd5e1', data: [] }]).map(function (s, i) { if (i === 0) s.showInLegend = false; if (s.type === 'errorbar') s.showInLegend = false; return s; }) : series
+        series: boolColor ? series.concat([{ name: '유의 (p<.05)', color: PALETTE[0], data: [] }, { name: '비유의', color: C.rule3, data: [] }]).map(function (s, i) { if (i === 0) s.showInLegend = false; if (s.type === 'errorbar') s.showInLegend = false; return s; }) : series
       }));
     } };
   }
@@ -290,7 +294,7 @@
     var cats = groupCats(rows, e.x, o.group_by), eb = o.error_bars;
     return { html: box(uid), draw: function (el) {
       var s = [{ type: 'line', name: '평균', data: rows.map(function (r) { return r[e.y]; }), color: PALETTE[0], lineWidth: 1.5, marker: { enabled: true, radius: 4 } }];
-      if (Array.isArray(eb) && isNum(rows[0][eb[0]])) s.push({ type: 'errorbar', name: '95% 신뢰구간', data: rows.map(function (r) { return [r[eb[0]], r[eb[1]]]; }), color: '#334155' });
+      if (Array.isArray(eb) && isNum(rows[0][eb[0]])) s.push({ type: 'errorbar', name: '95% 신뢰구간', data: rows.map(function (r) { return [r[eb[0]], r[eb[1]]]; }), color: C.ink1 });
       return Highcharts.chart(el, baseHc('line', { xAxis: { categories: cats }, yAxis: { title: { text: '평균' } }, tooltip: { shared: true, valueDecimals: 3 }, series: s }));
     } };
   }
@@ -338,9 +342,9 @@
     return { html: sized(uid, 300), draw: function (el) {
       return Highcharts.chart(el, baseHc('line', {
         xAxis: { labels: { enabled: n <= 40 }, tickLength: 0, title: { text: '관측치 (' + n + '개)' } },
-        yAxis: { title: { text: '병합 거리' }, min: 0, plotLines: cut ? [{ value: cut, color: PALETTE[1], dashStyle: 'Dash', width: 1.5, label: { text: k + '개 군집 절단선', style: { fontSize: '10px', color: PALETTE[1] } } }] : [] },
+        yAxis: { title: { text: '병합 거리' }, min: 0, plotLines: cut ? [{ value: cut, color: PALETTE[1], dashStyle: 'Dash', width: 1.5, label: { text: k + '개 군집 절단선', style: { fontSize: '12px', color: PALETTE[1] } } }] : [] },
         tooltip: { enabled: false },
-        series: [{ data: line, color: '#475569', lineWidth: 1, marker: { enabled: false }, connectNulls: false, enableMouseTracking: false, turboThreshold: 0 }]
+        series: [{ data: line, color: C.ink2, lineWidth: 1, marker: { enabled: false }, connectNulls: false, enableMouseTracking: false, turboThreshold: 0 }]
       }));
     } };
   }
@@ -355,7 +359,7 @@
       var s = [{ name: yf, data: rows.map(function (r) { return [r[xf], r[yf]]; }), color: PALETTE[0], marker: { radius: 4 } }];
       if (y2) s.push({ name: y2, yAxis: 1, data: rows.map(function (r) { return [r[xf], r[y2]]; }), color: PALETTE[2], dashStyle: 'ShortDash', marker: { radius: 3 } });
       return Highcharts.chart(el, baseHc('line', { legend: { enabled: !!y2 }, tooltip: { shared: true, valueDecimals: 3 },
-        xAxis: { title: { text: '군집 수 (k)' }, allowDecimals: false, plotLines: isNum(sk) ? [{ value: sk, color: PALETTE[1], dashStyle: 'Dash', width: 1.5, label: { text: '선택 k=' + sk, style: { fontSize: '10px', color: PALETTE[1] } } }] : [] },
+        xAxis: { title: { text: '군집 수 (k)' }, allowDecimals: false, plotLines: isNum(sk) ? [{ value: sk, color: PALETTE[1], dashStyle: 'Dash', width: 1.5, label: { text: '선택 k=' + sk, style: { fontSize: '12px', color: PALETTE[1] } } }] : [] },
         yAxis: [{ title: { text: yf } }, { title: { text: y2 }, opposite: true }], series: s }));
     } };
   }
@@ -383,8 +387,8 @@
     names.sort(function (a, b) { return (a === '-1') - (b === '-1') || (isNaN(a) || isNaN(b) ? a.localeCompare(b) : a - b); });
     var cents = rowsOf(o.centroid_data_key && ctx.chartData[o.centroid_data_key]);
     return { html: sized(uid, 280), draw: function (el) {
-      var s = names.map(function (g, i) { var noise = g === '-1'; return { name: noise ? '노이즈' : '군집 ' + g, data: groups[g], color: noise ? '#94a3b8' : PALETTE[i % PALETTE.length], marker: { radius: 2.5, symbol: 'circle' } }; });
-      if (cents) s.push({ name: '군집 중심', data: cents.map(function (c) { return { x: c.x, y: c.y, color: PALETTE[names.indexOf(String(c.cluster)) % PALETTE.length], name: '군집 ' + c.cluster }; }), marker: { symbol: 'diamond', radius: 8, lineWidth: 2, lineColor: '#0f172a' }, color: '#0f172a', zIndex: 5 });
+      var s = names.map(function (g, i) { var noise = g === '-1'; return { name: noise ? '노이즈' : '군집 ' + g, data: groups[g], color: noise ? C.ink4 : PALETTE[i % PALETTE.length], marker: { radius: 2.5, symbol: 'circle' } }; });
+      if (cents) s.push({ name: '군집 중심', data: cents.map(function (c) { return { x: c.x, y: c.y, color: PALETTE[names.indexOf(String(c.cluster)) % PALETTE.length], name: '군집 ' + c.cluster }; }), marker: { symbol: 'diamond', radius: 8, lineWidth: 2, lineColor: C.ink }, color: C.ink, zIndex: 5 });
       return Highcharts.chart(el, baseHc('scatter', { legend: { enabled: true }, xAxis: { title: { text: rows[0].x_label || xf } }, yAxis: { title: { text: rows[0].y_label || yf } }, series: s,
         tooltip: { pointFormatter: function () { return fx(this.x) + ', ' + fx(this.y); } } }));
     } };
@@ -398,7 +402,7 @@
     var pts = rows.map(function (r) { return [r[xf], r[yf]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
     return { html: box(uid), draw: function (el) {
       var s = [{ type: 'area', name: 'ROC' + (isNum(auc) ? ' (AUC = ' + auc.toFixed(3) + ')' : ''), data: pts, color: PALETTE[0], fillOpacity: 0.12, marker: { enabled: false }, step: false }];
-      if (o.diagonal_reference !== false) s.push({ type: 'line', name: '무작위 기준', data: [[0, 0], [1, 1]], color: '#94a3b8', dashStyle: 'Dash', marker: { enabled: false }, enableMouseTracking: false });
+      if (o.diagonal_reference !== false) s.push({ type: 'line', name: '무작위 기준', data: [[0, 0], [1, 1]], color: C.ink4, dashStyle: 'Dash', marker: { enabled: false }, enableMouseTracking: false });
       return Highcharts.chart(el, baseHc('line', { legend: { enabled: true }, xAxis: { min: 0, max: 1, title: { text: o.x_label || xf } }, yAxis: { min: 0, max: 1, title: { text: o.y_label || yf } }, series: s,
         tooltip: { pointFormatter: function () { return (o.x_label || xf) + ': ' + fx(this.x) + '<br/>' + (o.y_label || yf) + ': <b>' + fx(this.y) + '</b>'; } } }));
     } };
@@ -416,7 +420,7 @@
     });
     return { html: sized(uid, 280), draw: function (el) {
       var s = [];
-      Object.keys(ind).forEach(function (g, i) { s.push({ type: 'line', name: '개체 ' + g, data: ind[g].sort(function (a, b) { return a[0] - b[0]; }), color: '#cbd5e1', lineWidth: 1, marker: { enabled: false }, showInLegend: i === 0, linkedTo: i ? ':previous' : undefined, enableMouseTracking: false }); });
+      Object.keys(ind).forEach(function (g, i) { s.push({ type: 'line', name: '개체 ' + g, data: ind[g].sort(function (a, b) { return a[0] - b[0]; }), color: C.rule3, lineWidth: 1, marker: { enabled: false }, showInLegend: i === 0, linkedTo: i ? ':previous' : undefined, enableMouseTracking: false }); });
       if (s.length) s[0].name = '개체별 예측선';
       if (obs.length) s.push({ type: 'scatter', name: '관측값', data: obs, color: PALETTE[0] + '66', marker: { radius: 2, symbol: 'circle' } });
       if (avg.length) s.push({ type: 'line', name: '평균 성장선', data: avg.sort(function (a, b) { return a[0] - b[0]; }), color: PALETTE[1], lineWidth: 3, marker: { radius: 4 }, zIndex: 5 });
@@ -465,10 +469,10 @@
     if (!rows) return null;
     var cf = e.y || 'covariate', af = e.x || 'smd_after', bf = o.compare_field || 'smd_before';
     var cats = rows.map(function (r) { return String(r[cf]); });
-    var refs = (o.reference_lines || [-0.1, 0.1]).map(function (v) { return { value: v, color: PALETTE[1], dashStyle: 'Dash', width: 1 }; }).concat([{ value: 0, color: '#94a3b8', width: 1 }]);
+    var refs = (o.reference_lines || [-0.1, 0.1]).map(function (v) { return { value: v, color: PALETTE[1], dashStyle: 'Dash', width: 1 }; }).concat([{ value: 0, color: C.ink4, width: 1 }]);
     return { html: sized(uid, Math.max(256, cats.length * 28 + 80)), draw: function (el) {
       var s = [];
-      if (isNum(rows[0][bf])) s.push({ name: '매칭 전', data: rows.map(function (r, i) { return [i, r[bf]]; }), color: '#94a3b8', marker: { symbol: 'circle', radius: 5 } });
+      if (isNum(rows[0][bf])) s.push({ name: '매칭 전', data: rows.map(function (r, i) { return [i, r[bf]]; }), color: C.ink4, marker: { symbol: 'circle', radius: 5 } });
       s.push({ name: '매칭 후', data: rows.map(function (r, i) { return [i, r[af]]; }), color: PALETTE[0], marker: { symbol: 'diamond', radius: 6 } });
       return Highcharts.chart(el, baseHc('scatter', { chart: { type: 'scatter', inverted: true }, legend: { enabled: true }, xAxis: { categories: cats, title: { text: null } }, yAxis: { title: { text: '표준화 평균차 (SMD)' }, plotLines: refs }, series: s,
         tooltip: { pointFormatter: function () { return cats[this.x] + '<br/>' + this.series.name + ': <b>' + fx(this.y) + '</b>'; } } }));
@@ -576,10 +580,10 @@
     var uid = 'ch-' + idx, p = null, body, raw = '';
     try { p = plan(rec, data, uid, ctx); } catch (e) { p = null; }
     if (p) body = p.html;
-    else if (data === undefined || data === null || (Array.isArray(data) && !data.length)) body = '<div class="py-8 text-center text-xs text-slate-400 leading-relaxed">' + noDataMsg(rec, ctx) + '</div>';
-    else body = '<div class="text-[11px] text-slate-500 mb-1.5">차트로 자동 변환할 수 없는 형식이어서 원본 데이터를 표시합니다.</div>' + A.viz.tree(data, 0);
-    var badge = '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">' + (idx + 1) + '순위</span>';
-    return { uid: uid, plan: p, html: '<div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-2xs"><div class="flex items-start justify-between gap-2 mb-2"><div class="min-w-0"><div class="flex items-center gap-1.5">' + badge + '<h5 class="text-xs font-bold text-slate-900 truncate">Figure ' + (idx + 1) + '. ' + A.esc(recTitle(rec)) + '</h5></div><p class="text-[11px] text-slate-500 mt-0.5">' + A.esc(rec.reason) + '</p></div><span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">' + A.esc(KIND_LABEL[rec.kind] || rec.kind) + '</span></div>' + body + raw + '</div>' };
+    else if (data === undefined || data === null || (Array.isArray(data) && !data.length)) body = '<div class="py-8 text-center text-xs text-ink-4 leading-relaxed">' + noDataMsg(rec, ctx) + '</div>';
+    else body = '<div class="text-xs text-ink-3 mb-1.5">차트로 자동 변환할 수 없는 형식이어서 원본 데이터를 표시합니다.</div>' + A.viz.tree(data, 0);
+    var badge = '<span class="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">' + (idx + 1) + '순위</span>';
+    return { uid: uid, plan: p, html: '<div class="bg-white rounded-xl border border-rule/90 p-4"><div class="flex items-start justify-between gap-2 mb-2"><div class="min-w-0"><div class="flex items-center gap-1.5">' + badge + '<h5 class="text-title font-semibold text-ink truncate">Figure ' + (idx + 1) + '. ' + A.esc(recTitle(rec)) + '</h5></div><p class="text-xs text-ink-3 mt-0.5">' + A.esc(rec.reason) + '</p></div><span class="text-xs font-mono px-2 py-0.5 rounded bg-paper-2 text-ink-2 shrink-0">' + A.esc(KIND_LABEL[rec.kind] || rec.kind) + '</span></div>' + body + raw + '</div>' };
   }
 
   function recData(r, cd) {
@@ -640,16 +644,16 @@
       rows.slice(0, 50).forEach(function (r) { Object.keys(r).forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
       var shown = rows.slice(0, 1000);
       title = '차트 원시 데이터 (' + A.num(rows.length) + '개 행)';
-      body = '<div class="rounded-xl border border-slate-200 max-h-[340px] overflow-auto"><table class="w-full text-left text-xs border-collapse"><thead class="sticky top-0 z-10"><tr class="bg-slate-50 border-b border-slate-200">' +
-        cols.map(function (c) { return '<th class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap bg-slate-50">' + A.esc(c) + '</th>'; }).join('') + '</tr></thead><tbody class="font-mono text-slate-700">' +
-        shown.map(function (r) { return '<tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">' + cols.map(function (c) { return '<td class="py-2.5 px-4 whitespace-nowrap">' + A.esc(cellText(r[c])) + '</td>'; }).join('') + '</tr>'; }).join('') +
-        '</tbody></table></div>' + (rows.length > shown.length ? '<div class="text-[11px] text-slate-400 pt-1.5">상위 ' + A.num(shown.length) + '행만 표시</div>' : '');
+      body = '<div class="rounded-xl border border-rule max-h-[340px] overflow-auto"><table class="w-full text-left text-body border-collapse"><thead class="sticky top-0 z-10"><tr class="bg-paper-3 border-b border-rule">' +
+        cols.map(function (c) { return '<th class="py-3 px-4 font-semibold text-ink-1 whitespace-nowrap bg-paper-3">' + A.esc(c) + '</th>'; }).join('') + '</tr></thead><tbody class="font-mono text-ink-1">' +
+        shown.map(function (r) { return '<tr class="border-b border-paper-2 last:border-0 hover:bg-paper-3/60">' + cols.map(function (c) { return '<td class="py-2.5 px-4 whitespace-nowrap">' + A.esc(cellText(r[c])) + '</td>'; }).join('') + '</tr>'; }).join('') +
+        '</tbody></table></div>' + (rows.length > shown.length ? '<div class="text-xs text-ink-4 pt-1.5">상위 ' + A.num(shown.length) + '행만 표시</div>' : '');
     } else {
       title = '차트 원시 데이터';
-      body = '<div class="rounded-xl border border-slate-200 p-3 max-h-[340px] overflow-auto text-[11px]">' + A.viz.tree(data, 0) + '</div>';
+      body = '<div class="rounded-xl border border-rule p-3 max-h-[340px] overflow-auto text-xs">' + A.viz.tree(data, 0) + '</div>';
     }
-    return '<div class="rounded-2xl border border-slate-200 bg-white p-5 space-y-3"><div class="flex items-center justify-between pb-3 border-b border-slate-100"><span class="text-sm font-bold text-slate-900 flex items-center gap-2">' + A.icon('table', 'w-4 h-4 text-blue-700') + title + '</span>' +
-      '<button type="button" data-cdata="1" class="text-xs text-slate-500 hover:text-slate-900 cursor-pointer">닫기</button></div>' + body + '</div>';
+    return '<div class="rounded-2xl border border-rule bg-white p-5 space-y-3"><div class="flex items-center justify-between pb-3 border-b border-paper-2"><span class="text-sm font-bold text-ink flex items-center gap-2">' + A.icon('table', 'w-4 h-4 text-blue-700') + title + '</span>' +
+      '<button type="button" data-cdata="1" class="text-xs text-ink-3 hover:text-ink cursor-pointer">닫기</button></div>' + body + '</div>';
   }
 
   /** 차트 하나를 크게 보는 상세 화면. ← 차트 목록으로 / 차트 데이터 조회 / 이전·다음 */
@@ -658,27 +662,27 @@
     var r = st.recs[st.idx], data = recData(r, st.cd), uid = 'ch-detail-' + st.idx, p = null;
     try { p = plan(r, data, uid, st.ctx); } catch (e) { p = null; }
     var body = p ? p.html : (data === undefined || data === null || (Array.isArray(data) && !data.length))
-      ? '<div class="py-24 text-center text-xs text-slate-400 leading-relaxed">' + noDataMsg(r, st.ctx) + '</div>'
-      : '<div class="text-[11px] text-slate-500 mb-1.5">차트로 자동 변환할 수 없는 형식이어서 원본 데이터를 표시합니다.</div>' + A.viz.tree(data, 0);
+      ? '<div class="py-24 text-center text-xs text-ink-4 leading-relaxed">' + noDataMsg(r, st.ctx) + '</div>'
+      : '<div class="text-xs text-ink-3 mb-1.5">차트로 자동 변환할 수 없는 형식이어서 원본 데이터를 표시합니다.</div>' + A.viz.tree(data, 0);
     var f = footInfo(data, st.ctx), n = st.recs.length;
-    var navBtn = function (dir, icon, dis) { return '<button type="button" data-cnav="' + dir + '"' + (dis ? ' disabled' : '') + ' class="p-1.5 rounded-lg text-slate-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">' + A.icon(icon, 'w-4 h-4') + '</button>'; };
+    var navBtn = function (dir, icon, dis) { return '<button type="button" data-cnav="' + dir + '"' + (dis ? ' disabled' : '') + ' class="p-1.5 rounded-lg text-ink-2 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">' + A.icon(icon, 'w-4 h-4') + '</button>'; };
     var hasData = data !== undefined && data !== null && !(Array.isArray(data) && !data.length);
-    st.root.innerHTML = '<div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">' +
-      '<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200">' +
+    st.root.innerHTML = '<div class="bg-white rounded-2xl border border-rule p-5 space-y-4">' +
+      '<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-rule">' +
         '<div class="flex items-center gap-3 min-w-0">' +
-          '<button type="button" data-cback="1" class="px-4 py-2 bg-[#003876] hover:bg-[#002855] text-white text-sm font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0">' + A.icon('arrow-left', 'w-4 h-4') + '<span>차트 목록으로</span></button>' +
-          '<span class="w-px h-6 bg-slate-200 shrink-0"></span>' +
-          '<span class="text-[11px] font-bold px-2 py-1 rounded-md bg-blue-50 text-blue-800 border border-blue-200 shrink-0">추천 ' + (st.idx + 1) + '순위</span>' +
-          '<h4 class="text-base font-bold text-slate-900 truncate">' + A.esc(recTitle(r)) + '</h4>' +
+          '<button type="button" data-cback="1" class="px-4 py-2 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0">' + A.icon('arrow-left', 'w-4 h-4') + '<span>차트 목록으로</span></button>' +
+          '<span class="w-px h-6 bg-rule shrink-0"></span>' +
+          '<span class="text-xs font-bold px-2 py-1 rounded-md bg-blue-50 text-blue-800 border border-blue-200 shrink-0">추천 ' + (st.idx + 1) + '순위</span>' +
+          '<h4 class="text-title font-semibold text-ink truncate">' + A.esc(recTitle(r)) + '</h4>' +
         '</div>' +
         '<div class="flex items-center gap-2 shrink-0">' +
-          (hasData ? '<button type="button" data-cdata="1" class="px-3.5 py-2 rounded-xl border text-sm font-semibold flex items-center gap-1.5 cursor-pointer ' + (st.showData ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50') + '">' + A.icon(st.showData ? 'x' : 'table', 'w-4 h-4') + '<span>' + (st.showData ? '차트 데이터 닫기' : '차트 데이터 조회') + '</span></button>' : '') +
-          '<div class="flex items-center gap-1 px-1.5 py-1 bg-slate-100 rounded-xl border border-slate-200">' + navBtn(-1, 'chevron-left', st.idx === 0) + '<span class="px-2 text-sm font-mono font-bold text-slate-800">' + (st.idx + 1) + ' / ' + n + '</span>' + navBtn(1, 'chevron-right', st.idx === n - 1) + '</div>' +
+          (hasData ? '<button type="button" data-cdata="1" class="px-3.5 py-2 rounded-xl border text-sm font-semibold flex items-center gap-1.5 cursor-pointer ' + (st.showData ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-white border-rule text-ink-1 hover:bg-paper-3') + '">' + A.icon(st.showData ? 'x' : 'table', 'w-4 h-4') + '<span>' + (st.showData ? '차트 데이터 닫기' : '차트 데이터 조회') + '</span></button>' : '') +
+          '<div class="flex items-center gap-1 px-1.5 py-1 bg-paper-2 rounded-xl border border-rule">' + navBtn(-1, 'chevron-left', st.idx === 0) + '<span class="px-2 text-sm font-mono font-bold text-ink-0">' + (st.idx + 1) + ' / ' + n + '</span>' + navBtn(1, 'chevron-right', st.idx === n - 1) + '</div>' +
         '</div>' +
       '</div>' +
-      (r.reason ? '<p class="text-xs text-slate-500 -mt-1">' + A.esc(r.reason) + '</p>' : '') +
-      '<div class="rounded-2xl border border-slate-100 bg-slate-50/40 p-4" id="' + uid + '-wrap">' + body +
-        ((f.left || f.right) ? '<div class="flex items-center justify-between gap-3 pt-3 mt-3 border-t border-slate-200 text-xs"><span class="text-slate-500">' + A.esc(f.left) + '</span><span class="font-mono font-bold text-slate-800">' + A.esc(f.right) + '</span></div>' : '') + '</div>' +
+      (r.reason ? '<p class="text-xs text-ink-3 -mt-1">' + A.esc(r.reason) + '</p>' : '') +
+      '<div class="rounded-2xl border border-paper-2 bg-paper-3/40 p-4" id="' + uid + '-wrap">' + body +
+        ((f.left || f.right) ? '<div class="flex items-center justify-between gap-3 pt-3 mt-3 border-t border-rule text-xs"><span class="text-ink-3">' + A.esc(f.left) + '</span><span class="font-mono font-bold text-ink-0">' + A.esc(f.right) + '</span></div>' : '') + '</div>' +
       (st.showData && hasData ? dataPanel(data) : '') +
       '</div>';
     if (p && p.draw && window.Highcharts) {
@@ -698,11 +702,11 @@
   function renderGallery(st) {
     destroyAll();
     var root = st.root, recs = st.recs;
-    if (!recs.length) { root.innerHTML = '<div class="card-modern p-8 text-center text-xs text-slate-400">추천된 차트가 없습니다.</div>'; return; }
+    if (!recs.length) { root.innerHTML = '<div class="card-modern p-8 text-center text-xs text-ink-4">추천된 차트가 없습니다.</div>'; return; }
     var cards = recs.map(function (r, i) { return card(r, i, recData(r, st.cd), st.ctx); });
-    root.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">' + cards.map(function (c, i) {
+    root.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">' + cards.map(function (c, i) {
       // 카드를 누르면 상세 화면으로 (선택 상자·원본 데이터 펼치기는 제외)
-      return c.html.replace('<div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-2xs">', '<div data-cidx="' + i + '" title="클릭하면 크게 봅니다" class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-2xs cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all">');
+      return c.html.replace('<div class="bg-white rounded-xl border border-rule/90 p-4">', '<div role="button" tabindex="0" data-cidx="' + i + '" title="클릭하면 크게 봅니다" class="bg-white rounded-xl border border-rule/90 p-4 cursor-pointer hover:border-blue-300 transition-colors">');
     }).join('') + '</div>';
     cards.forEach(function (c) {
       if (!c.plan || !c.plan.draw) return;

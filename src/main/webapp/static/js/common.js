@@ -34,6 +34,12 @@
   App.icons = function () {
     if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
   };
+  /* design.md 색 토큰 값 읽기 (차트처럼 클래스를 못 쓰는 곳용): App.tok('ink-3') → '#6d7882' */
+  var tokCache = {};
+  App.tok = function (name) {
+    if (!(name in tokCache)) tokCache[name] = getComputedStyle(document.documentElement).getPropertyValue('--color-' + name).trim();
+    return tokCache[name];
+  };
   App.icon = function (name, cls) {
     return '<i data-lucide="' + name + '" class="' + (cls || 'w-4 h-4') + '"></i>';
   };
@@ -131,7 +137,7 @@
       return fetch(App.ctx + url, init).then(function (res) {
         if (res.status === 401 && !retried) {           // 세션 만료 → 재발급 후 1회 재시도 (이전 세션의 데이터는 삭제된 상태)
           return App.ensureSession(true).then(function () {
-            App.toast('세션이 만료되어 새로 시작했습니다. 데이터를 다시 반입해 주세요.', 'error');
+            App.fail('세션이 만료되어 새로 시작했습니다. 데이터를 다시 반입해 주세요.');
             return send(method, url, body, opts, true);
           });
         }
@@ -142,7 +148,7 @@
           return res.json().then(function (j) {
             if (!res.ok) { var e = new Error(errMsg(j, res.status)); e.status = res.status; throw e; }
             // 202 + 작업(JobRead): 백그라운드 작업이 끝날 때까지 기다렸다가 최종 결과를 돌려준다 (호출부는 기존과 동일하게 결과만 받음)
-            if (res.status === 202 && isJob(j)) return waitJob(j, retryAfter(res), method, url);
+            if (res.status === 202 && isJob(j)) return waitJob(j, retryAfter(res), method, url, opts.onJob);
             return j;
           });
         }
@@ -190,10 +196,22 @@
     if (method === 'GET') return App.get(url);   // 탐색 API: 작업 완료 후 같은 요청은 캐시에서 200 으로 응답
     return Promise.resolve(job);
   }
-  function waitJob(job, delay, method, url) {
+  /** onJob(job): 상태를 조회할 때마다 호출 (예약 대기 순번·진행 상태 표시용, 선택). 작업 상태는
+   *  queued(세션 대기열 예약, queue_position) → pending(워커 대기) → running → succeeded / failed / cancelled */
+  function waitJob(job, delay, method, url, onJob) {
     var started = Date.now();
     function poll(j, wait) {
+      if (onJob) { try { onJob(j); } catch (x) { /* 표시용이라 무시 */ } }
       if (j.status === 'succeeded') return jobResult(j, method, url);
+      if (j.status === 'cancelled') {
+        // 분석은 취소돼도 분석 레코드(status=cancelled)가 남으므로 그걸 돌려줘 화면이 상태를 표시하게 한다
+        if (j.kind === 'analysis' && (j.result_url || j.resource_id)) {
+          return App.get(apiPath(j.result_url) || '/api/v1/analyses/' + encodeURIComponent(j.resource_id));
+        }
+        var c = new Error('작업이 취소되었습니다.');
+        c.code = 'cancelled'; c.job = j;
+        return Promise.reject(c);
+      }
       if (j.status === 'failed') {
         // 분석은 실패해도 분석 레코드(status=failed, error)가 남으므로 그걸 돌려줘 화면이 실패 사유를 표시하게 한다
         if (j.kind === 'analysis' && (j.result_url || j.resource_id)) {
@@ -215,8 +233,16 @@
     }
     return poll(job, delay);
   }
-  App.get = function (u) { return App.api('GET', u); };
-  App.post = function (u, b) { return App.api('POST', u, b === undefined ? {} : b); };
+  App.get = function (u, opts) { return App.api('GET', u, undefined, opts); };
+  App.post = function (u, b, opts) { return App.api('POST', u, b === undefined ? {} : b, opts); };
+  /** 작업 상태 → 화면 문구 (예약 대기 순번 포함) */
+  App.jobText = function (j) {
+    if (!j) return '';
+    if (j.status === 'queued') return '대기열에서 차례를 기다리는 중' + (j.queue_position ? ' (' + j.queue_position + '번째)' : '');
+    if (j.status === 'pending') return '처리 서버 배정을 기다리는 중';
+    if (j.status === 'running') return '처리 중';
+    return '';
+  };
   App.patch = function (u, b) { return App.api('PATCH', u, b === undefined ? {} : b); };
   App.del = function (u) { return App.api('DELETE', u); };
 
@@ -234,10 +260,59 @@
     var ic = t.querySelector('svg, i');
     t.classList.remove('hidden');
     t.classList.add('flex');
-    t.style.borderColor = kind === 'error' ? '#be123c' : '';
-    if (ic) ic.style.color = kind === 'error' ? '#fb7185' : '#34d399';
+    t.style.borderColor = kind === 'error' ? 'var(--color-err)' : '';
+    if (ic) ic.style.color = kind === 'error' ? 'var(--color-err-on-dark)' : 'var(--color-ok-on-dark)';
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.classList.add('hidden'); t.classList.remove('flex'); }, kind === 'error' ? 5000 : 3000);
+  };
+  /* 인라인 오류: 토스트 대신 문제가 난 영역(anchor) 바로 아래에 표시. anchor 없으면 본문 맨 위.
+   * 같은 영역에 다시 오면 내용만 바꾸고, App.fail(null, anchor) 로 지운다. */
+  App.fail = function (msg, anchor) {
+    var el = typeof anchor === 'string' ? document.querySelector(anchor) : anchor;
+    var main = document.getElementById('main-content');
+    var key = el ? (el.id || (el.id = 'fa-' + Math.random().toString(36).slice(2, 8))) : 'page';
+    var box = document.querySelector('[data-fail-for="' + key + '"]');
+    if (!msg) { if (box) box.remove(); return; }
+    if (!box) {
+      box = document.createElement('div');
+      box.setAttribute('data-fail-for', key);
+      box.setAttribute('role', 'alert');
+      box.className = 'flex items-start gap-2 text-[13.5px] text-rose-800 bg-rose-50 border border-rose-200 rounded-md px-3 py-2 mt-2';
+      box.innerHTML = '<span class="flex-1 min-w-0 break-words" data-fail-msg></span>' +
+        '<button type="button" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer" aria-label="오류 닫기">' + App.icon('x', 'w-4 h-4') + '</button>';
+      box.querySelector('button').addEventListener('click', function () { box.remove(); });
+      if (el) el.insertAdjacentElement('afterend', box);
+      else if (main) { box.classList.remove('mt-2'); box.classList.add('mb-4'); main.insertAdjacentElement('afterbegin', box); }
+    }
+    box.querySelector('[data-fail-msg]').textContent = msg;
+    App.icons();
+  };
+
+  /* 확인 창: 되돌릴 수 없는 삭제에만. 포털 모달과 같은 모양, Esc·바깥 클릭은 취소 */
+  App.confirm = function (msg, okLabel) {
+    var m = document.getElementById('confirm-modal');
+    if (!m) return Promise.resolve(window.confirm(msg));
+    document.getElementById('confirm-msg').textContent = msg;
+    var yes = document.getElementById('confirm-yes'), no = document.getElementById('confirm-no');
+    yes.textContent = okLabel || '삭제';
+    var back = document.activeElement;
+    App.openModal('confirm-modal');
+    no.focus();
+    return new Promise(function (resolve) {
+      function done(v) {
+        yes.removeEventListener('click', onYes); no.removeEventListener('click', onNo);
+        m.removeEventListener('click', onBack); document.removeEventListener('keydown', onKey, true);
+        App.closeModal('confirm-modal');
+        if (back && back.focus) back.focus();
+        resolve(v);
+      }
+      function onYes() { done(true); }
+      function onNo() { done(false); }
+      function onBack(e) { if (e.target === m) done(false); }
+      function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); done(false); } }
+      yes.addEventListener('click', onYes); no.addEventListener('click', onNo);
+      m.addEventListener('click', onBack); document.addEventListener('keydown', onKey, true);
+    });
   };
   App.toastFlash = function (msg) {
     try { sessionStorage.setItem('flashToast', msg); } catch (e) { /* ignore */ }
@@ -314,81 +389,113 @@
   };
 
   /* ------------------------------------------------------------ 헤더 메뉴 */
+  // 교육데이터플랫폼(www.edmgr.kr) 주 메뉴와 동일. 이 서비스는 '분석지원 > 이용자 통계분석' 메뉴를 고도화한 것이다.
+  var PORTAL = window.__PORTAL__ || 'https://www.edmgr.kr';
+  var SELF_PATH = '/ot/dim/dmm/bm/ot_dim_dmmbm03_m01';   // 이용자 통계분석 (현재 서비스)
   var MENUS = [
-    { id: 'intro', title: '플랫폼소개', items: ['포털 소개 및 비전', '법적 근거 및 정책', '이용 절차 안내', '공지사항 및 소식'] },
-    { id: 'search', title: '데이터검색', items: ['통합 데이터 카탈로그', '교육통계 데이터셋', '학술연구 원천자료', '메타데이터 사전'] },
-    { id: 'open', title: '데이터개방', items: ['공공데이터 개방목록', 'OpenAPI 연계 신청', '데이터 품질 인증', '개방데이터 요청'] },
-    { id: 'utilization', title: '데이터활용', items: ['우수 분석사례 갤러리', '통계 시각화 대시보드', '가명결합 신청 및 심의', '연구성과 공유소'] },
-    {
-      id: 'support', title: '분석지원', items: [
-        { name: '교육데이터 통계분석 서비스', active: true, desc: '5단계 표준 통계·예측 분석 파이프라인' },
-        { name: '원격 분석 환경(R/Python)', desc: '가상 클라우드 컴퓨팅' },
-        { name: '분석 컨설팅 및 기술지원', desc: '전문 통계 전문가 자문' },
-        { name: '통계 분석 가이드북', desc: '분석 매뉴얼 및 튜토리얼' }
-      ]
-    }
+    { title: '플랫폼소개', items: [
+        ['플랫폼소개', '/intro/service_intro'],
+        ['공지사항', '/ot/uss/bos/ib/ot_uss_bosib01_000?bbsId=BBS0000000001'],
+        ['자료실', '/ot/uss/bos/ib/ot_uss_bosib01_000?bbsId=BBS0000000002'],
+        ['교육데이터 웹툰', '/ot/uss/bos/ib/ot_uss_bosib01_010?bbsId=BBS0000000005'],
+        ['자주묻는질문', '/ot/uss/bos/ib/ot_uss_bosib01_000?bbsId=BBS0000000003'],
+        ['문의하기', '/ot/uss/qur/qr/newInqrReq'],
+        ['데이터제공현황', '/intro/service_provided']
+      ] },
+    { title: '데이터검색', items: [
+        ['데이터검색', '/dtSearchResult'],
+        ['법제도로 찾기', '/ot/cof/cof/mn/lawSstmSearch'],
+        ['데이터관리카드', '/ot/cof/cof/mn/dtcfSearch'],
+        ['교육행정데이터 표준화 용어사전', '/ot/dim/mdm/mr/ot_dim_mdmmr01_m01'],
+        ['교육데이터맵', '/intro/service_datamap']
+      ] },
+    { title: '데이터개방', items: [
+        ['OpenAPI신청', '/ot/udp/api/cm/ot_udp_apicm01_m01'],
+        ['개발자소통창구', '/ot/udp/api/db/ot_udp_apidb01_m01'],
+        ['개방 포털 모음집', '/intro/service_openportal']
+      ] },
+    { title: '데이터활용', items: [
+        ['시각화가이드', '/intro/service_vslzguide'],
+        ['분석시각화', '/ot/dim/dmm/am/ot_dim_dmmam21_m01'],
+        ['분석보고서', '/ot/ans/ans/as/ot_ans_ansas01_m02?rptSn=86c66c0ad17345f1ab5863abacc08bc597090e84e1374ec195e7a70ff5f67efc'],
+        ['교육통계분석', '/ot/ans/ans/as/ot_ans_ansas01_m01?rptSn=0e5074cd69fe4df58a684a12bbaf438ba59b51b9d5c74712b0c5c93a5c7f8102'],
+        ['수상작사례', '/ot/uss/prp/xc/ot_uss_prpxc01_m01'],
+        ['참여형콘텐츠', '/ot/dim/dmm/am/ot_dim_dmmam51_m01']
+      ] },
+    { title: '분석지원', items: [
+        ['데이터 안심구역', '/intro/service_safezone'],
+        ['에듀데이터서비스(EDSS)', '/intro/service_edss'],
+        ['활용지원서비스', '/intro/service_utlzsprt'],
+        ['이용자 셀프분석', '/ot/dim/dmm/am/ot_dim_dmmam41_m01'],
+        ['이용자 통계분석', '/ot/dim/dmm/bm/ot_dim_dmmbm03_m01']
+      ] }
   ];
+  function menuHref(h) { return h === SELF_PATH ? App.ctx + '/analysis/step1' : PORTAL + h; }
+  function isSelf(h) { return h === SELF_PATH; }
 
   function renderGnb() {
     var nav = document.getElementById('gnb');
     if (!nav) return;
     nav.innerHTML = MENUS.map(function (m) {
-      var support = m.id === 'support';
       var items = m.items.map(function (it) {
-        if (typeof it === 'string') {
-          return '<button type="button" data-go="' + (support ? 'home' : '') + '" class="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-700 transition-colors font-medium flex items-center justify-between cursor-pointer"><span>' + it + '</span>' + App.icon('chevron-right', 'w-3.5 h-3.5 text-slate-300') + '</button>';
-        }
-        return '<button type="button" data-go="home" class="w-full text-left px-3.5 py-2.5 text-xs transition-colors flex items-start gap-2 cursor-pointer ' + (it.active ? 'bg-blue-50/80 text-blue-900 font-semibold' : 'text-slate-700 hover:bg-slate-50') + '"><div class="flex-1"><div class="font-bold flex items-center gap-1.5"><span>' + it.name + '</span>' + (it.active ? '<span class="text-[9px] bg-blue-600 text-white px-1.5 rounded-full font-mono">선택됨</span>' : '') + '</div><div class="text-[11px] text-slate-500 font-normal mt-0.5">' + it.desc + '</div></div></button>';
+        var self = isSelf(it[1]);
+        return '<li><a href="' + menuHref(it[1]) + '" class="block px-5 py-2.5 text-[15px] transition-colors ' + (self ? 'text-link font-bold bg-brand-soft' : 'text-ink hover:bg-paper-2') + '">' + it[0] + '</a></li>';
       }).join('');
-      return '<div class="relative" data-menu="' + m.id + '">' +
-        '<button type="button" class="gnb-btn flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all cursor-pointer select-none ' + (support ? 'text-blue-900 bg-blue-50/80' : 'text-slate-600 hover:text-slate-950 hover:bg-slate-50') + '"><span>' + m.title + '</span>' + App.icon('chevron-down', 'w-3.5 h-3.5 text-slate-400 transition-transform') + '</button>' +
-        '<div class="gnb-panel hidden absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200/90 rounded-2xl shadow-xl py-2 z-50 anim-in"><div class="px-3.5 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">' + m.title + '</div>' + items + '</div></div>';
+      return '<div class="relative h-full" data-menu>' +
+        '<button type="button" class="gnb-btn h-full flex items-center gap-1.5 px-4 text-[17px] font-bold transition-colors cursor-pointer select-none hover:bg-paper-2 text-ink" aria-expanded="false"><span>' + m.title + '</span>' + App.icon('chevron-down', 'w-4 h-4 transition-transform') + '</button>' +
+        '<ul class="gnb-panel hidden absolute top-full left-0 min-w-[220px] bg-white border border-rule rounded-b-lg shadow-lg py-2 z-50">' + items + '</ul></div>';
     }).join('');
 
     var sm = document.getElementById('sitemap-body');
     if (sm) sm.innerHTML = MENUS.map(function (m) {
-      return '<div class="space-y-2.5"><div class="text-xs font-bold text-slate-900 pb-1.5 border-b border-slate-100">' + m.title + '</div><ul class="space-y-1.5 text-xs text-slate-600">' +
+      return '<div class="space-y-2.5"><div class="text-sm font-bold text-ink pb-2 border-b border-rule">' + m.title + '</div><ul class="space-y-1.5 text-[13px]">' +
         m.items.map(function (it) {
-          var name = typeof it === 'string' ? it : it.name, act = typeof it !== 'string' && it.active;
-          return '<li><button type="button" data-go="' + (m.id === 'support' ? 'home' : '') + '" class="w-full text-left py-1 hover:text-blue-700 transition-colors cursor-pointer flex items-center justify-between ' + (act ? 'font-bold text-blue-700' : '') + '"><span>' + name + '</span>' + (act ? '<span class="text-[9px] bg-blue-100 text-blue-800 px-1.5 rounded-full font-mono">LIVE</span>' : '') + '</button></li>';
+          var self = isSelf(it[1]);
+          return '<li><a href="' + menuHref(it[1]) + '" class="block py-1 transition-colors ' + (self ? 'font-bold text-link' : 'text-ink-2 hover:text-link') + '">' + it[0] + '</a></li>';
         }).join('') + '</ul></div>';
     }).join('');
 
     nav.addEventListener('click', function (e) {
-      var go = e.target.closest('[data-go]');
-      if (go) {
-        if (go.getAttribute('data-go') === 'home') location.href = App.ctx + '/analysis/step1';
-        else closeAllMenus();
-        return;
-      }
       var btn = e.target.closest('.gnb-btn');
       if (!btn) return;
-      var wrap = btn.parentElement;
-      var panel = wrap.querySelector('.gnb-panel');
+      var panel = btn.parentElement.querySelector('.gnb-panel');
       var open = !panel.classList.contains('hidden');
       closeAllMenus();
       if (!open) {
         panel.classList.remove('hidden');
-        btn.classList.add('bg-slate-50');
+        btn.setAttribute('aria-expanded', 'true');
         var ch = btn.querySelector('svg');
         if (ch) ch.style.transform = 'rotate(180deg)';
       }
-    });
-    var sitemapBody = document.getElementById('sitemap-body');
-    if (sitemapBody) sitemapBody.addEventListener('click', function (e) {
-      var go = e.target.closest('[data-go]');
-      if (go && go.getAttribute('data-go') === 'home') location.href = App.ctx + '/analysis/step1';
-      else if (go) App.closeModal('sitemap-modal');
     });
   }
 
   function closeAllMenus() {
     App.$$('#gnb .gnb-panel').forEach(function (p) { p.classList.add('hidden'); });
     App.$$('#gnb .gnb-btn svg').forEach(function (s) { s.style.transform = ''; });
+    App.$$('#gnb .gnb-btn').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
   }
+
+  /** design.md: 클릭 가능한 div(role="button")도 키보드로 조작 — Enter/Space 를 click 으로 */
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var t = e.target;
+    if (!t || t.getAttribute('role') !== 'button' || /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+    e.preventDefault();
+    t.click();
+  });
 
   function initHeader() {
     renderGnb();
+    var fam = document.getElementById('btn-family'), famList = document.getElementById('family-list');
+    if (fam && famList) {
+      fam.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = famList.classList.toggle('hidden') === false;
+        fam.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('click', function (e) { if (!e.target.closest('#family-site')) { famList.classList.add('hidden'); fam.setAttribute('aria-expanded', 'false'); } });
+    }
     document.addEventListener('click', function (e) {
       if (!e.target.closest('#gnb')) closeAllMenus();
     });
@@ -400,14 +507,12 @@
     });
     var sc = document.getElementById('search-close');
     if (sc) sc.addEventListener('click', function () { document.getElementById('search-bar').classList.add('hidden'); });
-    var sg = document.getElementById('search-go');
-    if (sg) sg.addEventListener('click', function () {
-      var v = document.getElementById('search-input').value;
-      App.toast("'" + v + "'에 대한 통합 검색 결과 화면으로 이동합니다.");
-      document.getElementById('search-bar').classList.add('hidden');
+    // 통합검색은 포털 검색(/dtSearchResult)으로 실제 제출된다. 빈 검색어만 막는다.
+    var sf = document.getElementById('search-form');
+    if (sf) sf.addEventListener('submit', function (e) {
+      var si = document.getElementById('search-input');
+      if (!si.value.trim()) { e.preventDefault(); si.focus(); }
     });
-    var si = document.getElementById('search-input');
-    if (si) si.addEventListener('keydown', function (e) { if (e.key === 'Enter') sg.click(); });
     var map = { 'btn-sitemap': 'sitemap-modal', 'btn-help': 'help-modal', 'btn-login': 'login-modal' };
     Object.keys(map).forEach(function (bid) {
       var b = document.getElementById(bid);
@@ -418,8 +523,6 @@
       if (c) App.closeModal(c.getAttribute('data-close'));
       if (e.target.id === 'help-modal' || e.target.id === 'login-modal' || e.target.id === 'sitemap-modal') App.closeModal(e.target.id);
     });
-    var gp = document.getElementById('login-gpki');
-    if (gp) gp.addEventListener('click', function () { App.toast('GPKI 전자서명 인증이 갱신되었습니다.'); App.closeModal('login-modal'); });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') ['help-modal', 'login-modal', 'sitemap-modal'].forEach(App.closeModal);
     });
@@ -453,7 +556,7 @@
     initSidebar();
     try {
       var f = sessionStorage.getItem('flashToast');
-      if (f) { sessionStorage.removeItem('flashToast'); App.toast(f); }
+      if (f) { sessionStorage.removeItem('flashToast'); App.fail(f); }
     } catch (e) { /* ignore */ }
     App.icons();
   });

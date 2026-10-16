@@ -5,7 +5,6 @@
   if (!A.requireDataset()) return;
   var dsId = A.state.datasetId;
 
-  var CAT_CLS = { '기초': 'bg-blue-50 text-blue-700', '예측': 'bg-indigo-50 text-indigo-700', '군집': 'bg-purple-50 text-purple-700', '고급': 'bg-emerald-50 text-emerald-700' };
   /* API AnalysisMethod 14종. fields = AnalysisParams 중 화면에 노출할 항목 */
   var METHODS = [
     { id: 'correlation', name: '상관분석', en: 'Correlation', cat: '기초', icon: 'network', desc: '변수 간 상관계수 행렬', target: false, feat: '투입 변수 (Variables)', fields: ['correlation_method'] },
@@ -65,20 +64,25 @@
   function renderMethods() {
     A.$('#method-grid').innerHTML = methods.map(function (m) {
       var on = cfg.method === m.id;
-      return '<button type="button" data-method="' + m.id + '" class="p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between ' + (on ? 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-600/20 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60') + '">' +
-        '<div class="flex items-center justify-between w-full mb-1.5"><div class="p-1.5 rounded-lg ' + (on ? 'bg-blue-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-600') + '">' + A.icon(m.icon, 'w-3.5 h-3.5') + '</div><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + (CAT_CLS[m.cat] || '') + '">' + m.cat + '</span></div>' +
-        '<div><div class="text-xs font-bold truncate ' + (on ? 'text-blue-900' : 'text-slate-800') + '">' + A.esc(m.name) + '</div><div class="text-[10px] text-slate-500 mt-0.5 line-clamp-1" title="' + A.esc(m.desc) + '">' + A.esc(m.desc) + '</div></div></button>';
+      return '<button type="button" data-method="' + m.id + '" aria-pressed="' + on + '" class="p-3 rounded-xl border text-left transition-colors cursor-pointer flex flex-col justify-between ' + (on ? 'border-brand bg-brand-soft ring-2 ring-brand/15' : 'border-rule bg-white hover:border-rule-3 hover:bg-paper-3') + '">' +
+        '<div class="flex items-center justify-between w-full mb-1.5"><div class="p-1.5 rounded-lg ' + (on ? 'bg-brand text-white' : 'bg-paper-2 text-ink-2') + '">' + A.icon(m.icon, 'w-3.5 h-3.5') + '</div><span class="px-1.5 py-0.5 rounded text-xs font-semibold bg-paper-2 text-ink-2">' + A.esc(m.cat) + '</span></div>' +
+        '<div><div class="text-body font-bold truncate ' + (on ? 'text-brand' : 'text-ink') + '">' + A.esc(m.name) + '</div><div class="text-xs text-ink-3 mt-0.5 line-clamp-1" title="' + A.esc(m.desc) + '">' + A.esc(m.desc) + '</div></div></button>';
     }).join('');
+    A.icons();
   }
 
   /* ---------------- 변수/파라미터 ---------------- */
-  var SELECT_CLS = 'w-full appearance-none bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-2 text-xs text-slate-800 shadow-2xs transition-colors hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600';
+  var SELECT_CLS = 'w-full appearance-none bg-white border border-rule-3 rounded-lg pl-3 pr-8 py-2 text-xs text-ink-0 transition-colors hover:border-ink-4 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600';
   function selectWrap(innerSelect) {
-    return '<div class="relative">' + innerSelect + '<i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i></div>';
+    return '<div class="relative">' + innerSelect + '<i data-lucide="chevron-down" class="w-3.5 h-3.5 text-ink-4 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i></div>';
   }
   /** 모든 필드를 동일한 박스(테두리·배경)로 감싸 좌/우 리듬을 맞춘다 */
+  var fldSeq = 0;
   function field(label, body) {
-    return '<div class="p-3 rounded-lg border border-slate-200 bg-slate-50/40 space-y-1.5"><label class="text-xs font-semibold text-slate-800 block">' + label + '</label>' + body + '</div>';
+    // 라벨을 입력칸과 for/id 로 연결 (라벨을 눌러도 입력칸에 포커스가 가고, 스크린리더가 이름을 읽는다)
+    var m = body.match(/\sid="([^"]+)"/), id = m ? m[1] : 'fld-' + (++fldSeq);
+    if (!m) body = body.replace(/<(select|input)\b/, '<$1 id="' + id + '"');
+    return '<div class="space-y-1.5"><label for="' + id + '" class="text-body font-semibold text-ink block">' + label + '</label>' + body + '</div>';
   }
   function colSelect(id, key, from, selected, optional) {
     return selectWrap('<select id="' + id + '" data-key="' + key + '" class="' + SELECT_CLS + '">' +
@@ -93,14 +97,14 @@
       box.innerHTML = field(cfg.method === 'psm' ? '결과변수 (Outcome / Y)' : '종속변수 (Target / Y)', colSelect('sel-target', 'target', 'numeric', cfg.target, false));
     } else {
       // 오른쪽 파라미터 박스와 같은 크기가 되도록 같은 field 틀(라벨 + 입력 높이)로 안내를 표시
-      box.innerHTML = field('종속변수 (Target / Y)', '<div class="w-full bg-slate-100/70 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-500">선택한 <strong class="text-slate-700">' + A.esc(m.name) + '</strong> 기법은 종속변수 지정이 필요하지 않습니다.</div>');
+      box.innerHTML = field('종속변수 (Target / Y)', '<div class="w-full bg-paper-2/70 border border-rule rounded-lg px-3 py-2 text-xs text-ink-3">선택한 <strong class="text-ink-1">' + A.esc(m.name) + '</strong> 기법은 종속변수 지정이 필요하지 않습니다.</div>');
     }
     A.$('#feat-title').textContent = m.feat;
     var avail = numericCols().filter(function (c) { return !m.target || c.name !== cfg.target; });
     A.$('#feat-list').innerHTML = avail.map(function (c) {
       var on = cfg.features.indexOf(c.name) >= 0;
-      return '<label class="flex items-center gap-2 p-1.5 rounded hover:bg-white text-xs text-slate-700 cursor-pointer transition-colors"><input type="checkbox" data-feat="' + A.esc(c.name) + '" ' + (on ? 'checked' : '') + ' class="rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"><span class="truncate">' + A.esc(c.name) + '</span><span class="ml-auto text-[10px] text-slate-400 font-mono">' + A.esc(c.role) + '</span></label>';
-    }).join('') || '<div class="text-[11px] text-slate-400 p-2">선택 가능한 수치형 변수가 없습니다. 1단계에서 변수 타입을 확인하세요.</div>';
+      return '<label class="flex items-center gap-2 p-1.5 rounded hover:bg-white text-xs text-ink-1 cursor-pointer transition-colors"><input type="checkbox" data-feat="' + A.esc(c.name) + '" ' + (on ? 'checked' : '') + ' class="rounded text-blue-600 focus:ring-blue-500 border-rule-3 cursor-pointer"><span class="truncate">' + A.esc(c.name) + '</span><span class="ml-auto text-xs text-ink-4 font-mono">' + A.esc(c.role) + '</span></label>';
+    }).join('') || '<div class="text-xs text-ink-4 p-2">선택 가능한 수치형 변수가 없습니다. 1단계에서 변수 타입을 확인하세요.</div>';
     A.$('#feat-count').textContent = cfg.features.length + '개 선택';
 
     A.$('#extra-params').innerHTML = m.fields.map(function (k) {
@@ -110,17 +114,17 @@
           f.opts.map(function (o) { return '<option value="' + o[0] + '"' + (String(pv(k)) === String(o[0]) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>'));
       }
       if (f.t === 'check') {
-        return '<div class="p-3 rounded-lg border border-slate-200 bg-slate-50/40"><label class="flex items-center gap-2 text-xs text-slate-800 font-semibold cursor-pointer"><input type="checkbox" data-par="' + k + '" ' + (pv(k) ? 'checked' : '') + ' class="rounded text-blue-600 border-slate-300 focus:ring-blue-500">' + f.label + '</label></div>';
+        return '<div class="py-1"><label class="flex items-center gap-2 text-body text-ink font-semibold cursor-pointer"><input type="checkbox" data-par="' + k + '" ' + (pv(k) ? 'checked' : '') + ' class="rounded text-blue-600 border-rule-3 focus:ring-blue-500">' + f.label + '</label></div>';
       }
       if (f.t === 'text') {
-        return field(f.label, '<input type="text" data-par="' + k + '" value="' + A.esc(cfg.params[k] || '') + '" placeholder="' + A.esc(f.ph || '') + '" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs shadow-2xs transition-colors hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600">');
+        return field(f.label, '<input type="text" data-par="' + k + '" value="' + A.esc(cfg.params[k] || '') + '" placeholder="' + A.esc(f.ph || '') + '" class="w-full bg-white border border-rule-3 rounded-lg px-3 py-2 text-xs transition-colors hover:border-ink-4 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600">');
       }
       if (f.t === 'col') {
         return field(f.label, colSelect('par-' + k, k, f.from, cfg.params[k], !f.required).replace('data-key="' + k + '"', 'data-par="' + k + '"'));
       }
       var sel = cfg.params[k] || [];
-      return field(f.label, '<div class="border border-slate-200 rounded-lg p-2 max-h-32 overflow-y-auto space-y-0.5 bg-white">' +
-        pool(f.from).map(function (c) { return '<label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer p-1 rounded hover:bg-slate-50"><input type="checkbox" data-multi="' + k + '" value="' + A.esc(c.name) + '" ' + (sel.indexOf(c.name) >= 0 ? 'checked' : '') + ' class="rounded text-blue-600 border-slate-300"><span class="truncate">' + A.esc(c.name) + '</span></label>'; }).join('') + '</div>');
+      return field(f.label, '<div class="border border-rule rounded-lg p-2 max-h-32 overflow-y-auto space-y-0.5 bg-white">' +
+        pool(f.from).map(function (c) { return '<label class="flex items-center gap-2 text-xs text-ink-1 cursor-pointer p-1 rounded hover:bg-paper-3"><input type="checkbox" data-multi="' + k + '" value="' + A.esc(c.name) + '" ' + (sel.indexOf(c.name) >= 0 ? 'checked' : '') + ' class="rounded text-blue-600 border-rule-3"><span class="truncate">' + A.esc(c.name) + '</span></label>'; }).join('') + '</div>');
     }).join('');
     A.$('#btn-run').disabled = running;
   }
@@ -151,32 +155,32 @@
   }
 
   /* ---------------- 결과 패널 ---------------- */
-  var STATUS = { succeeded: ['수렴 성공', 'bg-emerald-50 text-emerald-700 border-emerald-200'], failed: ['실패', 'bg-rose-50 text-rose-700 border-rose-200'], running: ['실행 중', 'bg-amber-50 text-amber-700 border-amber-200'], pending: ['대기', 'bg-slate-50 text-slate-600 border-slate-200'] };
+  var STATUS = { succeeded: ['수렴 성공', 'bg-emerald-50 text-emerald-700 border-emerald-200'], failed: ['실패', 'bg-rose-50 text-rose-700 border-rose-200'], running: ['실행 중', 'bg-amber-50 text-amber-700 border-amber-200'], pending: ['대기', 'bg-paper-3 text-ink-2 border-rule'], cancelled: ['취소됨', 'bg-paper-2 text-ink-2 border-rule-3'] };
   function renderResult() {
     var p = A.$('#result-panel');
     var ok = analysis && analysis.status === 'succeeded';
     A.$('#fit-badge').classList.toggle('hidden', !ok);
     A.$('#fit-badge').classList.toggle('flex', !!ok);
     if (!analysis) {
-      p.innerHTML = '<div class="py-6 text-center text-slate-400 space-y-2">' + A.icon('cpu', 'w-8 h-8 mx-auto text-slate-300') + '<div class="text-xs font-semibold text-slate-600">분석이 아직 실행되지 않았습니다.</div><div class="text-[11px]">위에서 변수를 설정하고 \'통계 모델 분석 실행\'을 클릭하세요.</div></div>';
+      p.innerHTML = '<div class="py-6 text-center text-ink-4 space-y-2">' + A.icon('cpu', 'w-8 h-8 mx-auto text-rule-3') + '<div class="text-xs font-semibold text-ink-2">분석이 아직 실행되지 않았습니다.</div><div class="text-xs">위에서 변수를 설정하고 \'통계 모델 분석 실행\'을 클릭하세요.</div></div>';
       A.icons();
       return;
     }
     var r = analysis, st = STATUS[r.status] || STATUS.pending, m = meta(r.method);
-    var err = (r.status === 'failed') ? '<div class="mt-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 whitespace-pre-wrap">' + A.esc(r.error || '분석 연산에 실패했습니다. 변수·파라미터 설정을 확인한 뒤 다시 시도해 주세요.') + '</div>' : '';
+    var err = r.status === 'cancelled' ? '<div class="mt-3 text-xs text-ink-2 bg-paper-3 border border-rule rounded-lg p-3">대기 중이던 분석 요청이 취소되었습니다. 다시 실행해 주세요.</div>' : (r.status === 'failed') ? '<div class="mt-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 whitespace-pre-wrap">' + A.esc(r.error || '분석 연산에 실패했습니다. 변수·파라미터 설정을 확인한 뒤 다시 시도해 주세요.') + '</div>' : '';
     p.innerHTML = '<div class="flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2.5">' +
-      '<div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center shrink-0">' + A.icon('sparkles', 'w-4 h-4') + '</div><div><div class="flex items-center gap-2"><h4 class="text-xs font-bold text-slate-900">' + A.esc(m.name) + ' 연산 결과</h4>' +
-      '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ' + st[1] + '">' + st[0] + '</span></div><div class="text-[10px] text-slate-500 mt-0.5 font-mono">' + A.date(r.completed_at || r.created_at) + '</div></div></div></div>' + err;
+      '<div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center shrink-0">' + A.icon('sparkles', 'w-4 h-4') + '</div><div><div class="flex items-center gap-2"><h4 class="text-title font-semibold text-ink">' + A.esc(m.name) + ' 연산 결과</h4>' +
+      '<span class="px-2 py-0.5 rounded-full text-xs font-bold border ' + st[1] + '">' + st[0] + '</span></div><div class="text-xs text-ink-3 mt-0.5 font-mono">' + A.date(r.completed_at || r.created_at) + '</div></div></div></div>' + err;
     A.icons();
   }
 
   function renderPipe() {
     var m = meta(cfg.method);
     A.$('#pipe-body').innerHTML = '<div class="p-4 text-xs">' +
-      '<div class="p-3 bg-slate-50 rounded-lg border border-slate-200/80 space-y-2"><div class="font-bold text-slate-800 text-[11px] pb-1 border-b border-slate-200">모델 및 변수 바인딩 명세</div><div class="space-y-1 text-[11px]">' +
-      '<div class="flex justify-between"><span class="text-slate-500">선택 모형:</span><span class="font-semibold text-slate-800">' + A.esc(m.name) + ' (' + A.esc(m.en) + ')</span></div>' +
-      '<div class="flex justify-between"><span class="text-slate-500">종속변수 (Y):</span><span class="font-semibold text-slate-800">' + (m.target ? A.esc(cfg.target || '-') : '없음 (비지도/탐색)') + '</span></div>' +
-      '<div class="pt-1"><span class="text-slate-500 block mb-1">투입 변수 (' + cfg.features.length + '개):</span><div class="flex flex-wrap gap-1">' + cfg.features.map(function (f) { return '<span class="px-1.5 py-0.5 bg-white rounded border border-slate-200 text-[10px] text-slate-700">' + A.esc(f) + '</span>'; }).join('') + '</div></div></div></div></div>';
+      '<div class="p-3 bg-paper-3 rounded-lg border border-rule/80 space-y-2"><div class="font-bold text-ink-0 text-xs pb-1 border-b border-rule">모델 및 변수 바인딩 명세</div><div class="space-y-1 text-xs">' +
+      '<div class="flex justify-between"><span class="text-ink-3">선택 모형:</span><span class="font-semibold text-ink-0">' + A.esc(m.name) + ' (' + A.esc(m.en) + ')</span></div>' +
+      '<div class="flex justify-between"><span class="text-ink-3">종속변수 (Y):</span><span class="font-semibold text-ink-0">' + (m.target ? A.esc(cfg.target || '-') : '없음 (비지도/탐색)') + '</span></div>' +
+      '<div class="pt-1"><span class="text-ink-3 block mb-1">투입 변수 (' + cfg.features.length + '개):</span><div class="flex flex-wrap gap-1">' + cfg.features.map(function (f) { return '<span class="px-1.5 py-0.5 bg-white rounded border border-rule text-xs text-ink-1">' + A.esc(f) + '</span>'; }).join('') + '</div></div></div></div></div>';
   }
 
   function run() {
@@ -266,8 +270,6 @@
 
     A.get('/api/v1/datasets/' + encodeURIComponent(dsId)).then(function (d) {
       dataset = d;
-      A.$('#s4-dataset').textContent = d.name;
-      A.$('#s4-rows').textContent = '(' + A.num(d.n_rows) + '행)';
       var m = meta(cfg.method);
       var names = cols().map(function (c) { return c.name; });
       if (cfg.target && names.indexOf(cfg.target) < 0) cfg.target = '';
@@ -279,7 +281,7 @@
       if (A.state.analysisId) {
         return A.get('/api/v1/analyses/' + encodeURIComponent(A.state.analysisId)).then(function (r) { analysis = r; renderResult(); }).catch(function () { A.saveState({ analysisId: null }); });
       }
-    }).catch(function (e) { if (!A.datasetGone(e)) A.toast(e.message, 'error'); });
+    }).catch(function (e) { if (!A.datasetGone(e)) A.fail(e.message); });
 
     // API 가 제공하는 기법 설명이 있으면 보강 (실패해도 내장 목록으로 동작)
     A.get('/api/v1/methods').then(function (list) {
