@@ -137,7 +137,6 @@
       return fetch(App.ctx + url, init).then(function (res) {
         if (res.status === 401 && !retried) {           // 세션 만료 → 재발급 후 1회 재시도 (이전 세션의 데이터는 삭제된 상태)
           return App.ensureSession(true).then(function () {
-            App.fail('세션이 만료되어 새로 시작했습니다. 데이터를 다시 반입해 주세요.');
             return send(method, url, body, opts, true);
           });
         }

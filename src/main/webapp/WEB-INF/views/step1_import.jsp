@@ -47,7 +47,7 @@
           </div>
           <span class="text-xs text-ink-4" id="ds-total"></span>
         </div>
-        <div id="ds-list" class="border border-rule/80 rounded-xl overflow-hidden divide-y divide-paper-2 flex-1 min-h-[120px] overflow-y-auto bg-white"></div>
+        <div id="ds-list" class="border border-rule/80 rounded-xl divide-y divide-paper-2 h-[244px] shrink-0 overflow-y-auto bg-white"></div>
       </div>
     </div>
   </div>
