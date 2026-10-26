@@ -256,11 +256,9 @@
     var t = document.getElementById('toast');
     if (!t) return;
     document.getElementById('toast-msg').textContent = msg;
-    var ic = t.querySelector('svg, i');
+    t.setAttribute('data-kind', kind === 'error' ? 'error' : 'ok');
     t.classList.remove('hidden');
     t.classList.add('flex');
-    t.style.borderColor = kind === 'error' ? 'var(--color-err)' : '';
-    if (ic) ic.style.color = kind === 'error' ? 'var(--color-err-on-dark)' : 'var(--color-ok-on-dark)';
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.classList.add('hidden'); t.classList.remove('flex'); }, kind === 'error' ? 5000 : 3000);
   };
@@ -276,7 +274,7 @@
       box = document.createElement('div');
       box.setAttribute('data-fail-for', key);
       box.setAttribute('role', 'alert');
-      box.className = 'flex items-start gap-2 text-[13.5px] text-rose-800 bg-rose-50 border border-rose-200 rounded-md px-3 py-2 mt-2';
+      box.className = 'flex items-start gap-2 text-[13.5px] text-rose-700 py-1.5 mt-2';
       box.innerHTML = '<span class="flex-1 min-w-0 break-words" data-fail-msg></span>' +
         '<button type="button" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer" aria-label="오류 닫기">' + App.icon('x', 'w-4 h-4') + '</button>';
       box.querySelector('button').addEventListener('click', function () { box.remove(); });
@@ -318,18 +316,48 @@
   };
 
   /* ------------------------------------------------------------ 모달 */
+  /* 모달 접근성: 열 때 안쪽 첫 조작 요소로 포커스, Tab 은 모달 안에서만 순환, 닫으면 연 버튼으로 복귀 */
+  var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  var modalOpener = {};
   App.openModal = function (id) {
     var m = document.getElementById(id);
     if (!m) return;
+    modalOpener[id] = document.activeElement;
     m.classList.remove('hidden');
     m.classList.add('flex');
+    var first = m.querySelector(FOCUSABLE);
+    if (first) first.focus();
   };
   App.closeModal = function (id) {
     var m = document.getElementById(id);
-    if (!m) return;
+    if (!m || m.classList.contains('hidden')) return;
     m.classList.add('hidden');
     m.classList.remove('flex');
+    var back = modalOpener[id];
+    delete modalOpener[id];
+    if (back && back.focus && document.body.contains(back)) back.focus();
   };
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab') return;
+    var m = document.querySelector('[aria-modal="true"].flex');
+    if (!m) return;
+    var f = Array.prototype.filter.call(m.querySelectorAll(FOCUSABLE), function (el) { return el.offsetParent !== null; });
+    if (!f.length) return;
+    var a = f[0], z = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === a || !m.contains(document.activeElement))) { e.preventDefault(); z.focus(); }
+    else if (!e.shiftKey && (document.activeElement === z || !m.contains(document.activeElement))) { e.preventDefault(); a.focus(); }
+  });
+
+  /* 표 머리 th 에 scope 부여: 화면 낭독기가 칸마다 머리글을 읽도록. 표는 JS 로 다시 그려지므로 관찰자로 처리 */
+  function markScopes(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('thead th:not([scope])'), function (th) { th.setAttribute('scope', 'col'); });
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    var main = document.getElementById('main-content');
+    if (!main) return;
+    markScopes(main);
+    new MutationObserver(function () { markScopes(main); }).observe(main, { childList: true, subtree: true });
+  });
 
   /* ------------------------------------------------------------ 파일 저장 (클라이언트 생성) */
   App.saveText = function (filename, text, mime) {

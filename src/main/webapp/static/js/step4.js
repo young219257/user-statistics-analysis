@@ -7,15 +7,15 @@
 
   /* API AnalysisMethod 14종. fields = AnalysisParams 중 화면에 노출할 항목 */
   var METHODS = [
-    { id: 'correlation', name: '상관분석', en: 'Correlation', cat: '기초', icon: 'network', desc: '변수 간 상관계수 행렬', target: false, feat: '투입 변수 (Variables)', fields: ['correlation_method'] },
-    { id: 'linear_regression', name: '선형회귀', en: 'Linear Regression', cat: '예측', icon: 'trending-up', desc: '연속형 종속변수 예측', target: true, feat: '독립변수 (Features / X)', fields: ['weight_column', 'test_size', 'fit_intercept'] },
-    { id: 'logistic_regression', name: '로지스틱 회귀', en: 'Logistic Regression', cat: '예측', icon: 'git-branch', desc: '이진 범주 확률 예측', target: true, feat: '독립변수 (Features / X)', fields: ['positive_label', 'weight_column', 'test_size', 'max_iter'] },
-    { id: 'decision_tree_regressor', name: '의사결정나무(회귀)', en: 'Decision Tree Regressor', cat: '예측', icon: 'git-branch', desc: '규칙 기반 연속형 예측', target: true, feat: '독립변수 (Features / X)', fields: ['max_depth', 'min_samples_leaf', 'ccp_alpha', 'test_size'] },
-    { id: 'decision_tree_classifier', name: '의사결정나무(분류)', en: 'Decision Tree Classifier', cat: '예측', icon: 'git-branch', desc: '규칙 기반 범주 분류', target: true, feat: '독립변수 (Features / X)', fields: ['positive_label', 'max_depth', 'min_samples_leaf', 'ccp_alpha', 'test_size'] },
-    { id: 'kmeans', name: 'K-평균 군집', en: 'K-Means', cat: '군집', icon: 'pie-chart', desc: '유사 관측치 K개 군집화', target: false, feat: '투입 변수 (Variables)', fields: ['n_clusters', 'auto_k', 'label_columns'] },
-    { id: 'hierarchical', name: '계층적 군집', en: 'Hierarchical', cat: '군집', icon: 'network', desc: '덴드로그램 기반 군집', target: false, feat: '투입 변수 (Variables)', fields: ['n_clusters', 'linkage', 'label_columns'] },
-    { id: 'dbscan', name: 'DBSCAN', en: 'DBSCAN', cat: '군집', icon: 'pie-chart', desc: '밀도 기반 군집·노이즈 탐지', target: false, feat: '투입 변수 (Variables)', fields: ['eps', 'min_samples', 'label_columns'] },
-    { id: 'pca', name: '주성분분석', en: 'PCA', cat: '기초', icon: 'layers', desc: '차원 축소·요인 구조 파악', target: false, feat: '투입 변수 (Variables)', fields: ['n_components'] },
+    { id: 'correlation', name: '상관분석', en: 'Correlation', cat: '기초', icon: 'network', desc: '변수 간 상관계수 행렬', target: false, feat: '투입 변수', fields: ['correlation_method'] },
+    { id: 'linear_regression', name: '선형회귀', en: 'Linear Regression', cat: '예측', icon: 'trending-up', desc: '연속형 종속변수 예측', target: true, feat: '독립변수', fields: ['weight_column', 'test_size', 'fit_intercept'] },
+    { id: 'logistic_regression', name: '로지스틱 회귀', en: 'Logistic Regression', cat: '예측', icon: 'git-branch', desc: '이진 범주 확률 예측', target: true, feat: '독립변수', fields: ['positive_label', 'weight_column', 'test_size', 'max_iter'] },
+    { id: 'decision_tree_regressor', name: '의사결정나무(회귀)', en: 'Decision Tree Regressor', cat: '예측', icon: 'git-branch', desc: '규칙 기반 연속형 예측', target: true, feat: '독립변수', fields: ['max_depth', 'min_samples_leaf', 'ccp_alpha', 'test_size'] },
+    { id: 'decision_tree_classifier', name: '의사결정나무(분류)', en: 'Decision Tree Classifier', cat: '예측', icon: 'git-branch', desc: '규칙 기반 범주 분류', target: true, feat: '독립변수', fields: ['positive_label', 'max_depth', 'min_samples_leaf', 'ccp_alpha', 'test_size'] },
+    { id: 'kmeans', name: 'K-평균 군집', en: 'K-Means', cat: '군집', icon: 'pie-chart', desc: '유사 관측치 K개 군집화', target: false, feat: '투입 변수', fields: ['n_clusters', 'auto_k', 'label_columns'] },
+    { id: 'hierarchical', name: '계층적 군집', en: 'Hierarchical', cat: '군집', icon: 'network', desc: '덴드로그램 기반 군집', target: false, feat: '투입 변수', fields: ['n_clusters', 'linkage', 'label_columns'] },
+    { id: 'dbscan', name: 'DBSCAN', en: 'DBSCAN', cat: '군집', icon: 'pie-chart', desc: '밀도 기반 군집·노이즈 탐지', target: false, feat: '투입 변수', fields: ['eps', 'min_samples', 'label_columns'] },
+    { id: 'pca', name: '주성분분석', en: 'PCA', cat: '기초', icon: 'layers', desc: '차원 축소·요인 구조 파악', target: false, feat: '투입 변수', fields: ['n_components'] },
     { id: 'anova', name: '분산분석 (ANOVA/ANCOVA)', en: 'ANOVA', cat: '고급', icon: 'award', desc: '집단 간 평균 차이 검정', target: true, feat: '추가 독립변수 (선택)', fields: ['factors', 'covariates', 'include_interaction'], featOptional: true },
     { id: 'multilevel', name: '다층모형 (HLM)', en: 'Multilevel', cat: '고급', icon: 'layers', desc: '집단 내 위계 구조 반영 회귀', target: true, feat: '고정효과 변수', fields: ['group_column', 'random_slope'] },
     { id: 'growth_curve', name: '성장곡선모형', en: 'Growth Curve', cat: '고급', icon: 'trending-up', desc: '시간에 따른 변화 궤적', target: true, feat: '추가 독립변수 (선택)', fields: ['time_column', 'group_column'], featOptional: true },
@@ -64,9 +64,9 @@
   function renderMethods() {
     A.$('#method-grid').innerHTML = methods.map(function (m) {
       var on = cfg.method === m.id;
-      return '<button type="button" data-method="' + m.id + '" aria-pressed="' + on + '" class="p-3 rounded-xl border text-left transition-colors cursor-pointer flex flex-col justify-between ' + (on ? 'border-brand bg-brand-soft ring-2 ring-brand/15' : 'border-rule bg-white hover:border-rule-3 hover:bg-paper-3') + '">' +
-        '<div class="flex items-center justify-between w-full mb-1.5"><div class="p-1.5 rounded-lg ' + (on ? 'bg-brand text-white' : 'bg-paper-2 text-ink-2') + '">' + A.icon(m.icon, 'w-3.5 h-3.5') + '</div><span class="px-1.5 py-0.5 rounded text-xs font-semibold bg-paper-2 text-ink-2">' + A.esc(m.cat) + '</span></div>' +
-        '<div><div class="text-body font-bold truncate ' + (on ? 'text-brand' : 'text-ink') + '">' + A.esc(m.name) + '</div><div class="text-xs text-ink-3 mt-0.5 line-clamp-1" title="' + A.esc(m.desc) + '">' + A.esc(m.desc) + '</div></div></button>';
+      return '<button type="button" data-method="' + m.id + '" data-cat="' + A.esc(m.cat) + '" aria-pressed="' + on + '" class="p-3 rounded-xl border text-left transition-colors cursor-pointer flex flex-col justify-between ' + (on ? 'border-brand bg-brand-soft' : 'border-rule bg-white hover:border-rule-3 hover:bg-paper-3') + '">' +
+        '<div class="flex items-center justify-between w-full mb-1.5"><div class="p-1.5 rounded-lg ' + (on ? 'bg-brand text-white' : 'bg-paper-2 text-ink-2') + '">' + A.icon(m.icon, 'w-3.5 h-3.5') + '</div><span class="text-xs text-muted">' + A.esc(m.cat) + '</span></div>' +
+        '<div><div class="text-body font-bold truncate ' + (on ? 'text-brand' : 'text-ink') + '">' + A.esc(m.name) + '</div><div class="text-xs text-ink-3 mt-0.5">' + A.esc(m.desc) + '</div></div></button>';
     }).join('');
     A.icons();
   }
@@ -94,10 +94,10 @@
     var m = meta(cfg.method);
     var box = A.$('#target-box');
     if (m.target) {
-      box.innerHTML = field(cfg.method === 'psm' ? '결과변수 (Outcome / Y)' : '종속변수 (Target / Y)', colSelect('sel-target', 'target', 'numeric', cfg.target, false));
+      box.innerHTML = field(cfg.method === 'psm' ? '결과변수' : '종속변수', colSelect('sel-target', 'target', 'numeric', cfg.target, false));
     } else {
       // 오른쪽 파라미터 박스와 같은 크기가 되도록 같은 field 틀(라벨 + 입력 높이)로 안내를 표시
-      box.innerHTML = field('종속변수 (Target / Y)', '<div class="w-full bg-paper-2/70 border border-rule rounded-lg px-3 py-2 text-xs text-ink-3">선택한 <strong class="text-ink-1">' + A.esc(m.name) + '</strong> 기법은 종속변수 지정이 필요하지 않습니다.</div>');
+      box.innerHTML = field('종속변수', '<div class="w-full bg-paper-2/70 border border-rule rounded-lg px-3 py-2 text-xs text-ink-3">선택한 <strong class="text-ink-1">' + A.esc(m.name) + '</strong> 기법은 종속변수 지정이 필요하지 않습니다.</div>');
     }
     A.$('#feat-title').textContent = m.feat;
     var avail = numericCols().filter(function (c) { return !m.target || c.name !== cfg.target; });
@@ -155,22 +155,29 @@
   }
 
   /* ---------------- 결과 패널 ---------------- */
-  var STATUS = { succeeded: ['수렴 성공', 'bg-emerald-50 text-emerald-700 border-emerald-200'], failed: ['실패', 'bg-rose-50 text-rose-700 border-rose-200'], running: ['실행 중', 'bg-amber-50 text-amber-700 border-amber-200'], pending: ['대기', 'bg-paper-3 text-ink-2 border-rule'], cancelled: ['취소됨', 'bg-paper-2 text-ink-2 border-rule-3'] };
+  var STATUS = { succeeded: ['수렴 성공', 'text-brand'], failed: ['실패', 'text-rose-700'], running: ['실행 중', 'text-ink-2'], pending: ['대기', 'text-ink-2'], cancelled: ['취소됨', 'text-ink-2'] };
   function renderResult() {
     var p = A.$('#result-panel');
     var ok = analysis && analysis.status === 'succeeded';
+    p.classList.remove('hidden');
     A.$('#fit-badge').classList.toggle('hidden', !ok);
     A.$('#fit-badge').classList.toggle('flex', !!ok);
     if (!analysis) {
-      p.innerHTML = '<div class="py-6 text-center text-ink-4 space-y-2">' + A.icon('cpu', 'w-8 h-8 mx-auto text-rule-3') + '<div class="text-xs font-semibold text-ink-2">분석이 아직 실행되지 않았습니다.</div><div class="text-xs">위에서 변수를 설정하고 \'통계 모델 분석 실행\'을 클릭하세요.</div></div>';
+      // 요청 전에는 결과 영역을 보여 주지 않는다
+      p.innerHTML = '';
+      p.classList.add('hidden');
       A.icons();
       return;
     }
-    var r = analysis, st = STATUS[r.status] || STATUS.pending, m = meta(r.method);
-    var err = r.status === 'cancelled' ? '<div class="mt-3 text-xs text-ink-2 bg-paper-3 border border-rule rounded-lg p-3">대기 중이던 분석 요청이 취소되었습니다. 다시 실행해 주세요.</div>' : (r.status === 'failed') ? '<div class="mt-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 whitespace-pre-wrap">' + A.esc(r.error || '분석 연산에 실패했습니다. 변수·파라미터 설정을 확인한 뒤 다시 시도해 주세요.') + '</div>' : '';
-    p.innerHTML = '<div class="flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2.5">' +
-      '<div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center shrink-0">' + A.icon('sparkles', 'w-4 h-4') + '</div><div><div class="flex items-center gap-2"><h4 class="text-title font-semibold text-ink">' + A.esc(m.name) + ' 연산 결과</h4>' +
-      '<span class="px-2 py-0.5 rounded-full text-xs font-bold border ' + st[1] + '">' + st[0] + '</span></div><div class="text-xs text-ink-3 mt-0.5 font-mono">' + A.date(r.completed_at || r.created_at) + '</div></div></div></div>' + err;
+    // 성공한 분석은 결과 영역을 두지 않는다 (완료 알림은 토스트로)
+    if (ok) { p.innerHTML = ''; p.classList.add('hidden'); A.icons(); return; }
+    // 실패·취소: 박스 없이 빨간 글씨 한 줄 + 닫기(X). 데이터 결합 실패와 같은 모양
+    var r = analysis;
+    var text = r.status === 'cancelled' ? '대기 중이던 분석 요청이 취소되었습니다. 다시 실행해 주세요.' : (r.error || '분석 연산에 실패했습니다. 변수·파라미터 설정을 확인한 뒤 다시 시도해 주세요.');
+    p.innerHTML = '<div class="mfail flex items-start gap-2" role="alert"><p class="mfail-head flex-1 min-w-0 break-words whitespace-pre-wrap">' + A.esc(text) + '</p>' +
+      '<button type="button" data-dismiss="1" aria-label="오류 닫기" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer">' + A.icon('x', 'w-4 h-4') + '</button></div>';
+    var cb = p.querySelector('[data-dismiss]');
+    if (cb) cb.addEventListener('click', function () { p.classList.add('hidden'); });
     A.icons();
   }
 
@@ -179,14 +186,14 @@
     A.$('#pipe-body').innerHTML = '<div class="p-4 text-xs">' +
       '<div class="p-3 bg-paper-3 rounded-lg border border-rule/80 space-y-2"><div class="font-bold text-ink-0 text-xs pb-1 border-b border-rule">모델 및 변수 바인딩 명세</div><div class="space-y-1 text-xs">' +
       '<div class="flex justify-between"><span class="text-ink-3">선택 모형:</span><span class="font-semibold text-ink-0">' + A.esc(m.name) + ' (' + A.esc(m.en) + ')</span></div>' +
-      '<div class="flex justify-between"><span class="text-ink-3">종속변수 (Y):</span><span class="font-semibold text-ink-0">' + (m.target ? A.esc(cfg.target || '-') : '없음 (비지도/탐색)') + '</span></div>' +
-      '<div class="pt-1"><span class="text-ink-3 block mb-1">투입 변수 (' + cfg.features.length + '개):</span><div class="flex flex-wrap gap-1">' + cfg.features.map(function (f) { return '<span class="px-1.5 py-0.5 bg-white rounded border border-rule text-xs text-ink-1">' + A.esc(f) + '</span>'; }).join('') + '</div></div></div></div></div>';
+      '<div class="flex justify-between"><span class="text-ink-3">종속변수:</span><span class="font-semibold text-ink-0">' + (m.target ? A.esc(cfg.target || '-') : '없음 (비지도/탐색)') + '</span></div>' +
+      '<div class="pt-1"><span class="text-ink-3 block mb-1">투입 변수 (' + cfg.features.length + '개):</span><div class="flex flex-wrap gap-1">' + cfg.features.map(function (f) { return '<span class="text-xs text-ink-1">' + A.esc(f) + '</span>'; }).join('') + '</div></div></div></div></div>';
   }
 
   function run() {
     if (running) return;
     var bad = validate();
-    if (bad) { analysis = { method: cfg.method, status: 'failed', error: bad, created_at: new Date().toISOString() }; renderResult(); return; }
+    if (bad) { analysis = { method: cfg.method, status: 'failed', error: bad, created_at: new Date().toISOString() }; renderResult(); A.toast('분석에 실패했습니다.', 'error'); return; }
     running = true;
     var b = A.$('#btn-run');
     b.disabled = true;
@@ -197,14 +204,17 @@
       analysis = r;
       A.saveState({ analysisId: r.id });
       renderResult();
+      if (r.status === 'succeeded') A.toast('분석이 완료되었습니다.');
+      else if (r.status === 'failed') A.toast('분석에 실패했습니다.', 'error');
     }).catch(function (e) {
       // 요청 자체가 실패한 경우(검증 오류·네트워크 등)도 연산 결과 패널에 실패로 표시
       analysis = { method: cfg.method, status: 'failed', error: e.message, created_at: new Date().toISOString() };
       renderResult();
+      A.toast('분석에 실패했습니다.', 'error');
     }).then(function () {
       running = false;
       b.disabled = false;
-      b.innerHTML = A.icon('play', 'w-3.5 h-3.5') + '<span>통계 모델 분석 실행 (Run)</span>';
+      b.innerHTML = '<span>분석 실행</span>';
       A.icons();
     });
   }

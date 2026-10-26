@@ -18,37 +18,43 @@
   <style type="text/tailwindcss">
     @theme {
       --color-brand: #1e2c5d;
-      --color-brand-dark: #151f42;
-      --color-brand-soft: #eef2fe;
-      --color-link: #256ef4;
-      --color-ink: #1e2124;
-      --color-ink-2: #464c53;
-      --color-ink-3: #6d7882;
-      --color-ink-4: #8a949e;
-      --color-rule: #dfe3eb;
-      --color-rule-2: #e6e8ea;
-      --color-rule-3: #cdd1d5;
-      --color-paper-2: #f1f3f5;
-      --color-paper-3: #f8f9fa;
+      --color-brand-dark: #16224f;
+      --color-brand-soft: #e8ecf6;
+      --color-link: #1558d6;
+      --color-ink: #191f28;
+      --color-ink-2: #4e5968;
+      --color-ink-3: #6b7684;
+      --color-ink-4: #6b7684;
+      --color-rule: #e5e8eb;
+      --color-muted: #6b7684;
+      --color-rule-2: #f2f4f6;
+      --color-rule-3: #d1d6db;
+      --color-paper-2: #f2f4f6;
+      --color-paper-3: #f9fafb;
       --color-gov: #edf1f5;
+      --color-accent: #d14905;
+      --color-accent-10: #fff4ec;
+      --color-accent-20: #fbd9c3;
       --color-alert: #d63d00;
-      --color-ink-0: #2a2f34;
-      --color-ink-1: #363c42;
+      --color-ink-0: #333d4b;
+      --color-ink-1: #333d4b;
       --color-ink-deep: #131518;
       --color-chart-1: #256ef4;
-      --color-chart-2: #e11d48;
-      --color-chart-3: #059669;
-      --color-chart-4: #d97706;
-      --color-chart-5: #1e2c5d;
-      --color-chart-6: #8a949e;
+      --color-chart-2: #e5484d;
+      --color-chart-3: #14a58a;
+      --color-chart-4: #f5a623;
+      --color-chart-5: #7a5af8;
+      --color-chart-6: #1e2c5d;
+      --color-chart-7: #5aa9ff;
+      --color-chart-8: #8a949e;
       --text-body: 13.5px;
       --text-body--line-height: 1.6;
       --text-title: 15px;
       --text-title--line-height: 1.4;
       --radius-md: 6px;
-      --radius-lg: 6px;
-      --radius-xl: 10px;
-      --radius-2xl: 10px;
+      --radius-lg: 8px;
+      --radius-xl: 12px;
+      --radius-2xl: 12px;
       --color-blue-50: oklch(97.2% 0.013 268);
       --color-blue-100: oklch(94% 0.028 268);
       --color-blue-200: oklch(88% 0.055 268);
@@ -147,6 +153,7 @@
     <span>이 누리집은 대한민국 공식 전자정부 누리집입니다.</span>
   </div>
 </div>
+<a href="#main-content" class="skip-link">본문 바로가기</a>
 <header class="w-full bg-white relative z-50" id="site-header">
   <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 h-[79px] flex items-center justify-between gap-4">
     <h1 class="m-0">
@@ -186,15 +193,15 @@
     </form>
   </div>
 
-  <div id="sitemap-modal" class="hidden fixed inset-0 bg-ink-deep/40 backdrop-blur-xs z-50 items-start justify-center pt-16 px-4">
-    <div class="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-rule overflow-hidden anim-in">
+  <div id="sitemap-modal" role="dialog" aria-modal="true" aria-labelledby="sitemap-title" class="hidden fixed inset-0 bg-ink-deep/40 z-50 items-start justify-center pt-16 px-4">
+    <div class="bg-white rounded-lg w-full max-w-4xl shadow-lg border border-rule overflow-hidden anim-in">
       <div class="p-4 bg-paper-3 border-b border-rule/80 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
           <img src="${ctx}/static/vendor/edmgr-header-logo.svg" alt="교육데이터플랫폼" class="h-7 w-auto object-contain">
           <span class="text-rule-3">|</span>
-          <h3 class="text-sm font-bold text-ink">전체 메뉴</h3>
+          <h2 id="sitemap-title" class="text-sm font-bold text-ink">전체 메뉴</h2>
         </div>
-        <button type="button" data-close="sitemap-modal" class="p-1.5 text-ink-4 hover:text-ink-0 rounded-lg hover:bg-rule transition-colors cursor-pointer"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button type="button" data-close="sitemap-modal" aria-label="전체 메뉴 닫기" class="p-1.5 text-ink-2 hover:text-ink-0 rounded-lg hover:bg-rule transition-colors cursor-pointer"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <div class="p-6 grid grid-cols-2 md:grid-cols-5 gap-6" id="sitemap-body"></div>
     </div>
@@ -203,7 +210,7 @@
 
 <%-- ============================ 1-1. 위치 표시 · 도움말 · 페이지 제목 (포털 화면과 동일) ============================ --%>
 <div class="bg-white">
-  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9">
+  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 page-wrap">
     <div class="flex items-start justify-between pt-5">
       <ol class="flex items-center gap-1.5 text-[14px] text-ink" aria-label="현재 위치">
         <li><a href="${portal}/" class="flex items-center gap-1"><svg viewBox="0 0 24 24" class="w-4 h-4" aria-hidden="true"><path fill="#1e2124" d="M12 3.2 2.5 11h2.7v9.3h5.3v-5.8h3v5.8h5.3V11h2.7z"/></svg><span class="underline underline-offset-4">홈</span></a></li>
@@ -221,14 +228,14 @@
 <%-- ============================ 2. 5단계 진행 바 ============================ --%>
 <c:set var="stepIdx" value="${activeStep == 'import' ? 0 : activeStep == 'preprocess' ? 1 : activeStep == 'eda' ? 2 : activeStep == 'modeling' ? 3 : 4}" />
 <nav aria-label="분석 진행 단계" class="sticky top-0 z-40 bg-white border-y border-rule">
-  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9">
+  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 page-wrap">
     <c:set var="stepNames" value="${fn:split('데이터 반입,품질 및 전처리,데이터 탐색,통계 모델링,결과 관리', ',')}" />
     <c:set var="stepUrls" value="${fn:split('step1,step2,step3,step4,step5', ',')}" />
     <%-- 좁은 화면: 현재 단계 한 줄 + 진행 막대 --%>
     <div class="md:hidden flex items-center gap-3 h-14">
       <span class="w-8 h-8 rounded-full bg-brand text-white text-[14px] font-bold flex items-center justify-center shrink-0">${stepIdx + 1}</span>
       <span class="flex flex-col leading-tight min-w-0">
-        <span class="text-xs font-semibold text-link">STEP ${stepIdx + 1} / 5</span>
+        <span class="text-xs font-semibold text-brand">STEP ${stepIdx + 1} / 5</span>
         <span class="text-[15px] font-bold text-ink truncate"><c:out value="${stepNames[stepIdx]}"/></span>
       </span>
       <span class="ml-auto w-24 h-1.5 rounded-full bg-paper-2 overflow-hidden shrink-0" aria-hidden="true"><span class="block h-full bg-brand" style="width:${(stepIdx + 1) * 20}%"></span></span>
@@ -241,18 +248,18 @@
              class="relative flex items-center gap-2.5 h-16 pr-3 shrink-0 cursor-pointer select-none whitespace-nowrap group ${i == stepIdx ? 'after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[3px] after:bg-brand' : ''}"
              ${i == stepIdx ? 'aria-current="step"' : ''}>
             <span class="w-8 h-8 rounded-full flex items-center justify-center text-[14px] font-bold shrink-0 transition-colors
-              ${i == stepIdx ? 'bg-brand text-white' : (i < stepIdx ? 'bg-brand-soft text-link' : 'bg-white border border-rule-3 text-ink-4 group-hover:border-brand')}">
+              ${i == stepIdx ? 'bg-brand text-white' : (i < stepIdx ? 'bg-brand-soft text-brand' : 'bg-white border border-rule-3 text-ink-4 group-hover:border-brand')}">
               <c:choose>
                 <c:when test="${i < stepIdx}"><i data-lucide="check" class="w-4 h-4" style="stroke-width:3"></i></c:when>
                 <c:otherwise>${i + 1}</c:otherwise>
               </c:choose>
             </span>
             <span class="flex flex-col leading-tight">
-              <span class="text-xs font-semibold tracking-wide ${i == stepIdx ? 'text-link' : 'text-ink-4'}">STEP ${i + 1}</span>
+              <span class="text-xs font-semibold tracking-wide ${i == stepIdx ? 'text-brand' : 'text-ink-4'}">STEP ${i + 1}</span>
               <span class="text-[15px] ${i == stepIdx ? 'font-bold text-ink' : (i < stepIdx ? 'font-semibold text-ink-2 group-hover:text-ink' : 'font-medium text-ink-4 group-hover:text-ink-2')}"><c:out value="${nm}"/></span>
             </span>
           </a>
-          <c:if test="${i < 4}"><span class="flex-1 h-px mx-3 ${i < stepIdx ? 'bg-link/40' : 'bg-rule'}" aria-hidden="true"></span></c:if>
+          <c:if test="${i < 4}"><span class="flex-1 h-px mx-3 ${i < stepIdx ? 'bg-brand/40' : 'bg-rule'}" aria-hidden="true"></span></c:if>
         </li>
       </c:forEach>
     </ol>
@@ -260,7 +267,7 @@
   <%-- 4단계 하위 화면 (모형 설정·실행 / 분석 결과 리포트) --%>
   <c:if test="${activeStep == 'modeling'}">
     <div class="border-t border-rule-2 bg-paper-3">
-      <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 flex items-center gap-6 h-11 text-[14px]">
+      <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 page-wrap flex items-center gap-6 h-11 text-[14px]">
         <a href="${ctx}/analysis/step4" class="h-full flex items-center border-b-2 ${subTab == 'run' ? 'border-brand font-bold text-ink' : 'border-transparent text-ink-3 hover:text-ink'}">4-1. 모형 설정·실행</a>
         <a href="${ctx}/analysis/step4/report" class="h-full flex items-center border-b-2 ${subTab == 'report' ? 'border-brand font-bold text-ink' : 'border-transparent text-ink-3 hover:text-ink'}">4-2. 분석 결과 리포트</a>
       </div>
@@ -270,4 +277,4 @@
 
 <%-- ============================ 3. 본문 (사이드바 없이 포털과 같은 폭) ============================ --%>
 <div class="flex-1 w-full">
-  <main id="main-content" class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 py-8">
+  <main id="main-content" tabindex="-1" class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 page-wrap py-8">

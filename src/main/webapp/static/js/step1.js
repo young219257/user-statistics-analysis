@@ -12,7 +12,7 @@
   var ROLES = [['numeric', '수치형 (Numeric)'], ['categorical', '범주형 (Categorical)'], ['boolean', '논리형 (Boolean)'], ['datetime', '일시형 (Datetime)'], ['text', '문자형 (Text)'], ['identifier', '식별자 (Identifier)'], ['constant', '상수 (Constant)']];
   var JOIN_TYPES = [['inner', '키가 모든 데이터셋에 있는 행만'], ['left', '1번 데이터셋의 행을 모두 유지'], ['right', '마지막 데이터셋의 행을 모두 유지'], ['outer', '어느 한쪽에라도 있는 행 모두']];
   var PAGE = 20;
-  var ALLOWED = /\.(csv|txt|xlsx|xls|json|parquet)$/i;
+  var ALLOWED = /\.(csv|xlsx)$/i;
   var MERGED_TAB = '__merged__';
 
   var sel = [];              // 선택한 데이터셋 [{id, kind:'card'|'dataset', d: DatasetDetail, use: {열이름: true}, alias}]
@@ -113,14 +113,14 @@
       var st = c.status && c.status !== 'ready' ? c.status : null;   // loading: 처음 적재 중, failed: 적재 실패
       return '<div role="button" tabindex="0" data-card="' + A.esc(c.id) + '" class="p-3 flex items-center justify-between transition-colors select-none ' + (st ? 'cursor-not-allowed opacity-60' : 'cursor-pointer ') + (on ? 'bg-brand-soft' : 'hover:bg-paper-3') + '">' +
         '<div class="flex items-center gap-2.5 min-w-0 pr-2">' + checkBox(on) + '<span class="text-body truncate ' + (on ? 'font-semibold text-ink' : 'text-ink-1') + '" title="' + A.esc(c.name) + '">' + A.esc(c.name) + '</span></div>' +
-        (st ? '<span class="text-xs shrink-0 whitespace-nowrap px-1.5 rounded ' + (st === 'loading' ? 'text-link bg-brand-soft font-semibold' : 'text-ink-3 bg-paper-2') + '">' + (st === 'loading' ? '적재 중' : '적재 실패') + '</span>'
+        (st ? '<span class="text-xs shrink-0 whitespace-nowrap text-muted">' + (st === 'loading' ? '적재 중' : '적재 실패') + '</span>'
           : '<span class="text-xs font-mono text-ink-3 shrink-0">' + A.num(c.n_rows) + '행</span>') + '</div>';
     }
     // 선택 가능한 카드를 위에, 적재 실패는 아래에 따로 묶는다 (실패 배지가 목록 전체에 흩어지지 않게)
     var failed = cards.filter(function (c) { return c.status === 'failed'; });
     var usable = cards.filter(function (c) { return c.status !== 'failed'; });
     A.$('#mgmt-list').innerHTML = usable.map(row).join('') +
-      (failed.length ? '<div class="px-3 py-2 text-xs font-semibold text-ink-3 bg-paper-3">적재 실패 ' + failed.length + '건 · \'카드 동기화\'로 다시 불러올 수 있습니다</div>' + failed.map(row).join('') : '') ||
+      (failed.length ? '<div class="px-3 py-2 text-xs font-semibold text-ink-3 bg-paper-3">적재 실패 ' + failed.length + '건, \'카드 동기화\'로 다시 불러올 수 있습니다</div>' + failed.map(row).join('') : '') ||
       '<div class="p-4 text-body text-ink-3 text-center">등록된 데이터관리카드가 없습니다. \'카드 동기화\'로 불러올 수 있습니다.</div>';
     A.icons();
   }
@@ -149,11 +149,11 @@
     A.$('#ds-list').innerHTML = datasets.map(function (d) {
       var on = !!find(d.id);
       return '<div role="button" tabindex="0" data-ds="' + A.esc(d.id) + '" class="p-3 flex items-center justify-between gap-2 cursor-pointer select-none transition-colors ' + (on ? 'bg-blue-50/70' : 'hover:bg-paper-3/80') + '">' +
-        '<div class="flex items-center gap-2.5 min-w-0">' + checkBox(on) + '<div class="min-w-0"><div class="text-xs font-bold text-ink truncate">' + A.esc(d.name) +
-        (d.source_type === 'merged' ? ' <span class="ml-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 rounded">결합</span>' : '') + '</div>' +
-        '<div class="text-xs text-ink-4 font-mono mt-0.5">' + A.num(d.n_rows) + '행 · ' + d.n_cols + '변수' + (d.source_format ? ' · ' + A.esc(d.source_format) : '') + '</div></div></div>' +
+        '<div class="flex items-center gap-2.5 min-w-0">' + checkBox(on) + '<div class="min-w-0"><div class="ds-name"><span class="ds-name-text text-xs font-bold text-ink truncate">' + A.esc(d.name) + '</span>' +
+        (d.source_type === 'merged' ? '<span class="ds-tag-merged">결합</span>' : '') + '</div>' +
+        '<div class="text-xs text-ink-4 font-mono mt-0.5">' + A.num(d.n_rows) + '행, ' + d.n_cols + '변수' + (d.source_format && d.source_type !== 'merged' ? ', ' + A.esc(d.source_format) : '') + '</div></div></div>' +
         '<button type="button" data-del="' + A.esc(d.id) + '" class="p-1 text-rule-3 hover:text-rose-600 cursor-pointer shrink-0" title="삭제">' + A.icon('trash-2', 'w-3.5 h-3.5') + '</button></div>';
-    }).join('') || '<div class="p-4 text-xs text-ink-4 text-center">반입된 데이터셋이 없습니다. 파일을 업로드해 주세요.</div>';
+    }).join('') || '<div class="p-6 text-body text-muted text-center">반입된 파일이 없습니다.</div>';
     A.icons();
   }
 
@@ -161,13 +161,13 @@
   function renderUpload() {
     var html;
     if (uploading) {
-      html = '<div class="border-2 border-dashed border-blue-300 bg-blue-50/40 p-6 rounded-2xl text-center text-xs text-blue-800 font-semibold flex items-center justify-center gap-2"><span class="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full spin inline-block"></span>파일을 분석하고 있습니다...' +
+      html = '<div class="border border-dashed border-rule-3 bg-white p-8 rounded-lg text-center text-body text-ink-2 font-medium flex items-center justify-center gap-2"><span class="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full spin inline-block"></span>파일을 분석하고 있습니다...' +
         (uploadJob ? ' <span class="font-normal text-blue-700/80">(' + A.esc(uploadJob) + ')</span>' : '') + '</div>';
     } else {
-      html = '<label id="dropzone" class="block border-2 border-dashed p-3 rounded-2xl transition-colors cursor-pointer text-center ' + (dragging ? 'border-blue-500 bg-blue-50/50' : 'border-rule hover:border-blue-400 bg-paper-3/40 hover:bg-blue-50/20') + '">' +
+      html = '<label id="dropzone" class="block border border-dashed p-8 rounded-lg transition-colors cursor-pointer text-center ' + (dragging ? 'border-brand bg-brand-soft' : 'border-rule-3 hover:border-brand bg-white') + '">' +
         '<input type="file" accept=".csv,.txt,.xlsx,.xls,.json,.parquet" class="hidden" id="file-input">' +
-        '<div class="text-xs font-bold text-ink-0">클릭하여 파일 선택 또는 여기로 드래그 앤 드롭</div>' +
-        (uploadError ? '<div class="mt-3 text-xs font-semibold text-rose-700 bg-rose-50 p-2 rounded-lg border border-rose-200">' + A.esc(uploadError) + '</div>' : '') + '</label>';
+        '<div class="dz-body">' + A.icon('upload', 'w-5 h-5') + '<span class="dz-text">클릭하여 파일을 선택하거나, 여기로 끌어다 놓으세요</span><span class="dz-type">CSV, XLSX</span></div>' +
+        (uploadError ? '<div class="mt-3 text-body text-rose-700">' + A.esc(uploadError) + '</div>' : '') + '</label>';
     }
     A.$('#upload-area').innerHTML = html;
   }
@@ -237,8 +237,8 @@
     if (sel.length >= 2 && merged) {
       var st = isStale(), on = activeId === MERGED_TAB;
       chips.push('<button type="button" data-tab="' + MERGED_TAB + '" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer ' +
-        (on ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:border-emerald-400') + '">' + A.icon('combine', 'w-3.5 h-3.5') + '<span>결합 결과</span>' +
-        '<span class="font-mono text-xs opacity-80">' + A.num(merged.n_rows) + '행 · ' + merged.n_cols + '열</span>' + (st ? '<span class="text-xs px-1 rounded bg-amber-400 text-amber-950">재결합 필요</span>' : '') + '</button>');
+        (on ? 'bg-brand border-brand text-white' : 'bg-white border-rule text-ink-2 hover:border-rule-3') + '">' + '' + '<span>결합 결과</span>' +
+        '<span class="font-mono text-xs opacity-80">' + A.num(merged.n_rows) + '행, ' + merged.n_cols + '열</span>' + (st ? '<span class="chip-stale">다시 결합 필요</span>' : '') + '</button>');
     }
     el.innerHTML = chips.join('');
   }
@@ -268,7 +268,6 @@
         '<td class="py-2 px-4"><input type="checkbox" aria-label="' + A.esc(c.name) + ' 분석에 사용" data-use="' + A.esc(c.name) + '" ' + (on ? 'checked ' : '') + (isMerged ? 'disabled ' : '') + 'class="accent-brand cursor-pointer"></td>' +
         '<td class="py-2 px-4 font-mono font-semibold ' + (on ? 'text-ink-0' : 'text-ink-4 line-through') + '">' + A.esc(c.name) + '</td>' +
         '<td class="py-2 px-4 text-right font-mono text-ink-3">' + A.num(c.n_unique) + '</td>' +
-        '<td class="py-2 px-4 text-right font-mono ' + (c.n_missing ? 'text-amber-600' : 'text-ink-4') + '">' + A.num(c.n_missing || 0) + '</td>' +
         '<td class="py-2 px-4"><select aria-label="' + A.esc(c.name) + ' 타입" data-col="' + A.esc(c.name) + '"' + (editable ? '' : ' disabled title="결합 결과의 타입은 여기서 바꿀 수 없습니다."') + ' class="bg-white border border-rule rounded-md px-2 py-1 text-xs focus:outline-none focus:border-blue-600 ' + (editable ? 'text-ink-0 cursor-pointer' : 'text-ink-4 bg-paper-3 cursor-not-allowed') + '">' +
         ROLES.map(function (o) { return '<option value="' + o[0] + '"' + (c.role === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td></tr>';
     }).join('');
@@ -287,26 +286,29 @@
         var v = k[s.id] || '', sid = 'mk-' + ri + '-' + i;
         return (i ? '<span class="hidden md:block pb-2 text-ink-4" aria-hidden="true">=</span>' : '') +
           '<div class="flex-1 min-w-0"><label for="' + sid + '" class="block text-xs text-ink-3 mb-1 truncate" title="' + A.esc(s.d.name) + '">' + A.esc(s.d.name) + '</label>' +
-          '<select id="' + sid + '" data-key="' + ri + '" data-ds="' + A.esc(s.id) + '" class="w-full text-body ' + fieldCls() + (partial && !v ? ' !border-amber-400' : '') + '"><option value="">(키 열 선택)</option>' +
+          '<select id="' + sid + '" data-key="' + ri + '" data-ds="' + A.esc(s.id) + '" class="w-full text-body ' + fieldCls() + (partial && !v ? ' is-partial' : '') + '"><option value="">(키 열 선택)</option>' +
           colsOf(s).map(function (c) { return '<option value="' + A.esc(c.name) + '"' + (v === c.name ? ' selected' : '') + '>' + A.esc(c.name) + '</option>'; }).join('') + '</select></div>';
       }).join('') +
         (mcfg.keys.length > 1 ? '<button type="button" data-delkey="' + ri + '" class="self-end p-2 text-ink-4 hover:text-rose-600 cursor-pointer shrink-0" title="키 삭제" aria-label="키 ' + (ri + 1) + ' 삭제">' + A.icon('trash-2', 'w-4 h-4') + '</button>' : '') + '</div>';
     }).join('');
     var prob = mergeProblem(), st = isStale();
-    var status = '';
-    if (merging) status = '<div class="flex items-center gap-2 text-xs text-blue-800"><span class="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full spin inline-block"></span>결합하고 있습니다... 데이터가 크면 시간이 걸릴 수 있습니다.' +
-      '<span id="merge-job" class="text-blue-700/80">' + (mergeJob ? '(' + A.esc(mergeJob) + ')' : '') + '</span></div>';
-    else if (mergeError) status = '<div class="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">' + A.esc(mergeError) + '</div>';
-    else if (merged && st) status = '<div class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">선택한 데이터·열·키 매핑이 바뀌었습니다. [데이터 결합 실행]을 다시 눌러 주세요.</div>';
-    else if (merged) {
-      var warn = (merged.source_meta && merged.source_meta.warnings) || [];
-      status = '<div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center gap-2">' + A.icon('check-circle-2', 'w-4 h-4 shrink-0') +
-        '<span>결합 완료: <strong>' + A.esc(merged.name) + '</strong> · ' + A.num(merged.n_rows) + '행 × ' + merged.n_cols + '열. 이 결과가 분석 대상입니다.</span></div>' +
-        (warn.length ? '<div class="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">' + warn.map(A.esc).join('<br>') + '</div>' : '');
+    // 결합 결과는 따로 영역을 두지 않는다. 결과물(새 데이터셋)은 칩과 미리보기에 나타난다.
+    //  - 결합 중: 버튼 안의 스피너 · 결합 완료: 토스트 + 새 칩 선택 + 미리보기 이동 · 설정이 바뀌면 버튼이 '다시 결합'
+    //  - 실패: 버튼 아래 짧은 인라인 알림(첫 문장), 원인·해결은 '자세히 보기'로 펼친다
+    function failAlert(msg) {
+      // 서버가 보낸 메시지를 그대로 보여 준다 (문장을 나누거나 해석하지 않는다)
+      var text = String(msg).replace(/^결합에 실패했습니다:\s*/, '').trim() || '결합에 실패했습니다.';
+      return '<div class="mfail flex items-start gap-2" role="alert"><p class="mfail-head flex-1 min-w-0 break-words">' + A.esc(text) + '</p>' +
+        '<button type="button" data-dismiss-merge="1" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer" aria-label="오류 닫기">' + A.icon('x', 'w-4 h-4') + '</button></div>';
     }
-    box.innerHTML = '<div><h3 class="text-title font-semibold text-ink">데이터 결합</h3>' +
-        '<p class="text-xs text-ink-3 mt-1">키가 같은 행끼리 옆으로 붙입니다. 데이터셋마다 키로 쓸 열을 고르세요. 이름이 달라도 됩니다 (예: 학교코드 = SCHUL_CODE).</p></div>' +
-      '<div class="space-y-3">' + rows +
+    var warn = (merged && !st && !mergeError && merged.source_meta && merged.source_meta.warnings) || [];
+    var status = (mergeError ? failAlert(mergeError) : '') + (warn.length ? '<p class="merge-note">' + warn.map(A.esc).join('<br>') + '</p>' : '');
+    var btnLabel = merging
+      ? '<span class="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full spin inline-block"></span><span>결합 중...</span><span id="merge-job">' + (mergeJob ? '(' + A.esc(mergeJob) + ')' : '') + '</span>'
+      : '<span>' + (merged && st ? '다시 결합' : '데이터 결합 실행') + '</span>';
+    box.innerHTML = '<div class="sec-head"><h3 class="text-title font-semibold text-ink">데이터 결합</h3>' +
+        '<p class="text-xs text-ink-3 mt-1">키가 같은 행끼리 옆으로 붙입니다. 데이터셋마다 키로 쓸 열을 고르세요.' + (prob && !merging && prob !== '데이터셋마다 키로 쓸 열을 고르세요.' ? ' <span class="merge-problem">' + A.esc(prob) + '</span>' : '') + '</p></div>' +
+      '<div class="sec-box space-y-4"><div class="space-y-3"><div id="merge-keys" class="space-y-3">' + rows + '</div>' +
         '<button type="button" data-addkey="1" class="text-body font-semibold text-link hover:underline cursor-pointer">+ 키 추가</button></div>' +
       '<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-3 pt-3 border-t border-paper-2">' +
         '<div class="flex flex-col sm:flex-row sm:items-center gap-x-5 gap-y-2 text-body">' +
@@ -314,9 +316,8 @@
             JOIN_TYPES.map(function (j) { return '<option value="' + j[0] + '"' + (mcfg.how === j[0] ? ' selected' : '') + '>' + j[1] + ' (' + j[0] + ')</option>'; }).join('') + '</select></label>' +
           '<label class="flex items-center gap-2"><span class="text-ink-2 font-semibold shrink-0">결합 데이터셋 이름</span><input type="text" data-m="name" value="' + A.esc(mcfg.name) + '" class="w-full sm:w-64 ' + fieldCls() + '"></label></div>' +
         '<div class="flex flex-wrap items-center lg:justify-end gap-x-4 gap-y-2">' +
-          (prob && !merging ? '<span class="text-xs text-ink-3">' + A.esc(prob) + '</span>' : '') +
-          '<button type="button" id="btn-merge" ' + (merging || prob ? 'disabled ' : '') + 'class="px-5 py-2 bg-brand hover:bg-brand-dark disabled:bg-rule-3 disabled:cursor-not-allowed text-white text-body font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"' + (prob ? ' title="' + A.esc(prob) + '"' : '') + '>' + A.icon('combine', 'w-3.5 h-3.5') + '<span>데이터 결합 실행</span></button></div></div>' +
-      status;
+          '<button type="button" id="btn-merge" ' + (merging || prob ? 'disabled ' : '') + 'class="px-5 py-2 bg-brand hover:bg-brand-dark disabled:bg-rule-3 disabled:cursor-not-allowed text-white text-body font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"' + (prob ? ' title="' + A.esc(prob) + '"' : '') + '>' + btnLabel + '</button></div></div>' +
+      status + '</div>';
   }
   function runMerge() {
     var body = buildMerge(), sig = JSON.stringify(body);
@@ -329,8 +330,12 @@
       merged = d; mergedSig = sig; merging = false; mergeJob = '';
       activeId = MERGED_TAB;
       changed();
+      A.toast('결합이 완료되었습니다.');
+      // 새 '결합 결과' 칩이 선택되고 미리보기가 그 데이터로 바뀐다. 미리보기가 화면 밖이면 보이는 곳까지만 즉시 이동
+      var pv = A.$('#preview-card');
+      if (pv && pv.scrollIntoView) pv.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       loadDatasets();
-    }).catch(function (e) { merging = false; mergeError = '결합에 실패했습니다: ' + e.message; renderMerge(); A.icons(); });
+    }).catch(function (e) { merging = false; mergeError = '결합에 실패했습니다: ' + e.message; renderMerge(); A.icons(); A.toast('결합에 실패했습니다.', 'error'); });
   }
 
   /* ---------------- 미리보기 ---------------- */
@@ -360,7 +365,7 @@
     var s = activeId === MERGED_TAB ? null : find(activeId);
     var cols = preview.cols.filter(function (c) { return !s || s.use[c]; });   // 분석에 쓰는 열만
     A.$('#preview-name').textContent = cur.name;
-    A.$('#preview-count').textContent = '(' + preview.rows.length + ' / ' + A.num(preview.total) + ' 행 · ' + cols.length + '열 표출)';
+    A.$('#preview-count').textContent = '(' + preview.rows.length + ' / ' + A.num(preview.total) + ' 행, ' + cols.length + '열 표출)';
     A.$('#preview-head').innerHTML = '<tr class="text-ink-2 text-xs font-semibold"><th class="py-2 px-3 text-ink-4 w-10 text-center font-mono">#</th>' +
       cols.map(function (c) { return '<th class="py-2 px-3 text-ink-0 whitespace-nowrap">' + A.esc(c) + '</th>'; }).join('') + '</tr>';
     A.$('#preview-body').innerHTML = preview.rows.map(function (r, i) {
@@ -378,13 +383,13 @@
   /** 상단 '현재 분석 대상'과 하단 '분석 투입 대상'·진행 버튼 */
   function renderFooter() {
     var t = target();
-    A.$('#s1-current-name').textContent = t ? t.name : (sel.length >= 2 ? '결합 필요' : '선택 안 됨');
     var label;
     if (!sel.length) label = '없음';
     else if (sel.length === 1) label = t.name + ' (' + A.num(t.n_rows) + '행' + (isSubset(sel[0]) ? ', ' + usedList(sel[0]).length + '개 열 사용' : '') + ')';
     else label = t ? t.name + ' (결합 결과 ' + A.num(t.n_rows) + '행 × ' + t.n_cols + '열)' : '데이터 ' + sel.length + '개 선택됨 — 결합을 실행해야 진행할 수 있습니다';
-    A.$('#s1-target-name').textContent = label;
-    A.$('#s1-target-wrap').classList.toggle('hidden', !sel.length);   // 선택 전에는 '없음'을 보여주지 않는다
+    var tn = A.$('#s1-target-name'), tw = A.$('#s1-target-wrap');   // 화면에 해당 줄이 없으면 건너뛴다
+    if (tn) tn.textContent = label;
+    if (tw) tw.classList.toggle('hidden', !sel.length);   // 선택 전에는 '없음'을 보여주지 않는다
     A.$('#btn-proceed').disabled = !t;
   }
 
@@ -479,6 +484,7 @@
       renderTabs(); A.icons();
     }, 250));
     mc.addEventListener('click', function (e) {
+      if (e.target.closest('[data-dismiss-merge]')) { mergeError = null; renderMerge(); A.icons(); return; }
       if (e.target.closest('[data-addkey]')) { mcfg.keys.push({}); changed(); return; }
       var dk = e.target.closest('[data-delkey]');
       if (dk) { mcfg.keys.splice(+dk.getAttribute('data-delkey'), 1); changed(); return; }
@@ -496,6 +502,14 @@
       if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
     });
 
+    // 데이터 미리보기: 기본은 접어 두고, 머리를 누르면 펼친다 (Enter·Space 도 동작)
+    var pTog = A.$('#preview-toggle');
+    function togglePreview() {
+      var card = A.$('#preview-card'), collapsed = card.classList.toggle('preview-collapsed');
+      pTog.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+    pTog.addEventListener('click', togglePreview);
+    pTog.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePreview(); } });
     A.$('#preview-scroll').addEventListener('scroll', function () {
       var el = this;
       if (el.scrollHeight - el.scrollTop <= el.clientHeight + 50 && preview.rows.length < preview.total) loadPreview();
@@ -508,7 +522,7 @@
       var s = sel[0], b = this, label = b.querySelector('span');
       proceeding = true; b.disabled = true; setMsg('');
       label.textContent = '변수 선택 적용 중...';
-      A.post('/api/v1/datasets/' + encodeURIComponent(s.id) + '/subset', { columns: usedList(s) }, { onJob: function (j) { var t = A.jobText(j); label.textContent = '변수 선택 적용 중' + (t ? ' · ' + t : '...'); } }).then(function (d) {
+      A.post('/api/v1/datasets/' + encodeURIComponent(s.id) + '/subset', { columns: usedList(s) }, { onJob: function (j) { var t = A.jobText(j); label.textContent = '변수 선택 적용 중' + (t ? ', ' + t : '...'); } }).then(function (d) {
         A.saveState({ datasetId: d.id, datasetName: d.name, datasetRows: d.n_rows, usedColumns: null, rawDatasetId: null, analysisId: null });
         location.href = A.ctx + '/analysis/step2';
       }).catch(function (e) {

@@ -5,17 +5,17 @@
 
   // 이상치 탐지 기법 = API OutlierMethod. threshold 는 profile/outliers 의 outlier_threshold / threshold 로 전달
   var ALGOS = [
-    { id: 'iqr', name: 'IQR (사분위수 범위)', tag: '단변량', tagCls: 'bg-blue-50 text-blue-800 border border-blue-200', desc: '사분위수 범위 기반 비모수 탐지', label: 'IQR 배수 (k):', def: 1.5, opts: [[1.5, '1.5배 (표준 이상치)'], [2.0, '2.0배 (중간 이상치)'], [3.0, '3.0배 (극단 이상치)']], formula: 'x < Q1 − k·IQR  또는  x > Q3 + k·IQR' },
-    { id: 'zscore', name: 'Z-score (표준점수)', tag: '모수적', tagCls: 'bg-blue-50 text-blue-800 border border-blue-200', desc: '정규분포 기준 표준점수 기반 탐지', label: '임계값 (|Z|):', def: 3.0, opts: [[2.5, '2.5 (엄격한 98.8% 기준)'], [3.0, '3.0 (표준 99.7% 기준)'], [3.5, '3.5 (극단값만 탐지)']], formula: '|x − μ| / σ > 임계값' },
-    { id: 'modified_zscore', name: '수정된 Z-score (MAD)', tag: '로버스트', tagCls: 'bg-emerald-100 text-emerald-800', desc: '중앙값·중위절대편차 기반 왜곡 방지 탐지', label: '임계값 (|M_i|):', def: 3.5, opts: [[3.0, '3.0 (보수적 탐지)'], [3.5, '3.5 (Iglewicz 표준)'], [4.0, '4.0 (극단치 전용)']], formula: '0.6745·|x − 중앙값| / MAD > 임계값' },
-    { id: 'grubbs', name: "Grubbs' 검정", tag: '가설검정', tagCls: 'bg-blue-100 text-blue-800', desc: '유의확률 기반 최대 극단치 순차 검정', label: '유의수준 (α):', def: 0.05, opts: [[0.01, 'α = 0.01 (99% 신뢰수준)'], [0.05, 'α = 0.05 (95% 신뢰수준 표준)'], [0.10, 'α = 0.10 (90% 신뢰수준)']], formula: '최대 |x − μ| / σ 가 임계값 초과' },
-    { id: 'mahalanobis', name: '마할라노비스 거리', tag: '다변량 공분산', tagCls: 'bg-blue-100 text-blue-800', desc: '변수 간 공분산·상관관계 기반 다변량 탐지', label: '거리 임계치 (D_M):', def: 3.0, opts: [[2.5, '2.5 (민감한 다변량 탐지)'], [3.0, '3.0 (표준 다변량 기준)'], [3.5, '3.5 (극단적 상관 이탈치)']], formula: 'D_M = √((x−μ)ᵀ Σ⁻¹ (x−μ)) > 임계치' },
-    { id: 'isolation_forest', name: 'Isolation Forest', tag: '트리 앙상블', tagCls: 'bg-blue-100 text-blue-800', desc: '의사결정나무 분할 기반 고립치 탐지', label: '고립 점수 임계치:', def: 0.60, opts: [[0.55, '0.55 (보수적 탐지)'], [0.60, '0.60 (표준 권장 임계치)'], [0.65, '0.65 (극단 고립치만)']], formula: '고립 점수 > 임계치' },
-    { id: 'lof', name: 'LOF (국소 이상치 계수)', tag: '국소 밀도', tagCls: 'bg-blue-100 text-blue-800', desc: '이웃 밀도차 기반 국소 고립치 탐지', label: 'LOF 임계치:', def: 1.5, opts: [[1.3, '1.3 (민감 탐지)'], [1.5, '1.5 (표준 권장 기준)'], [1.8, '1.8 (극단 희박 밀도치)']], formula: 'LOF > 임계치' }
+    { id: 'iqr', name: 'IQR (사분위수 범위)', tag: '단변량', desc: '사분위수 범위 기반 비모수 탐지', label: 'IQR 배수 (k):', def: 1.5, opts: [[1.5, '1.5배 (표준 이상치)'], [2.0, '2.0배 (중간 이상치)'], [3.0, '3.0배 (극단 이상치)']], formula: 'x < Q1 − k·IQR  또는  x > Q3 + k·IQR' },
+    { id: 'zscore', name: 'Z-score (표준점수)', tag: '모수적', desc: '정규분포 기준 표준점수 기반 탐지', label: '임계값 (|Z|):', def: 3.0, opts: [[2.5, '2.5 (엄격한 98.8% 기준)'], [3.0, '3.0 (표준 99.7% 기준)'], [3.5, '3.5 (극단값만 탐지)']], formula: '|x − μ| / σ > 임계값' },
+    { id: 'modified_zscore', name: '수정된 Z-score (MAD)', tag: '로버스트', desc: '중앙값·중위절대편차 기반 왜곡 방지 탐지', label: '임계값 (|M_i|):', def: 3.5, opts: [[3.0, '3.0 (보수적 탐지)'], [3.5, '3.5 (Iglewicz 표준)'], [4.0, '4.0 (극단치 전용)']], formula: '0.6745·|x − 중앙값| / MAD > 임계값' },
+    { id: 'grubbs', name: "Grubbs' 검정", tag: '가설검정', desc: '유의확률 기반 최대 극단치 순차 검정', label: '유의수준 (α):', def: 0.05, opts: [[0.01, 'α = 0.01 (99% 신뢰수준)'], [0.05, 'α = 0.05 (95% 신뢰수준 표준)'], [0.10, 'α = 0.10 (90% 신뢰수준)']], formula: '최대 |x − μ| / σ 가 임계값 초과' },
+    { id: 'mahalanobis', name: '마할라노비스 거리', tag: '다변량 공분산', desc: '변수 간 공분산·상관관계 기반 다변량 탐지', label: '거리 임계치 (D_M):', def: 3.0, opts: [[2.5, '2.5 (민감한 다변량 탐지)'], [3.0, '3.0 (표준 다변량 기준)'], [3.5, '3.5 (극단적 상관 이탈치)']], formula: 'D_M = √((x−μ)ᵀ Σ⁻¹ (x−μ)) > 임계치' },
+    { id: 'isolation_forest', name: 'Isolation Forest', tag: '트리 앙상블', desc: '의사결정나무 분할 기반 고립치 탐지', label: '고립 점수 임계치:', def: 0.60, opts: [[0.55, '0.55 (보수적 탐지)'], [0.60, '0.60 (표준 권장 임계치)'], [0.65, '0.65 (극단 고립치만)']], formula: '고립 점수 > 임계치' },
+    { id: 'lof', name: 'LOF (국소 이상치 계수)', tag: '국소 밀도', desc: '이웃 밀도차 기반 국소 고립치 탐지', label: 'LOF 임계치:', def: 1.5, opts: [[1.3, '1.3 (민감 탐지)'], [1.5, '1.5 (표준 권장 기준)'], [1.8, '1.8 (극단 희박 밀도치)']], formula: 'LOF > 임계치' }
   ];
   // PreprocessingSpec 값(API) ↔ 화면 표시
   var STRATS = {
-    missing_strategy: { title: '1. 결측치(Missing) 정제', opts: [['median', '중앙값 대체 (Median)', '왜곡 방지 권장'], ['mean', '평균값 대체 (Mean)', '정규분포형 적합'], ['mode', '최빈값 대체 (Mode)', '이산/범주형 적합'], ['drop_rows', '결측치 행 제거 (Drop)', '완전 관측치만 보존'], ['zero', '0 대체 (Zero)', '0으로 치환'], ['none', '처리 안 함 (None)', '원본 유지']] },
+    missing_strategy: { title: '1. 결측치 정제', opts: [['median', '중앙값으로 대체', '왜곡 방지 권장'], ['mean', '평균값으로 대체', '정규분포형 적합'], ['mode', '최빈값으로 대체', '이산/범주형 적합'], ['drop_rows', '결측치 행 제거 (Drop)', '완전 관측치만 보존'], ['zero', '0 대체 (Zero)', '0으로 치환'], ['none', '처리 안 함 (None)', '원본 유지']] },
     outlier_treatment: { title: '2. 이상치(Outlier) 정제', opts: [['winsorize', '윈저라이징 (클리핑)', '임계 경계값 보정'], ['drop', '이상치 행 제거 (Drop)', '이상 관측치 삭제'], ['log', '로그 변환 (Log)', '스케일 완화'], ['keep', '원본값 보존 (Keep)', '진단만 수행']] },
     scaling: { title: '3. 특성 스케일링', opts: [['standard', '표준화 (Standard)', '평균 0, 분산 1'], ['minmax', '정규화 (MinMax)', '0~1 범위'], ['robust', '로버스트 (Robust)', 'IQR 기반 스케일'], ['none', '미적용 (None)', '원시 스케일']] },
     drop_duplicates: { title: '4. 중복 행 처리', opts: [[false, '유지 (Keep)', '중복 행 그대로'], [true, '중복 제거 (Drop)', '완전 동일 행 삭제']] }
@@ -67,8 +67,8 @@
   function renderAlgos() {
     A.$('#algo-grid').innerHTML = ALGOS.map(function (a) {
       var on = sel.method === a.id;
-      return '<div data-algo="' + a.id + '" role="button" tabindex="0" aria-pressed="' + on + '" class="p-3.5 rounded-xl border text-left transition-colors cursor-pointer relative flex flex-col justify-between ' + (on ? 'border-brand bg-brand-soft ring-2 ring-brand/15' : 'border-rule hover:border-rule-3 hover:bg-paper-3 bg-white') + '">' +
-        '<div><div class="flex items-center justify-between gap-1"><span class="text-body font-bold text-ink">' + A.esc(a.name) + '</span><span class="text-xs px-1.5 py-0.5 rounded font-semibold bg-paper-2 text-ink-2 whitespace-nowrap">' + a.tag + '</span></div>' +
+      return '<div data-algo="' + a.id + '" role="button" tabindex="0" aria-pressed="' + on + '" class="p-3.5 rounded-xl border text-left transition-colors cursor-pointer relative flex flex-col justify-between ' + (on ? 'border-brand bg-brand-soft' : 'border-rule hover:border-rule-3 hover:bg-paper-3 bg-white') + '">' +
+        '<div><div class="flex items-center justify-between gap-1"><span class="text-body font-bold text-ink">' + A.esc(a.name) + '</span><span class="text-xs text-muted whitespace-nowrap">' + a.tag + '</span></div>' +
         '<p class="text-xs text-ink-3 mt-1.5 leading-relaxed">' + a.desc + '</p></div>' +
         '<div class="mt-3 pt-2 border-t flex items-center justify-between gap-2 text-xs ' + (on ? 'border-brand/20' : 'border-rule') + '"><span class="font-semibold ' + (on ? 'text-ink-2' : 'text-ink-3') + '">' + a.label + '</span>' +
           (on
@@ -87,9 +87,9 @@
     var b = A.$('#btn-detect');
     b.disabled = detecting || !profile || !sel.method;
     b.title = !profile ? '데이터를 불러오는 중입니다' : !sel.method ? '위 카드에서 탐지 기법을 선택하세요' : '';
-    if (detecting) return;   // 탐지 중에는 '알고리즘 연산 중...' 표시 유지
+    if (detecting) return;   // 탐지 중에는 '탐지하는 중' 표시 유지
     var label = b.querySelector('span');
-    if (label) label.textContent = !profile ? '데이터 불러오는 중...' : '선택 기법으로 이상치 탐지 실행';
+    if (label) label.textContent = !profile ? '데이터 불러오는 중...' : '이상치 탐지 실행';
   }
 
   /* ---------------- 진단 결과 ---------------- */
@@ -102,14 +102,14 @@
     A.$('#card-rows').textContent = A.num(profile.n_rows) + '행 × ' + profile.n_cols + '변수';
     var cm = A.$('#card-missing');
     cm.textContent = A.num(profile.total_missing_cells) + '건 (' + (profile.missing_ratio * 100).toFixed(1) + '%)';
-    cm.className = 'text-lg font-bold font-mono mt-0.5 block ' + (profile.total_missing_cells > 0 ? 'text-amber-600' : 'text-ink');
+    cm.className = 'text-lg font-bold font-mono mt-0.5 block ' + (profile.total_missing_cells > 0 ? 'kpi-bad' : 'kpi-ok');
     A.$('#card-out-label').textContent = a ? '이상치 검출 (' + a.name + ')' : '이상치 검출';
     var co = A.$('#card-outliers');
     co.textContent = a ? A.num(outs) + '건' : '탐지 전';
-    co.className = 'text-lg font-bold font-mono mt-0.5 block ' + (!a ? 'text-ink-4' : outs > 0 ? 'text-blue-700' : 'text-ink');
+    co.className = 'text-lg font-bold font-mono mt-0.5 block ' + (!a ? 'kpi-idle' : outs > 0 ? 'kpi-bad' : 'kpi-ok');
     var cd = A.$('#card-dups');
     cd.textContent = A.num(profile.n_duplicated_rows) + '행';
-    cd.className = 'text-lg font-bold font-mono mt-0.5 block ' + (profile.n_duplicated_rows > 0 ? 'text-amber-600' : 'text-ink');
+    cd.className = 'text-lg font-bold font-mono mt-0.5 block ' + 'text-ink';
     A.$('#applied-name').textContent = a ? a.name : '미실행';
     A.$('#applied-formula').textContent = a ? a.formula : '위에서 탐지 기법을 선택하고 실행하세요';
     A.$('#th-out').textContent = a ? '이상치 (' + a.name + ')' : '이상치';
@@ -119,11 +119,11 @@
     if (!selectedCol && nums.length) selectedCol = nums[0].column;
     A.$('#var-body').innerHTML = nums.map(function (n) {
       var mc = (miss[n.column] || {}).n_missing || n.missing || 0, oc = (outl[n.column] || {}).n_outliers || 0, issue = mc > 0 || (a && oc > 0);
-      return '<tr data-col="' + A.esc(n.column) + '" class="cursor-pointer transition-colors ' + (n.column === selectedCol ? 'bg-blue-50/70 font-semibold' : 'hover:bg-paper-3') + '">' +
+      return '<tr data-col="' + A.esc(n.column) + '" class="cursor-pointer transition-colors ' + (n.column === selectedCol ? 'bg-brand-soft font-semibold' : 'hover:bg-paper-3') + '">' +
         '<td class="py-2.5 px-3 font-sans font-medium text-ink whitespace-nowrap">' + A.esc(n.column) + '</td>' +
-        '<td class="py-2.5 px-3 text-right">' + (mc > 0 ? '<span class="text-amber-600 font-bold">' + A.num(mc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
-        '<td class="py-2.5 px-3 text-right">' + (!a ? '<span class="text-rule-3">-</span>' : oc > 0 ? '<span class="text-blue-700 font-bold">' + A.num(oc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
-        '<td class="py-2.5 px-3 text-right font-sans">' + (issue ? '<span class="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 whitespace-nowrap">조치 필요</span>' : '<span class="text-xs text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">양호</span>') + '</td></tr>';
+        '<td class="py-2.5 px-3 text-right">' + (mc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(mc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
+        '<td class="py-2.5 px-3 text-right">' + (!a ? '<span class="text-rule-3">-</span>' : oc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(oc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
+        '<td class="py-2.5 px-3 text-right font-sans">' + (issue ? '<span class="text-xs font-bold text-warn-ink whitespace-nowrap">조치 필요</span>' : '<span class="text-xs text-muted">양호</span>') + '</td></tr>';
     }).join('') || '<tr><td colspan="4" class="py-6 text-center text-ink-4 font-sans">수치형 변수가 없습니다.</td></tr>';
     renderDetail();
     renderAlgos();
@@ -141,11 +141,11 @@
     if (a && o && o.n_outliers > 0) {
       var idx = o.sample_indices || [], vals = o.sample_values || [];
       samples = '<div class="pt-2 border-t border-paper-2"><div class="text-xs font-bold text-ink-0 mb-1.5 flex items-center justify-between"><span>검출된 이상치 표본 (' + A.num(o.n_outliers) + '건, ' + (o.ratio * 100).toFixed(1) + '%' + (o.n_outliers > idx.length ? ', 상위 ' + idx.length + '건 표시' : '') + ')</span><span class="text-xs font-normal text-ink-4">탐지 기준: ' + A.esc(a.name) + '</span></div><div class="max-h-36 overflow-y-auto space-y-1">' +
-        idx.slice(0, 20).map(function (ri, i) { return '<div class="flex items-center justify-between text-xs bg-blue-50/50 px-3 py-1.5 rounded border border-blue-100 font-mono gap-2"><span class="text-ink-2 font-bold shrink-0">#' + ri + '행</span><span class="text-ink-0 font-bold">관측값: ' + A.esc(vals[i]) + '</span></div>'; }).join('') + '</div></div>';
+        idx.slice(0, 20).map(function (ri, i) { return '<div class="flex items-center justify-between text-xs px-1 py-1.5 border-b border-paper-2 gap-2"><span class="text-ink-2 font-bold shrink-0">#' + ri + '행</span><span class="text-ink-0 font-bold">관측값: ' + A.esc(vals[i]) + '</span></div>'; }).join('') + '</div></div>';
     }
     if (!a) samples = '<div class="pt-2 border-t border-paper-2 text-xs text-ink-4">이상치 분포는 위에서 탐지 기법을 선택하고 탐지를 실행하면 표시됩니다.</div>';
-    card.innerHTML = '<div class="flex items-center justify-between flex-wrap gap-2"><h4 class="text-title font-semibold text-ink">[' + A.esc(n.column) + '] 통계 지표' + (a ? ' 및 이상치 분포' : '') + '</h4><span class="text-xs text-ink-3 font-mono">' + bounds + '</span></div>' +
-      '<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-body font-mono">' + box('최솟값', n.min) + box('1사분위(Q1)', n.q1) + box('중앙값(Median)', n.median, true) + box('3사분위(Q3)', n.q3) + box('최댓값', n.max) + '</div>' + samples;
+    card.innerHTML = '<div class="sec-head flex items-center justify-between flex-wrap gap-2"><h4 class="text-title font-semibold text-ink">[' + A.esc(n.column) + '] 통계 지표' + (a ? ' 및 이상치 분포' : '') + '</h4><span class="text-xs text-ink-3 font-mono">' + bounds + '</span></div>' +
+      '<div class="sec-box space-y-3"><div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-body font-mono">' + box('최솟값', n.min) + box('1사분위(Q1)', n.q1) + box('중앙값', n.median, true) + box('3사분위(Q3)', n.q3) + box('최댓값', n.max) + '</div>' + samples + '</div>';
   }
 
   /* ---------------- 전처리 전략 ---------------- */
@@ -199,7 +199,7 @@
       if (!a || active) return;
       if (!/\/analysis\/step[345](\/|$|\?)/.test(a.getAttribute('href') || '')) return;
       e.preventDefault();
-      A.fail('이상치 탐지를 실행해 결과를 받은 뒤 다음 단계로 이동할 수 있습니다.');
+      A.fail('이상치 탐지 완료 후 다음 단계로 이동할 수 있습니다.');
     });
     A.$('#algo-grid').addEventListener('click', function (e) {
       if (e.target.closest('select')) return;
@@ -221,12 +221,10 @@
       var card = b.closest('.card-modern') || b;
       runDetect().then(function () {
         A.fail(null, card);
-        var ok = A.$('#detect-ok');
-        ok.classList.remove('hidden'); ok.classList.add('flex');
-        setTimeout(function () { ok.classList.add('hidden'); ok.classList.remove('flex'); }, 3000);
+        A.toast('이상치 탐지가 완료되었습니다.');
       }).catch(function (e) { if (!A.datasetGone(e)) A.fail(e.message, card); }).then(function () {
         detecting = false; syncDetectBtn();
-        b.innerHTML = A.icon('shield-check', 'w-4 h-4') + '<span>선택 기법으로 이상치 탐지 실행</span>';
+        b.innerHTML = '<span>이상치 탐지 실행</span>';
         A.icons();
       });
     });

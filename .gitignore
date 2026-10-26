@@ -1,2 +1,7 @@
 # Project exclude paths
 /target/
+# 로컬 전용 도구(화면설계서 캡처 스크립트 등) — 커밋하지 않음
+/.local-tools/
+
+# IDE(Claude Code) 탭 상태
+.idea/claudeCodeEditorTabs.xml

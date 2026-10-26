@@ -132,8 +132,8 @@
 </div>
 
 <%-- 토스트 --%>
-<div id="toast" class="hidden fixed bottom-6 right-6 z-50 bg-ink text-white px-4 py-2.5 rounded-lg shadow-xl text-[13.5px] font-medium border border-ink-1 items-center gap-2 anim-in max-w-md">
-  <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0" id="toast-icon"></i><span id="toast-msg"></span>
+<div id="toast" role="status" aria-live="polite" aria-atomic="true" class="hidden fixed bottom-6 right-6 z-50 bg-ink text-white px-4 py-2.5 rounded-lg shadow-lg text-[13.5px] font-medium border border-ink-1 items-center gap-2 anim-in max-w-md">
+  <span class="toast-dot" aria-hidden="true"></span><span id="toast-msg"></span>
 </div>
 
 <script>window.__CTX__ = '${ctx}';</script>

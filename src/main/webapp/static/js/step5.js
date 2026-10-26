@@ -8,8 +8,8 @@
   function notice(msg, isError) {
     A.$('#pk-notice-msg').textContent = msg;
     var n = A.$('#pk-notice');
-    ['bg-emerald-50', 'border-emerald-200', 'text-emerald-900'].forEach(function (c) { n.classList.toggle(c, !isError); });
-    ['bg-rose-50', 'border-rose-200', 'text-rose-800'].forEach(function (c) { n.classList.toggle(c, !!isError); });
+    ['bg-paper-3', 'border-rule', 'text-ink'].forEach(function (c) { n.classList.toggle(c, !isError); });
+    ['text-rose-700'].forEach(function (c) { n.classList.toggle(c, !!isError); });
     n.classList.remove('hidden'); n.classList.add('flex');
     setTimeout(function () { n.classList.add('hidden'); n.classList.remove('flex'); }, 4000);
   }
@@ -26,10 +26,10 @@
   function renderList() {
     A.$('#pk-list').innerHTML = items.length ? items.map(function (it) {
       var on = selected && selected.id === it.id;
-      return '<div role="button" tabindex="0" data-id="' + A.esc(it.id) + '" class="p-3.5 rounded-xl border transition-colors cursor-pointer ' + (on ? 'border-blue-600 bg-blue-50/60 ring-1 ring-blue-600/30' : 'border-rule bg-white hover:bg-paper-3/80') + '">' +
+      return '<div role="button" tabindex="0" data-id="' + A.esc(it.id) + '" class="p-3.5 rounded-lg border transition-colors cursor-pointer ' + (on ? 'border-brand bg-brand-soft' : 'border-rule bg-white hover:bg-paper-3/80') + '">' +
         '<div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="text-xs font-bold text-ink truncate" title="' + A.esc(it.name) + '">' + A.esc(it.name) + '</div>' +
         '<div class="text-xs text-ink-4 truncate">분석 ' + (it.analysis_ids || []).length + '건</div></div>' +
-        '<div class="flex items-center gap-1.5 shrink-0">' + (it.share_token ? '<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">공유 중</span>' : '') +
+        '<div class="flex items-center gap-1.5 shrink-0">' + (it.share_token ? '<span class="text-xs font-semibold text-brand">공유 중</span>' : '') +
         '<button type="button" data-del="' + A.esc(it.id) + '" title="패키지 삭제" class="p-1.5 rounded-lg text-ink-4 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer">' + A.icon('trash-2', 'w-3.5 h-3.5') + '</button></div></div>' +
         '<div class="text-xs text-ink-4 mt-1.5">' + A.date(it.created_at) + '</div></div>';
     }).join('') : '<div class="col-span-full text-center py-10 text-ink-3 text-body">저장된 분석 패키지가 없습니다.</div>';
@@ -122,7 +122,7 @@
         '<td class="py-2.5 px-4 text-right font-mono font-bold text-ink whitespace-nowrap">' + fmtMetric(k, v, meta[3]) + '</td>' +
         '<td class="py-2.5 px-4 text-xs whitespace-nowrap ' + (CAP_CLS[meta[2]] || 'text-ink-3') + '">' + A.esc(meta[1](v, metrics) || '') + '</td></tr>';
     }).join('');
-    return '<div class="rounded-2xl border border-rule overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-rule bg-white"><span class="text-title font-semibold text-ink">요약 통계 지표</span><span class="text-xs text-ink-3">' + keys.length + '개 지표</span></div>' +
+    return '<div class="rounded-lg border border-rule overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-rule bg-white"><span class="text-title font-semibold text-ink">요약 통계 지표</span><span class="text-xs text-ink-3">' + keys.length + '개 지표</span></div>' +
       '<div class="overflow-x-auto md:max-h-[420px] md:overflow-y-auto"><table class="w-full border-collapse"><thead class="sticky top-0"><tr class="bg-paper-3 border-b border-rule"><th class="' + th + ' text-left w-[38%]">지표</th><th class="' + th + ' text-right w-[22%]">값</th><th class="' + th + ' text-left">해석</th></tr></thead><tbody>' + body + '</tbody></table></div></div>';
   }
 
@@ -139,18 +139,18 @@
     decision_tree_regressor: ['max_depth', 'criterion', 'test_size'], decision_tree_classifier: ['max_depth', 'criterion', 'positive_label', 'test_size'], linear_regression: ['test_size', 'weight_column'], logistic_regression: ['positive_label', 'test_size'],
     anova: ['factors', 'covariates', 'include_interaction'], multilevel: ['group_column', 'random_slope'], growth_curve: ['group_column', 'time_column'], psm: ['treatment_column', 'caliper', 'n_neighbors'] };
 
-  function field(label, valueHtml, extra) { return '<div class="p-3.5 rounded-xl border border-rule bg-white ' + (extra || '') + '"><div class="text-xs text-ink-4 mb-1">' + label + '</div><div class="text-sm font-bold text-ink">' + valueHtml + '</div></div>'; }
-  function chips(arr) { return arr.length ? '<div class="flex flex-wrap gap-1.5">' + arr.map(function (x) { return '<span class="px-2.5 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-900 text-xs font-mono font-medium">' + A.esc(x) + '</span>'; }).join('') + '</div>' : '<span class="text-ink-4 font-normal">없음</span>'; }
+  function field(label, valueHtml, extra) { return '<div class="p-3.5 rounded-lg border border-rule bg-white ' + (extra || '') + '"><div class="text-xs text-ink-4 mb-1">' + label + '</div><div class="text-sm font-bold text-ink">' + valueHtml + '</div></div>'; }
+  function chips(arr) { return arr.length ? '<div class="flex flex-wrap gap-1.5">' + arr.map(function (x) { return '<span class="px-2 py-0.5 rounded-md bg-paper-3 border border-rule text-ink text-xs">' + A.esc(x) + '</span>'; }).join('') + '</div>' : '<span class="text-ink-4 font-normal">없음</span>'; }
   function pval(v) { return Array.isArray(v) ? v.join(', ') : typeof v === 'boolean' ? (v ? '예' : '아니오') : String(v); }
   function specSection(no, title, tag, tagCls, body) {
-    return '<div class="p-4 rounded-2xl border border-rule bg-paper-3/60 space-y-3"><div class="flex items-center justify-between"><h5 class="text-title font-semibold text-ink">' + no + '. ' + title + '</h5><span class="text-xs font-mono font-semibold ' + tagCls + '">' + tag + '</span></div>' + body + '</div>';
+    return '<div class="p-4 rounded-lg border border-rule bg-paper-3/60 space-y-3"><div class="flex items-center justify-between"><h5 class="text-title font-semibold text-ink">' + no + '. ' + title + '</h5><span class="text-xs font-mono font-semibold ' + tagCls + '">' + tag + '</span></div>' + body + '</div>';
   }
   function specView(an) {
     var p = an.params || {}, pre = an.preprocessing || {};
     var feats = p.features || [];
-    var vars = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' + field('종속변수 (Target Variable)', p.target ? A.esc(p.target) : '<span class="text-ink-4 font-normal">없음 (비지도/탐색)</span>') +
-      field('분석 기법 (Algorithm)', '<span class="text-blue-700">' + A.esc(METHOD_NAME[an.method] || an.method) + '</span>') + '</div>' +
-      field('독립변수 목록 (Feature Variables)', chips(feats));
+    var vars = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' + field('종속변수', p.target ? A.esc(p.target) : '<span class="text-ink-4 font-normal">없음 (비지도/탐색)</span>') +
+      field('분석 기법', '<span class="text-brand">' + A.esc(METHOD_NAME[an.method] || an.method) + '</span>') + '</div>' +
+      field('독립변수', chips(feats));
     var extra = (METHOD_PARAMS[an.method] || []).filter(function (k) { var v = p[k]; return v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && !v.length) && !(k === 'test_size' && !v); });
     if (extra.length) vars += '<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">' + extra.map(function (k) {
       var v = p[k];
@@ -162,7 +162,7 @@
       field('특성 스케일링', lab('scaling', pre.scaling)) + '</div>' +
       '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">' + field('범주형 인코딩', lab('encoding', pre.encoding) + (pre.drop_first ? '<div class="text-xs font-normal text-ink-3 mt-0.5">기준 범주 1개 제외</div>' : '')) +
       field('중복 행 제거', pre.drop_duplicates ? '적용' : '미적용') + field('행 필터', (pre.filters || []).length ? (pre.filters.length + '개 조건') : '미적용') + '</div>';
-    return '<div class="space-y-4">' + specSection(1, '모델 변수 설정', 'Target &amp; Features', 'text-blue-700', vars) + specSection(2, '적용된 데이터 전처리 규칙', 'Auto-Pipeline', 'text-emerald-700', prep) + '</div>';
+    return '<div class="space-y-4">' + specSection(1, '모델 변수 설정', '', '', vars) + specSection(2, '적용된 데이터 전처리 규칙', '', '', prep) + '</div>';
   }
 
   /** 회귀계수 표: 선형(t), 로지스틱(z), 다층·성장(fixed_effects, 검정통계량 없음) 공용 */
@@ -193,9 +193,9 @@
         '<td class="py-3 px-4 text-right font-mono text-emerald-700">' + (r.p_value == null ? '-' : r.p_value < 0.0001 ? '&lt; 0.0001' : f(r.p_value, 4)) + '</td>' +
         '<td class="py-3 px-4 text-center font-mono font-bold ' + (st === 'ns' ? 'text-ink-3' : 'text-brand') + '">' + st + '</td></tr>';
     }).join('');
-    return '<div class="rounded-2xl border border-rule overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-rule bg-white"><span class="text-title font-semibold text-ink">주요 변수별 회귀계수 및 유의성 검정</span><span class="text-xs text-ink-3">신뢰구간: <span class="font-mono">95%</span></span></div>' +
+    return '<div class="rounded-lg border border-rule overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-rule bg-white"><span class="text-title font-semibold text-ink">주요 변수별 회귀계수 및 유의성 검정</span><span class="text-xs text-ink-3">신뢰구간: <span class="font-mono">95%</span></span></div>' +
       '<div class="overflow-x-auto md:max-h-[420px] md:overflow-y-auto"><table class="w-full border-collapse"><thead class="sticky top-0">' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
-      '<div class="px-4 py-2 text-xs text-ink-3 border-t border-paper-2 bg-paper-3/50">*** p &lt; 0.001, ** p &lt; 0.01, * p &lt; 0.05, ns 유의하지 않음' + (stat === 'z_value' ? ' · 로지스틱 회귀 계수(로그 오즈)' : '') + '</div></div>';
+      '<div class="px-4 py-2 text-xs text-ink-3 border-t border-paper-2 bg-paper-3/50">*** p &lt; 0.001, ** p &lt; 0.01, * p &lt; 0.05, ns 유의하지 않음' + (stat === 'z_value' ? ', 로지스틱 회귀 계수(로그 오즈)' : '') + '</div></div>';
   }
 
   function manifestView(s) {
@@ -208,9 +208,9 @@
     }).join('') + '</div>' : '';
     var tabBtn = function (id, icon, label) {
       var on = mTab === id;
-      return '<button type="button" data-mtab="' + id + '" class="flex-1 py-2.5 px-2 rounded-xl text-[13.5px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors break-keep leading-tight ' + (on ? 'bg-white text-brand border-2 border-brand/80' : 'text-ink-3 hover:text-ink-0 border-2 border-transparent') + '">' + '<span class="hidden sm:inline-flex">' + A.icon(icon, 'w-4 h-4') + '</span><span>' + label + '</span></button>';
+      return '<button type="button" data-mtab="' + id + '" class="flex-1 py-2.5 px-2 flex items-center justify-center gap-2 break-keep leading-tight rounded-full border text-body font-semibold transition-colors cursor-pointer ' + (on ? 'bg-brand border-brand text-white' : 'bg-white border-rule-3 text-ink hover:bg-paper-2') + '">' + '<span>' + label + '</span></button>';
     };
-    var tabs = '<div class="flex gap-1.5 p-1.5 bg-paper-2/80 border border-rule rounded-2xl">' + tabBtn('metrics', 'bar-chart-3', '종합 통계 지표 및 해석') + tabBtn('spec', 'sliders-horizontal', '변수 및 전처리 규칙 명세') + '</div>';
+    var tabs = '<div class="flex gap-2">' + tabBtn('metrics', 'bar-chart-3', '통계 지표와 해석') + tabBtn('spec', 'sliders-horizontal', '변수와 전처리 규칙') + '</div>';
     return '<div class="space-y-3">' + picker + tabs + (mTab === 'metrics' ? '<div class="space-y-4">' + metricCards(an.metrics) + coefTable(an) + '</div>' : specView(an)) + '</div>';
   }
 
@@ -225,12 +225,12 @@
       (s.description ? '<p class="text-xs text-ink-3">' + A.esc(s.description) + '</p>' : '') +
       '<div class="text-xs text-ink-3 font-mono">' + A.date(s.created_at) + '</div></div>' +
       '<div class="flex items-center gap-2 shrink-0">' +
-      '<button type="button" data-act="share" title="' + (s.share_token ? '공유 링크 보기' : '공유 링크 발급') + '" class="p-2 rounded-xl border transition-colors cursor-pointer ' + (shareOpen ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-rule text-ink-2 hover:bg-paper-3') + '">' + A.icon('share-2', 'w-4 h-4') + '</button>' +
-      '<button type="button" data-act="reproduce" ' + (busy ? 'disabled' : '') + ' class="px-3.5 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-xl text-body flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0">' + A.icon('rotate-ccw', 'w-3.5 h-3.5') + '<span>' + (busy === 'reproduce' ? '이동 중...' : '이 조건으로 재현 실행') + '</span></button></div></div>';
+      '<button type="button" data-act="share" title="' + (s.share_token ? '공유 링크 보기' : '공유 링크 발급') + '" class="p-2 rounded-lg border transition-colors cursor-pointer ' + (shareOpen ? 'bg-brand-soft border-brand text-brand' : 'bg-white border-rule text-ink-2 hover:bg-paper-3') + '">' + A.icon('share-2', 'w-4 h-4') + '</button>' +
+      '<button type="button" data-act="reproduce" ' + (busy ? 'disabled' : '') + ' class="px-3.5 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-lg text-body flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0">' + A.icon('rotate-ccw', 'w-3.5 h-3.5') + '<span>' + (busy === 'reproduce' ? '이동 중...' : '이 조건으로 재현 실행') + '</span></button></div></div>';
 
     var shareBox = '';
     if (shareOpen && shareUrl) {
-      shareBox = '<div class="p-3 rounded-xl border border-blue-200 bg-blue-50/40 space-y-2"><div class="flex items-center gap-2"><input readonly value="' + A.esc(shareUrl) + '" class="flex-1 min-w-0 bg-white border border-rule-3 rounded-lg px-3 py-2 text-xs font-mono text-ink-1">' +
+      shareBox = '<div class="p-3 rounded-lg border border-rule bg-paper-3 space-y-2"><div class="flex items-center gap-2"><input readonly value="' + A.esc(shareUrl) + '" class="flex-1 min-w-0 bg-white border border-rule-3 rounded-lg px-3 py-2 text-xs font-mono text-ink-1">' +
         '<button type="button" data-act="copy" class="px-3 py-2 bg-white border border-rule hover:bg-paper-3 text-ink-1 text-body font-semibold rounded-lg cursor-pointer shrink-0 flex items-center gap-1">' + A.icon('copy', 'w-3.5 h-3.5') + '<span>복사</span></button></div>' +
         '<div class="flex items-center justify-between gap-2"><span class="text-xs text-ink-3">공유 링크는 세션이 종료되어도 7일간 유지됩니다. 링크로는 읽기 전용 조회만 가능합니다.</span>' +
         '<button type="button" data-act="unshare" class="text-xs font-semibold text-rose-600 hover:underline cursor-pointer shrink-0">공유 해제</button></div></div>';
@@ -240,8 +240,8 @@
 
     var exportBox = '<div class="pt-4 border-t border-rule space-y-2.5"><span class="text-xs font-bold text-ink-0 flex items-center gap-1.5">' + A.icon('download', 'w-3.5 h-3.5 text-blue-700') + '내보내기</span>' +
       '<div class="grid grid-cols-2 gap-2.5">' +
-      '<button type="button" data-act="pdf" class="p-3 bg-white hover:bg-paper-2 text-ink border border-rule-3 rounded-xl text-xs font-bold cursor-pointer text-left"><span class="block">PDF 보고서</span><span class="block text-xs font-normal opacity-80 mt-0.5">' + (busy === 'pdf' ? '생성 중...' : '종합 요약 · 지표 · 결과표') + '</span></button>' +
-      '<button type="button" data-act="excel" class="p-3 bg-white hover:bg-paper-2 text-ink border border-rule-3 rounded-xl text-xs font-bold cursor-pointer text-left"><span class="block">Excel 통계표</span><span class="block text-xs font-normal opacity-80 mt-0.5">' + (busy === 'excel' ? '생성 중...' : '다중 시트 결과표') + '</span></button></div></div>';
+      '<button type="button" data-act="pdf" class="p-3 bg-white hover:bg-paper-2 text-ink border border-rule-3 rounded-lg text-xs font-bold cursor-pointer text-left"><span class="block">PDF 보고서</span><span class="block text-xs font-normal opacity-80 mt-0.5">' + (busy === 'pdf' ? '생성 중...' : '종합 요약, 지표, 결과표') + '</span></button>' +
+      '<button type="button" data-act="excel" class="p-3 bg-white hover:bg-paper-2 text-ink border border-rule-3 rounded-lg text-xs font-bold cursor-pointer text-left"><span class="block">Excel 통계표</span><span class="block text-xs font-normal opacity-80 mt-0.5">' + (busy === 'excel' ? '생성 중...' : '다중 시트 결과표') + '</span></button></div></div>';
 
     box.innerHTML = head + shareBox + manifest + exportBox;
     A.icons();

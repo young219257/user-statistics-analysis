@@ -48,11 +48,11 @@
 
   function isPrimArray(v) { return Array.isArray(v) && v.every(V.isPrim); }
   function isPlainObjAllPrim(v) { return v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).every(function (k) { return V.isPrim(v[k]); }); }
-  /** 값이 전부 스칼라인 평범한 객체는 JSON 대신 "라벨: 값 · 라벨: 값" 형태로 읽기 쉽게 압축 */
+  /** 값이 전부 스칼라인 평범한 객체는 JSON 대신 "라벨: 값, 라벨: 값" 형태로 읽기 쉽게 압축 */
   function compactObj(v, max) {
     var keys = Object.keys(v);
     var shown = keys.slice(0, max || 3).map(function (k) { return V.label(k) + ' ' + V.fmt(v[k]); });
-    return shown.join(' · ') + (keys.length > (max || 3) ? ' …' : '');
+    return shown.join(', ') + (keys.length > (max || 3) ? ' …' : '');
   }
   function tableCell(v) {
     if (V.isPrim(v)) return V.fmt(v);

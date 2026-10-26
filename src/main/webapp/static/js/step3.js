@@ -9,7 +9,7 @@
 
   function renderStats(p) {
     var nums = p.numeric || [];
-    A.$('#eda-badge').innerHTML = '수치형 변수 <strong class="text-ink">' + nums.length + '</strong>개 · 총 <strong class="text-ink">' + A.num(p.n_rows) + '</strong>행';
+    A.$('#eda-badge').innerHTML = '수치형 변수 <strong class="text-ink">' + nums.length + '</strong>개, 총 <strong class="text-ink">' + A.num(p.n_rows) + '</strong>행';
     A.$('#stat-count').textContent = nums.length + '개 변수';
     A.$('#stat-rows').textContent = A.num(p.n_rows) + '행';
     A.$('#stat-body').innerHTML = nums.map(function (n) {
@@ -25,11 +25,11 @@
         '<td class="py-2.5 px-2.5 text-right text-ink-2">' + A.num(n.max, 2) + '</td>' +
         '<td class="py-2.5 px-2.5 text-right text-ink-2">' + sgn(n.skewness) + '</td>' +
         '<td class="py-2.5 px-2.5 text-right text-ink-2">' + sgn(n.kurtosis) + '</td>' +
-        '<td class="py-2.5 px-3 text-right">' + (ratio > 0 ? '<span class="text-amber-600 font-medium">' + ratio.toFixed(1) + '%</span>' : '<span class="text-emerald-600 font-medium">0%</span>') + '</td></tr>';
+        '<td class="py-2.5 px-3 text-right">' + (ratio > 0 ? '<span class="text-ink font-semibold">' + ratio.toFixed(1) + '%</span>' : '<span class="text-emerald-600 font-medium">0%</span>') + '</td></tr>';
     }).join('') || '<tr><td colspan="12" class="py-8 text-center text-ink-4 font-sans">수치형 변수가 없습니다.</td></tr>';
   }
 
-  var METHOD = { pearson: '피어슨 상관계수 매트릭스 (Pearson Correlation Matrix)', spearman: '스피어만 순위상관 매트릭스 (Spearman)', kendall: '켄달 순위상관 매트릭스 (Kendall)' };
+  var METHOD = { pearson: '피어슨 상관계수 행렬', spearman: '스피어만 순위상관 행렬', kendall: '켄달 순위상관 행렬' };
 
   function renderCorr(c) {
     A.$('#corr-title').textContent = METHOD[c.method] || '상관계수 매트릭스';
@@ -55,8 +55,13 @@
     var pairs = (c.pairs || []).slice().sort(function (a, b) { return Math.abs(b.coefficient) - Math.abs(a.coefficient); }).slice(0, 10);
     var pw = A.$('#pairs-wrap');
     pw.classList.toggle('hidden', !pairs.length);
-    pw.innerHTML = pairs.length ? '<div class="text-xs font-bold text-ink-1 mb-1.5">상관 강도 상위 변수쌍</div><div class="grid grid-cols-1 md:grid-cols-2 gap-1.5">' + pairs.map(function (p) {
-      return '<div class="flex items-center justify-between text-xs bg-paper-3 border border-rule rounded-lg px-3 py-1.5"><span class="text-ink-0 truncate">' + A.esc(p.x) + ' ↔ ' + A.esc(p.y) + '</span><span class="font-mono shrink-0 ml-2"><strong class="' + (p.coefficient >= 0 ? 'text-blue-700' : 'text-rose-600') + '">' + Number(p.coefficient).toFixed(3) + '</strong> <span class="text-ink-4">' + A.esc(p.strength) + (p.p_value !== null && p.p_value !== undefined ? ' · p ' + A.pFmt(p.p_value) : '') + '</span></span></div>';
+    pw.innerHTML = pairs.length ? '<div class="text-xs font-bold text-ink-1 mb-1.5">상관 강도 상위 변수쌍</div><div class="grid grid-cols-1 md:grid-cols-2 gap-1.5">' + pairs.map(function (p, i) {
+      var r = Number(p.coefficient), neg = r < 0, st = String(p.strength || '');
+      var lvl = /강/.test(st) ? 'strong' : /보통|중/.test(st) ? 'mid' : 'weak';
+      return '<div class="pair-row"><span class="pair-name">' + A.esc(p.x) + ' ↔ ' + A.esc(p.y) + '</span>' +
+        '<strong class="pair-r ' + (neg ? 'neg' : 'pos') + '">' + r.toFixed(3) + '</strong>' +
+        '<span class="pair-chip ' + lvl + '">' + A.esc(st) + '</span>' +
+        '<span class="pair-p">' + (p.p_value !== null && p.p_value !== undefined ? 'p ' + A.pFmt(p.p_value) : '') + '</span></div>';
     }).join('') + '</div>' : '';
   }
 

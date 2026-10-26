@@ -5,8 +5,8 @@
   <div class="p-4 flex-1 flex flex-col space-y-6">
     <div class="space-y-3">
       <div class="flex items-center justify-between px-1">
-        <span class="text-xs font-bold text-ink-4 uppercase tracking-wider sb-full">분석 파이프라인</span>
-        <button type="button" id="sb-toggle" class="p-1 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-paper-2 transition-colors cursor-pointer" title="사이드바 접기/펼치기">
+        <span class="text-body font-semibold text-ink-2 sb-full">분석 파이프라인</span>
+        <button type="button" id="sb-toggle" class="p-1 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-paper-2 transition-colors cursor-pointer" title="사이드바 접기/펼치기" aria-label="사이드바 접기/펼치기">
           <i data-lucide="chevron-left" class="w-3.5 h-3.5" id="sb-toggle-icon"></i>
         </button>
       </div>

@@ -14,7 +14,7 @@
     ];
     return tabs.map(function (t) {
       var on = tab === t[0];
-      return '<button type="button" data-tab="' + t[0] + '" class="px-3.5 py-1.5 rounded-lg text-body font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ' + (on ? 'bg-white text-brand' : 'text-ink-2 hover:text-ink hover:bg-white/50') + '">' + A.icon(t[1], 'w-3.5 h-3.5') + '<span>' + t[2] + '</span>' + (t[3] ? '<span class="px-1.5 rounded text-xs font-mono ' + (on ? 'bg-blue-50 text-blue-700' : 'bg-rule/80 text-ink-2') + '">' + t[3] + '</span>' : '') + '</button>';
+      return '<button type="button" data-tab="' + t[0] + '" class="px-4 py-1.5 flex items-center gap-1.5 rounded-full border text-body font-semibold transition-colors cursor-pointer ' + (on ? 'bg-brand border-brand text-white' : 'bg-white border-rule-3 text-ink hover:bg-paper-2') + '">' + '<span>' + t[2] + '</span>' + (t[3] ? '<span class="text-xs tabular-nums">' + t[3] + '</span>' : '') + '</button>';
     }).join('');
   }
 
@@ -357,7 +357,7 @@
       }).join('');
     }).join('');
     var table = '<table class="w-full text-center text-body border-collapse"><thead>' + head + '</thead><tbody class="font-mono">' + body + '</tbody></table>';
-    return statCard('상관관계 (Correlations)', table, ['*. 상관계수는 0.05 수준(양측)에서 유의합니다. **. 0.01 수준, ***. 0.001 수준.', '굵은 파란색: |r| ≥ 0.7 (강한 상관)'], true);
+    return statCard('상관관계', table, ['*. 상관계수는 0.05 수준(양측)에서 유의합니다. **. 0.01 수준, ***. 0.001 수준.', '굵은 파란색: |r| ≥ 0.7 (강한 상관)'], true);
   }
 
   /** 쌍별 상관계수 표: |r| 내림차순, 강도 분류 포함 */
@@ -377,7 +377,7 @@
       '</tr></thead><tbody class="font-mono">' + body + '</tbody></table>';
     var notes = ['상관계수 절댓값 기준 내림차순 정렬', '*. p &lt; .05, **. p &lt; .01, ***. p &lt; .001'];
     if (result.interpretation) notes.unshift(A.esc(result.interpretation));
-    return statCard('쌍별 상관계수 (Pairwise Correlations)', table, notes, true);
+    return statCard('변수 쌍별 상관계수', table, notes, true);
   }
 
   /** 상관분석 요약 카드: n_variables, n_pairs, n_strong_pairs, max_abs_coefficient */
@@ -408,7 +408,7 @@
       if (has(metrics.levene_p_value)) c.push(kpiCard('Levene 등분산', 'p=' + spssNum(metrics.levene_p_value), metrics.levene_p_value >= 0.05 ? '등분산 충족' : '등분산 위배', 'text-amber-600'));
     } else if (has(metrics.n_individuals)) {
       c.push(kpiCard('개체 수', A.num(metrics.n_individuals), '관측치 ' + A.num(metrics.n_observations)));
-      if (has(metrics.average_growth_rate)) c.push(kpiCard('평균 성장률', spssNum(metrics.average_growth_rate, 3), '시간 1단위당 · ' + sig(metrics.average_growth_rate_p_value), 'text-blue-600'));
+      if (has(metrics.average_growth_rate)) c.push(kpiCard('평균 성장률', spssNum(metrics.average_growth_rate, 3), '시간 1단위당, ' + sig(metrics.average_growth_rate_p_value), 'text-blue-600'));
       if (has(metrics.slope_variance)) c.push(kpiCard('기울기 분산', spssNum(metrics.slope_variance, 4), '개체 간 성장률 차이', 'text-blue-600'));
       if (has(metrics.aic)) c.push(kpiCard('AIC / BIC', spssNum(metrics.aic, 1), has(metrics.bic) ? 'BIC ' + spssNum(metrics.bic, 1) : ''));
     } else if (has(metrics.icc) && has(metrics.n_groups)) {
@@ -536,7 +536,7 @@
   }
   function renderElbow(rows, k) {
     if (!rows || !rows.length) return '';
-    return statCard('엘보 탐색표 (k별 Inertia · 실루엣)', tbl(['k', 'Inertia', '실루엣'], rows.map(function (r) {
+    return statCard('엘보 탐색표 (k별 Inertia, 실루엣)', tbl(['k', 'Inertia', '실루엣'], rows.map(function (r) {
       var sel = r.k === k;
       return [(sel ? '<b class="text-blue-700">' + r.k + ' (선택)</b>' : String(r.k)), spssNum(r.inertia, 2), sel ? '<b>' + spssNum(r.silhouette) + '</b>' : spssNum(r.silhouette)];
     })), ['Inertia 감소가 완만해지는 지점(엘보)과 실루엣이 높은 k를 함께 고려합니다.']);
@@ -778,7 +778,7 @@
     A.$('#btn-save').classList.remove('hidden'); A.$('#btn-save').classList.add('flex');
     var failed = r.status === 'failed';
     A.$('#rp-diag').innerHTML = '<div class="flex items-center gap-2 pb-2 border-b border-paper-2">' + (failed ? A.icon('alert-triangle', 'w-4 h-4 text-rose-600') : '') + '<h4 class="text-title font-semibold text-ink">분석 결과 요약</h4></div>' +
-      (r.error ? '<div class="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 font-mono whitespace-pre-wrap">' + A.esc(r.error) + '</div>' : '') +
+      (r.error ? '<div class="text-xs text-rose-700 py-1.5 font-mono whitespace-pre-wrap">' + A.esc(r.error) + '</div>' : '') +
       (renderSummaryCards(r.metrics || {}, r.result || {}) || A.viz.metricsGrid(r.metrics, 24) || '<div class="text-xs text-ink-4">표시할 스칼라 지표가 없습니다. \'표준 통계 결과표\' 탭을 확인하세요.</div>');
     renderResultTab();
     A.charts.gallery(A.$('#rp-charts'), r);
@@ -805,9 +805,9 @@
       var b = this;
       b.disabled = true;
       A.post('/api/v1/packages', { name: res.name, description: res.method + ' 분석 결과 패키지', analysis_ids: [res.id] }).then(function (p) {
-        b.innerHTML = A.icon('check', 'w-3.5 h-3.5') + '<span>저장 완료</span>';
+        b.innerHTML = '<span>저장 완료</span>';
         A.icons();
-        setTimeout(function () { b.disabled = false; b.innerHTML = A.icon('save', 'w-3.5 h-3.5') + '<span>결과 패키지 저장</span>'; A.icons(); }, 2500);
+        setTimeout(function () { b.disabled = false; b.innerHTML = '<span>결과 패키지 저장</span>'; A.icons(); }, 2500);
       }).catch(function (e) { b.disabled = false; A.fail(e.message, b.parentElement); });
     });
 

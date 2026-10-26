@@ -1,3 +1,17 @@
 [
-  { "date": "2026-10-16", "macrostructure": "Workbench", "theme": "custom (portal navy · design.md)", "theme_axes": "light / rounded-sans (Pretendard) / cool", "enrichment": "none", "brief": "이용자통계분석 1~5단계 재디자인 · 포털 헤더·하단 유지 · audit 지적 사항 반영" }
+  {
+    "date": "2026-10-25",
+    "macrostructure": "Workbench",
+    "theme": "studied-DNA (https://www.edmgr.kr/)",
+    "enrichment": "none",
+    "brief": "이용자통계분석 포털 디자인 시스템 적용"
+  },
+  {
+    "date": "2026-10-16",
+    "macrostructure": "Workbench",
+    "theme": "custom (portal navy · design.md)",
+    "theme_axes": "light / rounded-sans (Pretendard) / cool",
+    "enrichment": "none",
+    "brief": "이용자통계분석 1~5단계 재디자인 · 포털 헤더·하단 유지 · audit 지적 사항 반영"
+  }
 ]

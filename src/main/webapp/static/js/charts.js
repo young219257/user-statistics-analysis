@@ -8,7 +8,7 @@
   var C = { link: A.tok('link'), brand: A.tok('brand'), brandSoft: A.tok('brand-soft'), neg: A.tok('chart-2'),
     ink: A.tok('ink'), ink1: A.tok('ink-1'), ink2: A.tok('ink-2'), ink3: A.tok('ink-3'), ink4: A.tok('ink-4'),
     rule: A.tok('rule'), rule3: A.tok('rule-3'), paper: A.tok('paper'), paper2: A.tok('paper-2') };
-  var PALETTE = [1, 2, 3, 4, 5, 6].map(function (i) { return A.tok('chart-' + i); });
+  var PALETTE = [1, 2, 3, 4, 5, 6, 7, 8].map(function (i) { return A.tok('chart-' + i); });
 
   var KIND_LABEL = { histogram: '히스토그램', boxplot: '상자그림', bar: '막대차트', scatter: '산점도', scatter_with_fit: '산점도+회귀선', heatmap: '히트맵', line: '선 그래프', residual: '잔차도', roc_curve: 'ROC 곡선', confusion_matrix: '혼동행렬', tree_diagram: '트리 다이어그램', feature_importance: '변수 중요도', cluster_scatter: '군집 산점도', elbow: '엘보 곡선', dendrogram: '덴드로그램', scree: '스크리 플롯', missing_matrix: '결측 행렬', means_plot: '평균 도표', random_effects: '랜덤효과', variance_components: '분산 성분', trajectory: '성장 궤적', ps_distribution: '성향점수 분포', love_plot: 'Love Plot' };
   var LINE_KINDS = ['line', 'elbow', 'scree', 'trajectory', 'roc_curve'];
@@ -599,7 +599,7 @@
     var left = nObs != null ? '표본수: N = ' + A.num(nObs) : n != null ? '데이터 점: ' + A.num(n) + '개' : '';
     var right = '';
     if (isNum(m.r_squared)) right = '결정계수 R² = ' + m.r_squared.toFixed(3) + ' (설명력 ' + (m.r_squared * 100).toFixed(1) + '%)';
-    else if (isNum(m.accuracy)) right = '정확도 = ' + (m.accuracy * 100).toFixed(1) + '%' + (isNum(m.roc_auc) ? ' · AUC = ' + m.roc_auc.toFixed(3) : '');
+    else if (isNum(m.accuracy)) right = '정확도 = ' + (m.accuracy * 100).toFixed(1) + '%' + (isNum(m.roc_auc) ? ', AUC = ' + m.roc_auc.toFixed(3) : '');
     else if (isNum(m.silhouette)) right = '실루엣 = ' + m.silhouette.toFixed(3);
     else if (isNum(m.total_explained_variance)) right = '누적 설명분산 = ' + (m.total_explained_variance * 100).toFixed(1) + '%';
     else if (isNum(m.model_r_squared)) right = '모형 R² = ' + m.model_r_squared.toFixed(3);
