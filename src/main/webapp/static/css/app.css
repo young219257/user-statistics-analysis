@@ -1534,3 +1534,8 @@ body { font-size: 13px; }
 :is(#rp-result, #rp-diag, #result-panel, #pk-detail, #detail-card) :is(.text-emerald-500, .text-emerald-600, .text-emerald-700, .text-emerald-800, .text-green-600, .text-green-700, .text-ok):not(#_a) { color: #228738; }
 :is(#rp-result, #rp-diag, #result-panel, #pk-detail, #detail-card) :is(.text-rose-500, .text-rose-600, .text-rose-700, .text-rose-800, .text-red-500, .text-red-600, .text-err, .text-amber-500, .text-amber-600, .text-amber-700, .text-orange-500, .text-orange-600):not(#_a) { color: #d6342f; }
 :is(#rp-result, #rp-diag, #result-panel, #pk-detail, #detail-card) :is(.text-blue-500, .text-blue-600, .text-blue-700, .text-blue-800):not(:is(h1, h2, h3, h4, h5, button, .bg-brand)):not(#_a) { color: #256ef4; }
+
+/* 토스트: 오른쪽 위(단계 바 아래)에서 보이게 */
+#toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f) { top: 84px; bottom: auto; right: 24px; left: auto; transform: none; }
+#toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f):not(#_g) { top: 72px; }
+#toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f):not(#_g):not(#_h) { top: 40vh; }
