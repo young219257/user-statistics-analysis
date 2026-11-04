@@ -1544,7 +1544,22 @@ body { font-size: 13px; }
 /* 4-2 결과 보기: 분석이 끝나기 전에는 비활성 */
 #btn-report[aria-disabled="true"] { background: var(--color-rule-3) !important; color: #fff !important; cursor: not-allowed; pointer-events: none; }
 
-/* 결합된 데이터셋 선택 안내: 반입된 데이터셋 아래, 글자 + 닫기(X), 경고라서 노랑 계열 */
-.merged-note { color: #e8590c; line-height: 1.6; }
-.merged-note button { color: #e8590c; }
-.merged-note button:hover { color: #c2410c; }
+
+/* ===== KRDS 메시지 (공식 시맨틱 토큰) =====
+   danger  글자 #bd2c0f · 아이콘 #de3412 / warning 글자 #8a5c00 · 아이콘 #9e6a00
+   인라인 메시지는 앞에 상태 아이콘을 두고 같은 색의 글자를 쓴다. */
+:root { --color-err-text: #bd2c0f; --krds-danger: #bd2c0f; --krds-warning: #e8590c; }
+.krds-msg { font-size: 14px; line-height: 1.55; }
+.krds-msg::before, .mfail::before { content: ""; flex: none; width: 18px; height: 18px; margin-top: 1.5px; background: center / 18px 18px no-repeat; }
+.krds-danger, .mfail { color: var(--krds-danger); }
+.krds-danger::before, .mfail::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23de3412' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 7v6M12 16.5v.01'/%3E%3C/svg%3E"); }
+.krds-warning { color: var(--krds-warning); }
+.krds-warning::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e8590c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9v4M12 17v.01'/%3E%3C/svg%3E"); }
+.krds-close { color: currentColor; opacity: .75; line-height: 0; padding: 2px; }
+.krds-close:hover { opacity: 1; }
+.mfail-head { color: var(--krds-danger); font-size: 14px; font-weight: 400; }
+.mfail > button { color: currentColor; }
+#main-content .text-rose-700 { color: var(--krds-danger); }
+
+/* 토스트: 화면 오른쪽 하단 */
+#toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f):not(#_g):not(#_h):not(#_i) { top: auto; bottom: 32px; left: auto; right: 32px; transform: none; }

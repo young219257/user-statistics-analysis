@@ -194,10 +194,7 @@
     // 실패·취소: 박스 없이 빨간 글씨 한 줄 + 닫기(X). 데이터 결합 실패와 같은 모양
     var r = analysis;
     var text = r.status === 'cancelled' ? '대기 중이던 분석 요청이 취소되었습니다. 다시 실행해 주세요.' : (r.error || '분석 연산에 실패했습니다. 변수·파라미터 설정을 확인한 뒤 다시 시도해 주세요.');
-    p.innerHTML = '<div class="mfail flex items-start gap-2" role="alert"><p class="mfail-head flex-1 min-w-0 break-words whitespace-pre-wrap">' + A.esc(text) + '</p>' +
-      '<button type="button" data-dismiss="1" aria-label="오류 닫기" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer">' + A.icon('x', 'w-4 h-4') + '</button></div>';
-    var cb = p.querySelector('[data-dismiss]');
-    if (cb) cb.addEventListener('click', function () { p.classList.add('hidden'); });
+    p.innerHTML = '<div class="mfail flex items-start gap-2" role="alert"><p class="mfail-head flex-1 min-w-0 break-words whitespace-pre-wrap">' + A.esc(text) + '</p></div>';
     A.icons();
   }
 
@@ -216,6 +213,7 @@
     if (bad) { analysis = { method: cfg.method, status: 'failed', error: bad, created_at: new Date().toISOString() }; renderResult(); A.toast('분석에 실패했습니다.', 'error'); return; }
     running = true;
     jobOk = false;
+    A.$('#result-panel').classList.add('hidden');   // 이전 실패 문구는 새 분석을 시작할 때 지운다
     syncReportBtn(false);   // 새 분석을 시작하면 이전 결과 보기는 다시 닫고, 완료되면 연다
     var b = A.$('#btn-run');
     b.disabled = true;

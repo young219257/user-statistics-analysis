@@ -260,7 +260,7 @@
     t.classList.remove('hidden');
     t.classList.add('flex');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.add('hidden'); t.classList.remove('flex'); }, kind === 'error' ? 5000 : 3000);
+    toastTimer = setTimeout(function () { t.classList.add('hidden'); t.classList.remove('flex'); }, kind === 'error' ? 4000 : 3000);
   };
   /* 인라인 오류: 토스트 대신 문제가 난 영역(anchor) 바로 아래에 표시. anchor 없으면 본문 맨 위.
    * 같은 영역에 다시 오면 내용만 바꾸고, App.fail(null, anchor) 로 지운다. */
@@ -274,10 +274,8 @@
       box = document.createElement('div');
       box.setAttribute('data-fail-for', key);
       box.setAttribute('role', 'alert');
-      box.className = 'flex items-start gap-2 text-[13.5px] text-rose-700 py-1.5 mt-2';
-      box.innerHTML = '<span class="flex-1 min-w-0 break-words" data-fail-msg></span>' +
-        '<button type="button" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer" aria-label="오류 닫기">' + App.icon('x', 'w-4 h-4') + '</button>';
-      box.querySelector('button').addEventListener('click', function () { box.remove(); });
+      box.className = 'krds-msg krds-danger flex items-start gap-2 py-1.5 mt-2';
+      box.innerHTML = '<span class="flex-1 min-w-0 break-words" data-fail-msg></span>';   // KRDS: 인라인 메시지에 닫기 버튼을 두지 않는다. 다음 동작에서 App.fail(null, anchor)로 지운다
       if (el) el.insertAdjacentElement('afterend', box);
       else if (main) { box.classList.remove('mt-2'); box.classList.add('mb-4'); main.insertAdjacentElement('afterbegin', box); }
     }

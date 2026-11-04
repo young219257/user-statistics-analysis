@@ -307,8 +307,7 @@
     function failAlert(msg) {
       // 서버가 보낸 메시지를 그대로 보여 준다 (문장을 나누거나 해석하지 않는다)
       var text = String(msg).replace(/^결합에 실패했습니다:\s*/, '').trim() || '결합에 실패했습니다.';
-      return '<div class="mfail flex items-start gap-2" role="alert"><p class="mfail-head flex-1 min-w-0 break-words">' + A.esc(text) + '</p>' +
-        '<button type="button" data-dismiss-merge="1" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer" aria-label="오류 닫기">' + A.icon('x', 'w-4 h-4') + '</button></div>';
+      return '<div class="mfail flex items-start gap-2" role="alert"><p class="mfail-head flex-1 min-w-0 break-words">' + A.esc(text) + '</p></div>';
     }
     var warn = (merged && !st && !mergeError && merged.source_meta && merged.source_meta.warnings) || [];
     var status = (mergeError ? failAlert(mergeError) : '') + (warn.length ? '<p class="merge-note">' + warn.map(A.esc).join('<br>') + '</p>' : '');
@@ -424,10 +423,8 @@
       box = document.createElement('div');
       box.id = 'merged-note';
       box.setAttribute('role', 'status');
-      box.className = 'flex items-start gap-2 text-[13.5px] py-1.5 mt-2 merged-note';
-      box.innerHTML = '<span class="flex-1 min-w-0 break-words">결합된 데이터셋은 데이터관리카드 및 다른 반입 데이터셋을 선택할 수 없습니다.</span>' +
-        '<button type="button" class="shrink-0 cursor-pointer" aria-label="안내 닫기">' + A.icon('x', 'w-4 h-4') + '</button>';
-      box.querySelector('button').addEventListener('click', function () { mergedNoteClosed = lock.id; box.remove(); });
+      box.className = 'krds-msg krds-warning flex items-start gap-2 py-1.5 mt-2';
+      box.innerHTML = '<span class="flex-1 min-w-0 break-words">결합된 데이터셋은 데이터관리카드 및 다른 반입 데이터셋을 선택할 수 없습니다.</span>';
       list.insertAdjacentElement('afterend', box);
       A.icons();
     }
@@ -443,10 +440,8 @@
       box = document.createElement('div');
       box.id = 'cards-note';
       box.setAttribute('role', 'alert');
-      box.className = 'flex items-start gap-2 text-[13.5px] text-rose-700 py-1.5 mt-2';
-      box.innerHTML = '<span class="flex-1 min-w-0 break-words">데이터관리카드는 최대 ' + MAX_CARDS + '개까지 선택할 수 있습니다. 다른 카드를 고르려면 선택한 카드를 먼저 해제하세요.</span>' +
-        '<button type="button" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer" aria-label="안내 닫기">' + A.icon('x', 'w-4 h-4') + '</button>';
-      box.querySelector('button').addEventListener('click', function () { cardsNoteClosed = true; box.remove(); });
+      box.className = 'krds-msg krds-danger flex items-start gap-2 py-1.5 mt-2';
+      box.innerHTML = '<span class="flex-1 min-w-0 break-words">데이터관리카드는 최대 ' + MAX_CARDS + '개까지 선택할 수 있습니다. 다른 카드를 고르려면 선택한 카드를 먼저 해제하세요.</span>';
       list.insertAdjacentElement('afterend', box);
       A.icons();
     }
