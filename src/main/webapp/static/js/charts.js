@@ -572,8 +572,8 @@
   function recTitle(rec) { return !rec.title || rec.title === rec.kind ? (KIND_LABEL[rec.kind] || rec.kind) : rec.title; }
   /** 서버가 추천만 하고 데이터를 주지 않은 경우의 안내 */
   function noDataMsg(rec, ctx) {
-    if (rec.kind === 'roc_curve' && ctx && ctx.result && ctx.result.binary === false) return '다중 분류(3개 이상 범주) 모형은 서버가 ROC 곡선 데이터를 제공하지 않습니다.<br>분류 성능은 혼동행렬을 참고하세요.';
-    return '서버 응답에 이 차트의 데이터(chart_data' + (rec.data_key ? '.' + A.esc(rec.data_key) : '') + ')가 포함되지 않았습니다.';
+    if (rec.kind === 'roc_curve' && ctx && ctx.result && ctx.result.binary === false) return '다중 분류(3개 이상 범주) 모형은 ROC 곡선을 그리지 않습니다.<br>분류 성능은 혼동행렬을 참고하세요.';
+    return '이 차트에 표시할 데이터가 없습니다.';
   }
 
   function card(rec, idx, data, ctx) {

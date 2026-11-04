@@ -193,11 +193,11 @@
     renderAlgos();
     renderStrategies();
     syncNextBtn();
-    // 상단 단계 표시줄로 3단계 이후에 바로 건너뛰는 것도 같은 조건으로 막는다
+    // 상단 단계 표시줄로 3·4단계에 바로 건너뛰는 것은 이상치 탐지 후에만 가능하다. 5단계(결과 관리)는 탐지와 상관없이 이동할 수 있다
     document.addEventListener('click', function (e) {
       var a = e.target.closest('a[href]');
       if (!a || active) return;
-      if (!/\/analysis\/step[345](\/|$|\?)/.test(a.getAttribute('href') || '')) return;
+      if (!/\/analysis\/step[34](\/|$|\?)/.test(a.getAttribute('href') || '')) return;
       e.preventDefault();
       A.fail('이상치 탐지 완료 후 다음 단계로 이동할 수 있습니다.');
     });

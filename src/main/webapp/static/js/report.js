@@ -125,10 +125,19 @@
     return noStar ? s : s + starSup(p);
   }
   /** scroll=true: 행렬처럼 커질 수 있는 표 — 최대 높이를 넘으면 스크롤 (머리행·첫 열 고정, app.css .matrix-scroll) */
+  /** 서버가 준 각주 문구만 표시한다. 화면 코드가 임의로 쓴 설명·해석은 각주로 내보내지 않는다 */
+  function srv(text) { return { srv: text }; }
+  function serverWarning() {
+    var d = res && res.result && res.result.diagnostics;
+    return d && d.multicollinearity_warning ? [srv(A.esc(d.multicollinearity_warning))] : [];
+  }
   function statCard(titleHtml, tableHtml, footnotes, scroll) {
-    return '<div class="card-modern p-5 space-y-3"><div class="flex items-center gap-2 pb-2 border-b border-paper-2"><h4 class="text-title font-semibold text-ink">' + titleHtml + '</h4></div>' +
+    var notes = (footnotes || []).filter(function (f) { return f && typeof f === 'object' && f.srv; }).map(function (f) { return f.srv; });
+    if (/align-super/.test(tableHtml)) notes.unshift('*. 유의확률 p &lt; .05, **. p &lt; .01, ***. p &lt; .001');   // 별표(유의수준) 범례
+    var title = String(titleHtml).replace(/\s*<sup[^>]*>[a-z]<\/sup>/g, '');   // 각주 기호(a, b)는 각주가 없으므로 함께 뺀다
+    return '<div class="card-modern p-5 space-y-3"><div class="flex items-center gap-2 pb-2 border-b border-paper-2"><h4 class="text-title font-semibold text-ink">' + title + '</h4></div>' +
       '<div class="' + (scroll ? 'matrix-scroll' : 'overflow-x-auto') + ' border border-rule rounded-lg">' + tableHtml + '</div>' +
-      '<div class="text-xs text-ink-3 space-y-0.5 pt-1">' + footnotes.map(function (f) { return '<div>' + f + '</div>'; }).join('') + '</div></div>';
+      (notes.length ? '<div class="text-xs text-ink-3 space-y-0.5 pt-1">' + notes.map(function (f) { return '<div>' + f + '</div>'; }).join('') + '</div>' : '') + '</div>';
   }
   var TH = 'p-2.5 border border-rule bg-paper-3 font-semibold text-ink-1 align-middle whitespace-nowrap';
   var SUB_TH = 'p-1.5 border border-rule bg-paper-3 font-semibold text-ink-2 text-xs align-middle whitespace-nowrap';
@@ -190,7 +199,7 @@
       '<tr><th rowspan="2" colspan="2" class="' + TH + ' text-left">모형</th><th colspan="2" class="' + TH + ' border-l border-rule">비표준화 계수</th><th rowspan="2" class="' + TH + ' border-l border-rule">t</th><th rowspan="2" class="' + TH + '">유의확률</th><th colspan="2" class="' + TH + ' border-l border-rule">95.0% 신뢰구간</th><th rowspan="2" class="' + TH + ' border-l border-rule">VIF</th></tr>' +
       '<tr><th class="' + SUB_TH + ' border-l border-rule">B</th><th class="' + SUB_TH + '">표준오차</th><th class="' + SUB_TH + ' border-l border-rule">하한</th><th class="' + SUB_TH + '">상한</th></tr>' +
       '</thead><tbody class="font-mono">' + body + '</tbody></table>';
-    return statCard('계수 (Coefficients) <sup class="text-blue-600">a</sup>', table, ['a. 종속변수: ' + A.esc(targetLabel), '*. 유의확률 p &lt; .05, **. p &lt; .01, ***. p &lt; .001', 'VIF 10 초과(붉은색)는 다중공선성이 의심됩니다.', '※ 표준화 계수(Beta)는 API 응답에 포함되지 않아 생략했습니다.']);
+    return statCard('계수 (Coefficients) <sup class="text-blue-600">a</sup>', table, serverWarning());
   }
 
 
@@ -244,7 +253,7 @@
       }).join('') + '</tr>';
     }).join('');
     var table = '<table class="w-full text-center text-body border-collapse"><thead>' + head + '</thead><tbody class="font-mono">' + body + '</tbody></table>';
-    return statCard('다항 로지스틱 회귀계수 (범주별)', table, ['종속변수: ' + A.esc(targetLabel), 'B=비표준화 계수, Exp(B)=오즈비(odds ratio)', '다중 분류 모형은 표준오차·유의확률을 제공하지 않습니다.']);
+    return statCard('다항 로지스틱 회귀계수 (범주별)', table, ['종속변수: ' + A.esc(targetLabel), 'B=비표준화 계수, Exp(B)=오즈비(odds ratio)']);
   }
 
   /** result.confusion_matrix = {labels:[...], matrix:[[...]]}. 로지스틱/분류트리 공용 */
@@ -314,7 +323,7 @@
     if (has(metrics.recall)) cards.push(kpiCard('재현율 (Recall)', Number(metrics.recall).toFixed(3), '실제 양성 중 적중'));
     if (has(metrics.f1)) cards.push(kpiCard('F1 점수', Number(metrics.f1).toFixed(3), '정밀도·재현율 조화평균', 'text-blue-600'));
     if (has(metrics.roc_auc)) cards.push(kpiCard('ROC-AUC', Number(metrics.roc_auc).toFixed(3), '분류 판별력', 'text-emerald-600'));
-    if (has(metrics.log_loss)) cards.push(kpiCard('Log Loss', spssNum(metrics.log_loss, 3), '낮을수록 우수'));
+    if (has(metrics.log_loss)) cards.push(kpiCard('Log Loss', spssNum(metrics.log_loss, 3), ''));
     if (has(metrics.mcfadden)) cards.push(kpiCard('McFadden R²', spssNum(metrics.mcfadden, 3), '유사 결정계수', 'text-amber-600'));
     if (has(metrics.aic)) cards.push(kpiCard('AIC / BIC', spssNum(metrics.aic, 1), has(metrics.bic) ? 'BIC ' + spssNum(metrics.bic, 1) : ''));
     return cards;
@@ -326,9 +335,9 @@
     var n = result.n_observations != null ? result.n_observations : metrics.n_samples;
     if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), '유효 관측치'));
     if (has(metrics.n_clusters)) cards.push(kpiCard('군집 수', A.num(metrics.n_clusters), '', 'text-blue-600'));
-    cards.push(kpiCard('실루엣 (Silhouette)', Number(metrics.silhouette).toFixed(3), '1에 가까울수록 우수', 'text-emerald-600'));
-    if (has(metrics.calinski_harabasz)) cards.push(kpiCard('Calinski-Harabasz', spssNum(metrics.calinski_harabasz, 1), '클수록 우수'));
-    if (has(metrics.davies_bouldin)) cards.push(kpiCard('Davies-Bouldin', Number(metrics.davies_bouldin).toFixed(3), '낮을수록 우수', 'text-blue-600'));
+    cards.push(kpiCard('실루엣 (Silhouette)', Number(metrics.silhouette).toFixed(3), '', 'text-emerald-600'));
+    if (has(metrics.calinski_harabasz)) cards.push(kpiCard('Calinski-Harabasz', spssNum(metrics.calinski_harabasz, 1), ''));
+    if (has(metrics.davies_bouldin)) cards.push(kpiCard('Davies-Bouldin', Number(metrics.davies_bouldin).toFixed(3), '', 'text-blue-600'));
     if (has(metrics.variance_ratio)) cards.push(kpiCard('군집 간 분산 비율', (metrics.variance_ratio * 100).toFixed(1) + '%', 'between_ss / total_ss'));
     if (has(metrics.inertia)) cards.push(kpiCard('Inertia', spssNum(metrics.inertia, 1), '군집 내 제곱합'));
     if (has(metrics.n_noise)) cards.push(kpiCard('노이즈 점', A.num(metrics.n_noise), has(metrics.noise_ratio) ? (metrics.noise_ratio * 100).toFixed(1) + '%' : '', 'text-amber-600'));
@@ -405,7 +414,7 @@
       c.push(kpiCard('모형 R²', Number(metrics.model_r_squared).toFixed(3), '설명력 ' + (metrics.model_r_squared * 100).toFixed(1) + '%', 'text-blue-600'));
       if (has(metrics.n_significant_terms)) c.push(kpiCard('유의한 효과 수', A.num(metrics.n_significant_terms), 'p < .05'));
       if (has(metrics.max_eta_squared)) c.push(kpiCard('최대 효과크기 (η²)', Number(metrics.max_eta_squared).toFixed(3), '가장 큰 효과', 'text-blue-600'));
-      if (has(metrics.levene_p_value)) c.push(kpiCard('Levene 등분산', 'p=' + spssNum(metrics.levene_p_value), metrics.levene_p_value >= 0.05 ? '등분산 충족' : '등분산 위배', 'text-amber-600'));
+      if (has(metrics.levene_p_value)) c.push(kpiCard('Levene 등분산', 'p=' + spssNum(metrics.levene_p_value), '', 'text-amber-600'));
     } else if (has(metrics.n_individuals)) {
       c.push(kpiCard('개체 수', A.num(metrics.n_individuals), '관측치 ' + A.num(metrics.n_observations)));
       if (has(metrics.average_growth_rate)) c.push(kpiCard('평균 성장률', spssNum(metrics.average_growth_rate, 3), '시간 1단위당, ' + sig(metrics.average_growth_rate_p_value), 'text-blue-600'));
@@ -419,7 +428,7 @@
     } else if (has(metrics.n_treated)) {
       c.push(kpiCard('처치군', A.num(metrics.n_treated), '매칭 ' + A.num(metrics.n_matched_treated) + '명'));
       if (has(metrics.match_rate)) c.push(kpiCard('매칭률', (metrics.match_rate * 100).toFixed(1) + '%', '처치군 중 매칭 성공', 'text-blue-600'));
-      if (has(metrics.mean_abs_smd_after)) c.push(kpiCard('평균 |SMD|', spssNum(metrics.mean_abs_smd_before) + ' → ' + spssNum(metrics.mean_abs_smd_after), metrics.mean_abs_smd_after < 0.1 ? '매칭 후 균형 양호' : '매칭 후 불균형', 'text-emerald-600'));
+      if (has(metrics.mean_abs_smd_after)) c.push(kpiCard('평균 |SMD|', spssNum(metrics.mean_abs_smd_before) + ' → ' + spssNum(metrics.mean_abs_smd_after), '', 'text-emerald-600'));
       if (has(metrics.att)) c.push(kpiCard('ATT', spssNum(metrics.att, 3) + stars(metrics.att_p_value), sig(metrics.att_p_value), 'text-blue-600'));
     }
     return c;
@@ -473,7 +482,7 @@
   function n0(v) { return has(v) ? A.num(v) : ''; }
   function pc(v) { return has(v) ? (v * 100).toFixed(1) + '%' : ''; }
   function yes(b, t, f) { return b == null ? '' : '<span class="font-sans font-semibold ' + (b ? 'text-emerald-700' : 'text-rose-600') + '">' + (b ? t : f) + '</span>'; }
-  function noteOf(result) { return result.note ? [A.esc(result.note)] : []; }
+  function noteOf(result) { return result.note ? [srv(A.esc(result.note))] : []; }
   var SIG_NOTE = '*. p &lt; .05, **. p &lt; .01, ***. p &lt; .001';
 
   /* 선형 회귀: 적합도·예측 오차·모형 비교 / 잔차 진단 */
@@ -486,10 +495,10 @@
   function renderLinearDiagnostics(metrics, diag) {
     diag = diag || {};
     var rows = [], norm = diag.normality, homo = diag.homoscedasticity, vif = diag.vif || [];
-    if (has(metrics.durbin_watson)) rows.push(['자기상관', 'Durbin-Watson', spssNum(metrics.durbin_watson), '', yes(metrics.durbin_watson >= 1.5 && metrics.durbin_watson <= 2.5, '독립성 충족 (1.5~2.5)', '자기상관 의심')]);
+    if (has(metrics.durbin_watson)) rows.push(['자기상관', 'Durbin-Watson', spssNum(metrics.durbin_watson), '', '']);
     if (norm) rows.push(['잔차 정규성', A.esc(norm.test || 'Shapiro-Wilk'), spssNum(norm.statistic), sigFmt(norm.p_value), yes(norm.normal, '정규성 충족', '정규성 위배')]);
     if (homo) rows.push(['등분산성', A.esc(homo.test || 'Breusch-Pagan'), spssNum(homo.lm_statistic != null ? homo.lm_statistic : homo.statistic), sigFmt(homo.p_value), yes(homo.homoscedastic, '등분산 충족', '이분산 의심')]);
-    if (vif.length) { var mx = Math.max.apply(null, vif.map(function (v) { return v.vif; })); rows.push(['다중공선성', '최대 VIF', spssNum(mx), '', yes(mx <= 10, 'VIF ≤ 10 (양호)', 'VIF > 10 (다중공선성 의심)')]); }
+    if (vif.length) { var mx = Math.max.apply(null, vif.map(function (v) { return v.vif; })); rows.push(['다중공선성', '최대 VIF', spssNum(mx), '', '']); }
     if (!rows.length) return '';
     return statCard('회귀 진단 (Regression Diagnostics)', tbl(['진단 항목', '검정', '통계량', '유의확률', '판정'], rows), ['정규성·등분산성은 p ≥ .05 이면 가정을 충족한 것으로 봅니다.', '변수별 VIF는 계수표의 VIF 열을 참고하세요.']);
   }
@@ -784,7 +793,93 @@
     A.charts.gallery(A.$('#rp-charts'), r);
     applyTab();
     loadRawData();
+    setTimeout(function () { window.ReportPdf.ready = true; }, 800);   // 표·차트 그리기가 끝난 뒤
   }
+
+  /* ---------------- PDF 내보내기: 화면에 나온 표·지표·차트를 그대로 모아 서버에 보낸다 ---------------- */
+  function txt(el) { return (el.textContent || '').replace(/\s+/g, ' ').trim(); }
+
+  /** <table> → 칸 배열 [[{t, h, cs, rs}]] (머리행의 병합 칸 포함) */
+  function readTable(tbl) {
+    var rows = [];
+    [].forEach.call(tbl.rows, function (tr) {
+      var inHead = !!tr.closest('thead');
+      rows.push([].map.call(tr.cells, function (c) {
+        return { t: txt(c), h: inHead || c.tagName === 'TH', cs: c.colSpan || 1, rs: c.rowSpan || 1 };
+      }));
+    });
+    return rows;
+  }
+
+  /** 4-2 화면의 카드(표 카드·지표 카드)를 PDF 구역으로 변환 */
+  function readCard(card) {
+    var h = card.querySelector('h4, h5');
+    var sec = { title: h ? txt(h) : '', kpis: [], tables: [], notes: [] };
+    [].forEach.call(card.querySelectorAll('table'), function (t) { if (t.rows.length) sec.tables.push(readTable(t)); });
+    // 지표 카드: 라벨 / 값 / 설명 3단 구조(kpiCard)
+    [].forEach.call(card.querySelectorAll('.min-w-\\[130px\\]'), function (k) {
+      var d = k.children;
+      if (d.length >= 2) sec.kpis.push({ label: txt(d[0]), value: txt(d[1]), caption: d[2] ? txt(d[2]) : '' });
+    });
+    // 각주: 표 아래의 .text-xs 줄
+    [].forEach.call(card.querySelectorAll('.text-xs.text-ink-3 > div'), function (n) { var t = txt(n); if (t) sec.notes.push(t); });
+    return sec;
+  }
+
+  function chartImages() {
+    var out = [];
+    var cards = [].slice.call(document.querySelectorAll('#rp-charts [data-cidx]'));
+    var charts = (window.Highcharts && Highcharts.charts || []).filter(Boolean);
+    return Promise.all(cards.map(function (c, i) {
+      var holder = c.querySelector('[id^="ch-"]');
+      var ch = holder && charts.filter(function (x) { return x.renderTo === holder; })[0];
+      var title = c.querySelector('h5');
+      var sub = c.querySelector('p, .text-xs.text-ink-3');
+      var rank = c.querySelector('span.rounded');
+      if (!ch) return null;
+      return new Promise(function (resolve) {
+        try {
+          var svg = ch.getSVG({ chart: { backgroundColor: '#ffffff' } });
+          var img = new Image();
+          var w = ch.chartWidth || 600, hgt = ch.chartHeight || 300;
+          img.onload = function () {
+            var cv = document.createElement('canvas'); cv.width = w * 2; cv.height = hgt * 2;
+            var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height);
+            resolve({ title: title ? txt(title) : '', subtitle: sub ? txt(sub) : '', rank: rank ? txt(rank) : String(i + 1) + '순위', data: cv.toDataURL('image/png') });
+          };
+          img.onerror = function () { resolve(null); };
+          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        } catch (e) { resolve(null); }
+      });
+    })).then(function (l) { return l.filter(Boolean); });
+  }
+
+  /** 지금 분석의 화면 내용(표·지표·차트)을 모아 {title, method, sections, images} 로 돌려준다 */
+  function collectScreen() {
+    var prev = tab;
+    tab = 'overview'; applyTab();   // 표와 차트가 모두 그려진 종합 화면 기준
+    var diag = A.$('#rp-diag');
+    var sections = [];
+    if (diag) { var d = readCard(diag); d.title = d.title || '분석 결과 요약'; if (d.kpis.length || d.tables.length) sections.push(d); }
+    [].forEach.call(A.$('#rp-result').children, function (c) {
+      var s = readCard(c);
+      if (s.title && (s.tables.length || s.kpis.length)) sections.push(s);
+    });
+    return chartImages().then(function (images) {
+      tab = prev; applyTab();
+      return { title: res.name || '', method: res.method || '', sections: sections, images: images };
+    });
+  }
+  // 5단계(패키지 PDF)가 이 화면을 숨은 iframe 으로 열어 같은 내용을 가져간다
+  /** 5단계: 보이지 않는 영역(#rp-*)에 4-2 화면을 그대로 그려 표·지표·차트를 읽어 온다. 화면 이동·숨은 창 없이 같은 코드를 쓴다 */
+  function renderOffscreen(analysis) {
+    res = analysis;
+    raw = { loaded: true, rows: [], cols: [], total: 0, q: '' };   // 원시데이터 탭은 PDF 에 쓰지 않으므로 불러오지 않는다
+    tab = 'overview';
+    build();
+    return new Promise(function (resolve) { setTimeout(resolve, 900); }).then(collectScreen);   // 표·차트 그리기가 끝난 뒤
+  }
+  window.ReportPdf = { ready: false, collect: collectScreen, render: renderOffscreen };
 
   function showEmpty() {
     A.$('#rp-body').classList.add('hidden');
@@ -794,6 +889,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    if (!A.$('#btn-save') || !A.$('#rp-empty') || A.$('#rp-offscreen')) return;   // 5단계처럼 이 화면이 아닌 곳에서는 화면 초기화를 하지 않는다
     A.$('#rp-tabs').addEventListener('click', function (e) {
       var b = e.target.closest('[data-tab]');
       if (!b) return;

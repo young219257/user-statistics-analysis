@@ -15,6 +15,13 @@
   var ALLOWED = /\.(csv|xlsx)$/i;
   var MERGED_TAB = '__merged__';
 
+  var MAX_CARDS = 2;                          // 한 번에 고를 수 있는 데이터관리카드 수
+  var RUN_LIMIT_BYTES = 30 * 1024 * 1024;     // 분석·결합에 쓸 수 있는 반입 데이터셋 용량(선택한 것의 합). 반입 자체는 서버 한도(업로드 한도)까지 가능
+  function mb(bytes) { return (bytes / 1048576).toFixed(1) + 'MB'; }
+  function dsOf(id) { return datasets.filter(function (x) { return x.id === id; })[0] || null; }
+  function isMergedDs(id) { var d = dsOf(id); return !!d && d.source_type === 'merged'; }
+  function sizeOf(id) { var d = dsOf(id); return d && d.source_type !== 'merged' ? (d.size_bytes || 0) : 0; }   // 결합된 데이터셋은 용량 제한 대상이 아니다
+  function selectedBytes() { return sel.filter(function (x) { return x.kind === 'dataset'; }).reduce(function (n, x) { return n + sizeOf(x.id); }, 0); }
   var sel = [];              // 선택한 데이터셋 [{id, kind:'card'|'dataset', d: DatasetDetail, use: {열이름: true}, alias}]
   var activeId = null;       // 열·미리보기에 보여줄 데이터셋 id (결합 결과는 MERGED_TAB)
   var datasets = [], cards = [];
@@ -99,8 +106,9 @@
   function loadCards() {
     var q = A.$('#mgmt-search').value || '';
     return A.get('/api/v1/data-cards' + A.qs({ limit: 100, q: q })).then(function (p) {
-      cards = p.items || [];
-      A.$('#mgmt-total').textContent = '총 ' + A.num(p.total) + '건';
+      // 적재가 끝난 카드만 보여 준다 (적재 중·실패는 목록과 건수에서 뺀다)
+      cards = (p.items || []).filter(function (c) { return !c.status || c.status === 'ready'; });
+      A.$('#mgmt-total').textContent = '총 ' + A.num(cards.length) + '건';
       renderCards();
     }).catch(function (e) { A.$('#mgmt-list').innerHTML = '<div class="p-4 text-xs text-rose-600">' + A.esc(e.message) + '</div>'; });
   }
@@ -110,30 +118,14 @@
   function renderCards() {
     function row(c) {
       var on = !!find(c.id);
-      var st = c.status && c.status !== 'ready' ? c.status : null;   // loading: 처음 적재 중, failed: 적재 실패
-      return '<div role="button" tabindex="0" data-card="' + A.esc(c.id) + '" class="p-3 flex items-center justify-between transition-colors select-none ' + (st ? 'cursor-not-allowed opacity-60' : 'cursor-pointer ') + (on ? 'bg-brand-soft' : 'hover:bg-paper-3') + '">' +
+      return '<div role="button" tabindex="0" data-card="' + A.esc(c.id) + '" class="p-3 flex items-center justify-between transition-colors select-none cursor-pointer ' + (on ? 'bg-brand-soft' : 'hover:bg-paper-3') + '">' +
         '<div class="flex items-center gap-2.5 min-w-0 pr-2">' + checkBox(on) + '<span class="text-body truncate ' + (on ? 'font-semibold text-ink' : 'text-ink-1') + '" title="' + A.esc(c.name) + '">' + A.esc(c.name) + '</span></div>' +
-        (st ? '<span class="text-xs shrink-0 whitespace-nowrap text-muted">' + (st === 'loading' ? '적재 중' : '적재 실패') + '</span>'
-          : '<span class="text-xs font-mono text-ink-3 shrink-0">' + A.num(c.n_rows) + '행</span>') + '</div>';
+        '<span class="text-xs font-mono text-ink-3 shrink-0">' + A.num(c.n_rows) + '행</span></div>';
     }
-    // 선택 가능한 카드를 위에, 적재 실패는 아래에 따로 묶는다 (실패 배지가 목록 전체에 흩어지지 않게)
-    var failed = cards.filter(function (c) { return c.status === 'failed'; });
-    var usable = cards.filter(function (c) { return c.status !== 'failed'; });
-    A.$('#mgmt-list').innerHTML = usable.map(row).join('') +
-      (failed.length ? '<div class="px-3 py-2 text-xs font-semibold text-ink-3 bg-paper-3">적재 실패 ' + failed.length + '건, \'카드 동기화\'로 다시 불러올 수 있습니다</div>' + failed.map(row).join('') : '') ||
-      '<div class="p-4 text-body text-ink-3 text-center">등록된 데이터관리카드가 없습니다. \'카드 동기화\'로 불러올 수 있습니다.</div>';
+    A.$('#mgmt-list').innerHTML = cards.map(row).join('') ||
+      '<div class="p-4 text-body text-ink-3 text-center">등록된 데이터관리카드가 없습니다.</div>';
     A.icons();
   }
-  function syncCards() {
-    var b = A.$('#mgmt-sync');
-    b.disabled = true; b.textContent = '동기화 중...';
-    A.post('/api/v1/data-cards/sync', {}).then(function (r) {
-      // 성공 건은 목록에 바로 보이므로 따로 알리지 않고, 실패 건만 목록 아래에 표시
-      A.fail(r.failed ? '데이터관리카드 ' + r.failed + '건을 불러오지 못했습니다. (성공 ' + r.succeeded + '건)' : null, '#mgmt-list');
-      return loadCards();
-    }).catch(function (e) { A.fail(e.message, '#mgmt-list'); }).then(function () { b.disabled = false; b.textContent = '카드 동기화'; });
-  }
-
   /* ---------------- 반입 데이터셋 ---------------- */
   function loadDatasets() {
     return Promise.all([
@@ -147,11 +139,11 @@
   }
   function renderDatasets() {
     A.$('#ds-list').innerHTML = datasets.map(function (d) {
-      var on = !!find(d.id);
-      return '<div role="button" tabindex="0" data-ds="' + A.esc(d.id) + '" class="p-3 flex items-center justify-between gap-2 cursor-pointer select-none transition-colors ' + (on ? 'bg-blue-50/70' : 'hover:bg-paper-3/80') + '">' +
+      var on = !!find(d.id), big = d.source_type !== 'merged' && (d.size_bytes || 0) > RUN_LIMIT_BYTES;
+      return '<div role="button" tabindex="0" data-ds="' + A.esc(d.id) + '" class="p-3 flex items-center justify-between gap-2 select-none transition-colors ' + (big ? 'cursor-not-allowed opacity-60' : 'cursor-pointer ') + (on ? 'bg-blue-50/70' : (big ? '' : 'hover:bg-paper-3/80')) + '">' +
         '<div class="flex items-center gap-2.5 min-w-0">' + checkBox(on) + '<div class="min-w-0"><div class="ds-name"><span class="ds-name-text text-xs font-bold text-ink truncate">' + A.esc(d.name) + '</span>' +
         (d.source_type === 'merged' ? '<span class="ds-tag-merged">결합</span>' : '') + '</div>' +
-        '<div class="text-xs text-ink-4 font-mono mt-0.5">' + A.num(d.n_rows) + '행, ' + d.n_cols + '변수' + (d.source_format && d.source_type !== 'merged' ? ', ' + A.esc(d.source_format) : '') + '</div></div></div>' +
+        '<div class="text-xs text-ink-4 font-mono mt-0.5">' + A.num(d.n_rows) + '행, ' + d.n_cols + '변수' + (d.source_format && d.source_type !== 'merged' ? ', ' + A.esc(d.source_format) : '') + (d.size_bytes ? ', ' + mb(d.size_bytes) : '') + (big ? ', <span class="ds-over">' + mb(RUN_LIMIT_BYTES) + ' 초과</span>' : '') + '</div></div></div>' +
         '<button type="button" data-del="' + A.esc(d.id) + '" class="p-1 text-rule-3 hover:text-rose-600 cursor-pointer shrink-0" title="삭제">' + A.icon('trash-2', 'w-3.5 h-3.5') + '</button></div>';
     }).join('') || '<div class="p-6 text-body text-muted text-center">반입된 파일이 없습니다.</div>';
     A.icons();
@@ -188,11 +180,31 @@
   function toggle(kind, id) {
     var s = find(id);
     if (s) { remove(id); return Promise.resolve(); }
-    var c = kind === 'card' ? cards.filter(function (x) { return x.id === id; })[0] : null;
-    if (c && c.status && c.status !== 'ready') {
-      A.fail(c.status === 'loading' ? '데이터관리카드를 적재하고 있습니다. 잠시 후 다시 선택해 주세요.' : '적재에 실패한 데이터관리카드입니다. \'카드 동기화\'로 다시 불러와 주세요.', '#mgmt-list');
+    var anchor = kind === 'card' ? '#mgmt-list' : '#ds-list';
+    if (kind === 'dataset' && isMergedDs(id) && sel.length) {
+      // 결합된 데이터셋은 단독으로만 쓰므로, 지금 선택한 데이터는 자동으로 해제하고 이것만 고른다
+      sel.slice().forEach(function (x) { remove(x.id); });
+    }
+    if (sel.some(function (x) { return x.kind === 'dataset' && isMergedDs(x.id); })) {
+      // 결합된 데이터셋이 선택돼 있으면 해제하고 새로 고른 것을 선택한다
+      sel.slice().forEach(function (x) { remove(x.id); });
+    }
+    if (kind === 'card' && sel.filter(function (x) { return x.kind === 'card'; }).length >= MAX_CARDS) {
+      A.fail('데이터관리카드는 최대 ' + MAX_CARDS + '개까지 선택할 수 있습니다. 다른 카드를 고르려면 선택한 카드를 먼저 해제하세요.', '#mgmt-list');
       return Promise.resolve();
     }
+    if (kind === 'dataset') {
+      var own = sizeOf(id);
+      if (own > RUN_LIMIT_BYTES) {
+        A.fail('분석·결합에는 ' + mb(RUN_LIMIT_BYTES) + ' 이하의 데이터셋만 쓸 수 있습니다. (이 데이터셋 ' + mb(own) + ')', '#ds-list');
+        return Promise.resolve();
+      }
+      if (selectedBytes() + own > RUN_LIMIT_BYTES) {
+        A.fail('선택한 데이터셋의 합계가 ' + mb(RUN_LIMIT_BYTES) + '를 넘습니다. (현재 ' + mb(selectedBytes()) + ' + ' + mb(own) + ')', '#ds-list');
+        return Promise.resolve();
+      }
+    }
+    A.fail(null, '#mgmt-list'); A.fail(null, '#ds-list');
     return A.get('/api/v1/datasets/' + encodeURIComponent(id)).then(function (d) {
       var use = {};
       (d.columns || []).forEach(function (c) { use[c.name] = true; });
@@ -331,10 +343,18 @@
       activeId = MERGED_TAB;
       changed();
       A.toast('결합이 완료되었습니다.');
-      // 새 '결합 결과' 칩이 선택되고 미리보기가 그 데이터로 바뀐다. 미리보기가 화면 밖이면 보이는 곳까지만 즉시 이동
       var pv = A.$('#preview-card');
-      if (pv && pv.scrollIntoView) pv.scrollIntoView({ block: 'nearest', behavior: 'instant' });
-      loadDatasets();
+      var showPreview = function () {
+        if (pv) { pv.classList.remove('preview-collapsed'); var t = A.$('#preview-toggle'); if (t) t.setAttribute('aria-expanded', 'true'); }   // 접혀 있어도 결합 결과 미리보기를 펼쳐 보여 준다
+        loadPreview();
+        if (pv && pv.scrollIntoView) pv.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      };
+      if (!d || !d.id) { showPreview(); loadDatasets(); return; }
+      // 결합이 끝나면 재료로 쓴 데이터 선택을 풀고, 결합된 데이터셋 하나만 선택한다
+      loadDatasets().then(function () {
+        sel.slice().forEach(function (x) { remove(x.id); });
+        return toggle('dataset', d.id);
+      }).then(showPreview);
     }).catch(function (e) { merging = false; mergeError = '결합에 실패했습니다: ' + e.message; renderMerge(); A.icons(); A.toast('결합에 실패했습니다.', 'error'); });
   }
 
@@ -352,7 +372,9 @@
     A.get('/api/v1/datasets/' + encodeURIComponent(id) + '/preview' + A.qs({ limit: PAGE, offset: preview.rows.length })).then(function (r) {
       preview.loading = false;
       more.classList.add('hidden'); more.classList.remove('flex');
-      if (!previewTarget() || previewTarget().id !== id) return;
+      // 불러오는 사이 선택이 바뀌었으면(결합 직후 선택 정리 등) 지금 대상으로 다시 불러온다
+      if (!previewTarget()) { renderPreview(); return; }
+      if (previewTarget().id !== id) { loadPreview(); return; }
       preview.rows = preview.rows.concat(r.rows || []);
       preview.cols = r.columns || preview.cols;
       preview.total = r.total_rows;
@@ -408,7 +430,6 @@
   document.addEventListener('DOMContentLoaded', function () {
     A.$('#mgmt-search').addEventListener('input', A.debounce(loadCards, 300));
     A.$('#col-search').addEventListener('input', renderColumns);
-    A.$('#mgmt-sync').addEventListener('click', syncCards);
     A.$('#mgmt-list').addEventListener('click', function (e) {
       var c = e.target.closest('[data-card]');
       if (c) toggle('card', c.getAttribute('data-card'));

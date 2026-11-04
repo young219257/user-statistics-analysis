@@ -37,6 +37,8 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
+<script src="${ctx}/static/js/charts.js"></script>
+<script src="${ctx}/static/js/report.js"></script>
 <script src="${ctx}/static/js/step5.js"></script>
 </body>
 </html>

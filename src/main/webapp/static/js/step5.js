@@ -198,6 +198,40 @@
       '<div class="px-4 py-2 text-xs text-ink-3 border-t border-paper-2 bg-paper-3/50">*** p &lt; 0.001, ** p &lt; 0.01, * p &lt; 0.05, ns 유의하지 않음' + (stat === 'z_value' ? ', 로지스틱 회귀 계수(로그 오즈)' : '') + '</div></div>';
   }
 
+  /** 4-2 화면이 쓰는 영역(#rp-*)을 화면 밖에 만든다. 같은 report.js 로 그리기 위한 자리다 */
+  function offscreen() {
+    var box = document.getElementById('rp-offscreen');
+    if (box) return box;
+    box = document.createElement('div');
+    box.id = 'rp-offscreen';
+    box.setAttribute('aria-hidden', 'true');
+    box.style.cssText = 'position:fixed;left:-10000px;top:0;width:1200px;';
+    box.innerHTML = '<h3 id="rp-title"></h3><p id="rp-method"></p>' +
+      '<button type="button" id="btn-save" class="hidden"></button>' +
+      '<div id="rp-empty" class="hidden"></div>' +
+      '<div id="rp-body"><div id="rp-diag"></div><div id="rp-tabs"></div><div id="rp-result"></div><div id="rp-charts"></div><div id="rp-rawdata"></div></div>';
+    document.body.appendChild(box);
+    return box;
+  }
+  /** 분석 하나: API 로 결과를 받아 report.js 로 그리고, 그려진 표·지표·차트를 읽는다 */
+  function collectOne(analysisId) {
+    if (!window.ReportPdf || !window.ReportPdf.render) return Promise.reject(new Error('결과 리포트 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.'));
+    return A.get('/api/v1/analyses/' + encodeURIComponent(analysisId)).then(function (an) {
+      var box = offscreen();
+      return window.ReportPdf.render(an).then(function (screen) {
+        box.querySelector('#rp-diag').innerHTML = ''; box.querySelector('#rp-result').innerHTML = ''; box.querySelector('#rp-charts').innerHTML = '';
+        return screen;
+      });
+    });
+  }
+  function collectScreens(pkg) {
+    var ids = (pkg.analysis_ids || []).slice();
+    var out = [];
+    return ids.reduce(function (p, aid) {
+      return p.then(function () { return collectOne(aid).then(function (s) { out.push(s); }); });
+    }, Promise.resolve()).then(function () { return out; });
+  }
+
   function manifestView(s) {
     var list = (s.manifest && s.manifest.analyses) || [];
     if (!list.length) return '<div class="py-10 text-center text-xs text-ink-4">' + (s.manifest ? '매니페스트에 분석 정보가 없습니다.' : '매니페스트를 불러오는 중...') + '</div>';
@@ -324,7 +358,14 @@
         if (!busy) reproduce();
       } else if ((act === 'pdf' || act === 'excel') && !busy) {
         busy = act; renderDetail();
-        A.downloadFile('GET', '/export/package/' + encodeURIComponent(id) + '/' + act, null, (selected.name || 'package').replace(/[\\/:*?"<>|]/g, '_') + (act === 'pdf' ? '.pdf' : '.xlsx'))
+        var fname = (selected.name || 'package').replace(/[\\/:*?"<>|]/g, '_') + (act === 'pdf' ? '.pdf' : '.xlsx');
+        // PDF: 담긴 분석마다 4-2 결과 화면을 불러 그 화면의 표·지표·차트를 그대로 PDF 로 만든다
+        // PDF·Excel 모두 같은 4-2 화면 내용으로 만든다 (Excel 에는 차트 이미지는 넣지 않는다)
+        var job = collectScreens(selected).then(function (screens) {
+          if (act === 'excel') screens.forEach(function (sc) { sc.images = []; });
+          return A.downloadFile('POST', '/export/package/' + encodeURIComponent(id) + '/' + act, { screens: screens }, fname);
+        });
+        job
           .then(function (name) { notice("'" + name + "' 파일이 다운로드되었습니다."); })
           .catch(function (err) { A.fail(err.message, '#pk-detail'); }).then(function () { busy = null; renderDetail(); });
       } else if (act === 'share') {

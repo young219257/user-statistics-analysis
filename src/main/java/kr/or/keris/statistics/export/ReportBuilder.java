@@ -142,6 +142,16 @@ public final class ReportBuilder {
         }
     }
 
+    static String statusLabel(String status) {
+        if (status == null) return null;
+        if ("succeeded".equals(status)) return "성공";
+        if ("failed".equals(status)) return "실패";
+        if ("running".equals(status)) return "실행 중";
+        if ("pending".equals(status)) return "대기";
+        if ("cancelled".equals(status)) return "취소";
+        return status;
+    }
+
     private static String text(JsonNode n, String field) {
         JsonNode v = n == null ? null : n.get(field);
         return v == null || v.isNull() ? null : v.asText();
@@ -152,14 +162,6 @@ public final class ReportBuilder {
      * dataset / rawPreview 는 없어도 된다.
      */
     public static void addAnalysis(Report r, String prefix, JsonNode a, JsonNode dataset, JsonNode rawPreview, List<Report.Img> images) {
-        Report.Section ov = r.section(prefix + "분석 개요");
-        ov.put("분석명", text(a, "name")).put("분석 ID", text(a, "id")).put("분석 기법", text(a, "method")).put("상태", text(a, "status"));
-        if (dataset != null) ov.put("데이터셋", text(dataset, "name")).put("데이터셋 규모", text(dataset, "n_rows") + "행 × " + text(dataset, "n_cols") + "변수");
-        else ov.put("데이터셋 ID", text(a, "dataset_id"));
-        ov.put("생성 시각", text(a, "created_at")).put("완료 시각", text(a, "completed_at"));
-        if (a.hasNonNull("duration_ms")) ov.put("소요 시간(ms)", a.get("duration_ms").asLong());
-        if (a.hasNonNull("error")) ov.put("오류", text(a, "error"));
-
         JsonNode metrics = a.get("metrics");
         if (metrics != null && metrics.size() > 0) {
             Report.Section s = r.section(prefix + "핵심 지표");
@@ -169,17 +171,9 @@ public final class ReportBuilder {
             collectTables(prefix + "지표", metrics, s.tables, false, 0);
         }
 
-        Report.Section req = r.section(prefix + "요청 조건");
-        List<Object[]> kv = new ArrayList<Object[]>();
-        flatten("", a.get("params"), kv, 0);
-        req.kv.addAll(kv);
-        List<Object[]> pre = new ArrayList<Object[]>();
-        flatten("", a.get("preprocessing"), pre, 0);
-        for (Object[] p : pre) req.put("전처리 · " + p[0], p[1]);
-
         JsonNode result = a.get("result");
         if (result != null && result.size() > 0) {
-            Report.Section s = r.section(prefix + "상세 결과");
+            Report.Section s = r.section(prefix + "표준 통계 결과표");
             List<Object[]> rk = new ArrayList<Object[]>();
             flatten("", result, rk, 0);
             s.kv.addAll(rk);
@@ -188,16 +182,7 @@ public final class ReportBuilder {
 
         JsonNode recs = a.get("chart_recommendations");
         if (recs != null && recs.size() > 0) {
-            Report.Section s = r.section(prefix + "추천 차트");
-            Report.Table t = new Report.Table(prefix + "추천 차트");
-            t.headers.add("우선순위"); t.headers.add("종류"); t.headers.add("제목"); t.headers.add("추천 사유");
-            for (JsonNode c : recs) {
-                List<Object> row = new ArrayList<Object>();
-                row.add(c.hasNonNull("priority") ? (Object) c.get("priority").asLong() : null);
-                row.add(text(c, "kind")); row.add(text(c, "title")); row.add(text(c, "reason"));
-                t.rows.add(row);
-            }
-            s.tables.add(t);
+            Report.Section s = r.section(prefix + "진단 시각화 차트");
             if (images != null) s.images.addAll(images);
         }
 
@@ -209,7 +194,7 @@ public final class ReportBuilder {
         }
 
         if (rawPreview != null && rawPreview.has("rows")) {
-            Report.Section s = r.section(prefix + "원시데이터");
+            Report.Section s = r.section(prefix + "표본별 원시데이터 및 잔차");
             Report.Table t = new Report.Table(prefix + "원시데이터(상위 " + rawPreview.get("rows").size() + "행)");
             t.excelOnly = true;
             JsonNode cols = rawPreview.get("columns");
@@ -224,10 +209,81 @@ public final class ReportBuilder {
         }
     }
 
+    /** 4-2 화면에서 모아 보낸 구역(표·지표·각주)과 차트 이미지를 Report 로 옮긴다. */
+    public static Report fromScreen(JsonNode scr, String fallbackTitle) {
+        Report r = new Report();
+        r.title = text(scr, "title") != null && !text(scr, "title").isEmpty() ? text(scr, "title") : fallbackTitle;
+        r.subtitle = "분석 결과";
+        addScreen(r, scr, false);
+        return r;
+    }
+
+    /** 분석 패키지: 담긴 분석마다 4-2 화면 내용을 이어 붙인다. */
+    public static Report fromScreens(JsonNode screens, String packageTitle) {
+        Report r = new Report();
+        r.title = packageTitle;
+        r.subtitle = "분석 결과";
+        int i = 0;
+        if (screens != null) for (JsonNode scr : screens) {
+            i++;
+            addScreen(r, scr, screens.size() > 1 || i > 1);
+        }
+        return r;
+    }
+
+    private static void addScreen(Report r, JsonNode scr, boolean banner) {
+        if (banner) {
+            Report.Screen b = new Report.Screen(nz(text(scr, "title")));
+            b.banner = true;
+            r.screen.add(b);
+        }
+        JsonNode secs = scr.get("sections");
+        if (secs != null) for (JsonNode s : secs) {
+            Report.Screen sc = new Report.Screen(text(s, "title") == null ? "" : text(s, "title"));
+            JsonNode kp = s.get("kpis");
+            if (kp != null) for (JsonNode k : kp) sc.kpis.add(new Report.Kpi(nz(text(k, "label")), nz(text(k, "value")), nz(text(k, "caption"))));
+            JsonNode tbs = s.get("tables");
+            if (tbs != null) for (JsonNode t : tbs) {
+                List<List<Report.Cell>> rows = new ArrayList<List<Report.Cell>>();
+                for (JsonNode row : t) {
+                    List<Report.Cell> cells = new ArrayList<Report.Cell>();
+                    for (JsonNode c : row) {
+                        cells.add(new Report.Cell(nz(text(c, "t")), c.path("h").asBoolean(false), c.path("cs").asInt(1), c.path("rs").asInt(1)));
+                    }
+                    if (!cells.isEmpty()) rows.add(cells);
+                    if (rows.size() >= 400) break;
+                }
+                if (!rows.isEmpty()) sc.tables.add(rows);
+            }
+            JsonNode nt = s.get("notes");
+            if (nt != null) for (JsonNode n : nt) sc.notes.add(n.asText());
+            r.screen.add(sc);
+        }
+        JsonNode imgs = scr.get("images");
+        if (imgs != null && imgs.size() > 0) {
+            Report.Screen figs = new Report.Screen("");
+            for (JsonNode im : imgs) {
+                String data = nz(text(im, "data"));
+                int comma = data.indexOf(',');
+                if (!data.startsWith("data:image/") || comma < 0) continue;
+                try {
+                    byte[] png = org.springframework.util.Base64Utils.decodeFromString(data.substring(comma + 1));
+                    figs.figures.add(new Report.Figure(nz(text(im, "rank")), nz(text(im, "title")), nz(text(im, "subtitle")), png));
+                } catch (IllegalArgumentException ignore) { /* 깨진 이미지는 건너뛴다 */ }
+                if (figs.figures.size() >= 30) break;
+            }
+            if (!figs.figures.isEmpty()) r.screen.add(figs);
+        }
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
+    }
+
     public static Report forAnalysis(JsonNode a, JsonNode dataset, JsonNode rawPreview, List<Report.Img> images) {
         Report r = new Report();
         r.title = text(a, "name");
-        r.subtitle = "분석 결과 보고서 · " + text(a, "method");
+        r.subtitle = "분석 결과";
         addAnalysis(r, "", a, dataset, rawPreview, images);
         return r;
     }
@@ -235,19 +291,7 @@ public final class ReportBuilder {
     public static Report forPackage(JsonNode pkg, List<JsonNode> analyses, List<JsonNode> datasets) {
         Report r = new Report();
         r.title = text(pkg, "name");
-        r.subtitle = "분석 패키지 보고서";
-        Report.Section ov = r.section("패키지 개요");
-        ov.put("패키지명", text(pkg, "name")).put("패키지 ID", text(pkg, "id"));
-        if (text(pkg, "description") != null) ov.put("설명", text(pkg, "description"));
-        ov.put("데이터셋 ID", text(pkg, "dataset_id")).put("포함 분석 수", analyses.size()).put("생성 시각", text(pkg, "created_at"));
-        JsonNode manifest = pkg.get("manifest");
-        if (manifest != null && manifest.size() > 0) {
-            Report.Section s = r.section("패키지 매니페스트");
-            List<Object[]> kv = new ArrayList<Object[]>();
-            flatten("", manifest, kv, 0);
-            s.kv.addAll(kv);
-            collectTables("매니페스트", manifest, s.tables, false, 0);
-        }
+        r.subtitle = "분석 결과";
         for (int i = 0; i < analyses.size(); i++) {
             addAnalysis(r, "A" + (i + 1) + " ", analyses.get(i), i < datasets.size() ? datasets.get(i) : null, null, null);
         }

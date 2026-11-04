@@ -1539,3 +1539,7 @@ body { font-size: 13px; }
 #toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f) { top: 84px; bottom: auto; right: 24px; left: auto; transform: none; }
 #toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f):not(#_g) { top: 72px; }
 #toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f):not(#_g):not(#_h) { top: 40vh; }
+.ds-over { color: var(--color-err-text); font-weight: 600; }
+
+/* 4-2 결과 보기: 분석이 끝나기 전에는 비활성 */
+#btn-report[aria-disabled="true"] { background: var(--color-rule-3) !important; color: #fff !important; cursor: not-allowed; pointer-events: none; }

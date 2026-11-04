@@ -35,6 +35,7 @@ public class ExportController {
     private static final String PDF = "application/pdf";
     private static final String XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private static final int RAW_ROWS = 1000;
+    private static final java.util.logging.Logger LOG = java.util.logging.Logger.getLogger(ExportController.class.getName());
 
     @Autowired
     private Upstream upstream;
@@ -65,17 +66,25 @@ public class ExportController {
                     try { raw = getJson(request, "/api/v1/datasets/" + enc(dsId) + "/preview?limit=" + RAW_ROWS + "&offset=0"); } catch (ApiException ignore) { /* 선택 항목 */ }
                 }
             }
-            List<Report.Img> images = pdf ? readImages(request) : null;
-            Report report = ReportBuilder.forAnalysis(a, dataset, raw, images);
+            JsonNode body = readBody(request);
+            Report report;
+            if (body != null && body.has("screen")) {
+                // 4-2 화면에 보이는 표·지표·차트를 그대로 옮긴 요청
+                report = ReportBuilder.fromScreen(body.get("screen"), text(a, "name", id));
+            } else {
+                List<Report.Img> images = pdf ? readImages(body) : null;
+                report = ReportBuilder.forAnalysis(a, dataset, raw, images);
+            }
             return file(report, pdf, "분석결과_" + text(a, "name", id));
         } catch (ApiException e) {
             return error(e.status, e.getMessage());
         } catch (Exception e) {
+            LOG.log(java.util.logging.Level.SEVERE, "내보내기 실패", e);   // 서버 로그에 원인(스택)을 남긴다
             return error(500, "내보내기 파일을 만들지 못했습니다: " + e.getMessage());
         }
     }
 
-    @RequestMapping(value = "/export/package/{id}/{fmt}", method = RequestMethod.GET)
+    @RequestMapping(value = "/export/package/{id}/{fmt}", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<byte[]> pkg(@PathVariable("id") String id, @PathVariable("fmt") String fmt,
                                       HttpServletRequest request) {
         try {
@@ -95,11 +104,15 @@ public class ExportController {
                     datasets.add(ds);
                 }
             }
-            Report report = ReportBuilder.forPackage(p, analyses, datasets);
+            JsonNode body = readBody(request);
+            Report report = body != null && body.has("screens")
+                    ? ReportBuilder.fromScreens(body.get("screens"), text(p, "name", id))   // 4-2 화면 내용을 그대로
+                    : ReportBuilder.forPackage(p, analyses, datasets);
             return file(report, pdf, "분석패키지_" + text(p, "name", id));
         } catch (ApiException e) {
             return error(e.status, e.getMessage());
         } catch (Exception e) {
+            LOG.log(java.util.logging.Level.SEVERE, "내보내기 실패", e);   // 서버 로그에 원인(스택)을 남긴다
             return error(500, "내보내기 파일을 만들지 못했습니다: " + e.getMessage());
         }
     }
@@ -152,11 +165,18 @@ public class ExportController {
         return mapper.readTree(body);
     }
 
-    private List<Report.Img> readImages(HttpServletRequest request) {
-        List<Report.Img> out = new ArrayList<Report.Img>();
-        if (!"POST".equals(request.getMethod())) return out;
+    private JsonNode readBody(HttpServletRequest request) {
+        if (!"POST".equals(request.getMethod())) return null;
         try {
-            JsonNode root = mapper.readTree(Upstream.readAll(request.getInputStream()));
+            return mapper.readTree(Upstream.readAll(request.getInputStream()));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private List<Report.Img> readImages(JsonNode root) {
+        List<Report.Img> out = new ArrayList<Report.Img>();
+        try {
             JsonNode images = root == null ? null : root.get("images");
             if (images == null) return out;
             for (JsonNode im : images) {

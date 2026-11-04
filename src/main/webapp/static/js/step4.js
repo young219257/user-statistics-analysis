@@ -156,9 +156,29 @@
 
   /* ---------------- 결과 패널 ---------------- */
   var STATUS = { succeeded: ['수렴 성공', 'text-brand'], failed: ['실패', 'text-rose-700'], running: ['실행 중', 'text-ink-2'], pending: ['대기', 'text-ink-2'], cancelled: ['취소됨', 'text-ink-2'] };
+  var jobOk = false;   // 이번 실행의 작업(job)이 succeeded 로 끝났는지
+  /** 분석 완료: 분석 상태가 succeeded 이거나, 작업이 succeeded 로 끝났고 분석이 실패·취소가 아닌 경우 */
+  function isDone() {
+    if (!analysis) return false;
+    if (analysis.status === 'succeeded') return true;
+    return jobOk && analysis.status !== 'failed' && analysis.status !== 'cancelled';
+  }
+  /** 분석이 성공으로 끝난 뒤에만 '4-2 분석 결과 보기'를 연다 */
+  function syncReportBtn(ok) {
+    var b = A.$('#btn-report');
+    if (!b) return;
+    b.setAttribute('aria-disabled', ok ? 'false' : 'true');
+    b.tabIndex = ok ? 0 : -1;
+    b.title = ok ? '' : '분석 실행이 끝나면 볼 수 있습니다';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('#btn-report');
+    if (b && b.getAttribute('aria-disabled') === 'true') e.preventDefault();
+  });
   function renderResult() {
     var p = A.$('#result-panel');
-    var ok = analysis && analysis.status === 'succeeded';
+    var ok = isDone();
+    syncReportBtn(ok);
     p.classList.remove('hidden');
     A.$('#fit-badge').classList.toggle('hidden', !ok);
     A.$('#fit-badge').classList.toggle('flex', !!ok);
@@ -195,16 +215,18 @@
     var bad = validate();
     if (bad) { analysis = { method: cfg.method, status: 'failed', error: bad, created_at: new Date().toISOString() }; renderResult(); A.toast('분석에 실패했습니다.', 'error'); return; }
     running = true;
+    jobOk = false;
+    syncReportBtn(false);   // 새 분석을 시작하면 이전 결과 보기는 다시 닫고, 완료되면 연다
     var b = A.$('#btn-run');
     b.disabled = true;
     b.innerHTML = '<span>분석 연산 수행 중...</span>';
     var m = meta(cfg.method);
     A.saveState({ config: cfg });
-    A.post('/api/v1/analyses', { dataset_id: dsId, method: cfg.method, name: m.name + ' - ' + (A.state.datasetName || dsId), params: buildParams(), preprocessing: A.state.preprocessing || {} }).then(function (r) {
+    A.post('/api/v1/analyses', { dataset_id: dsId, method: cfg.method, name: m.name + ' - ' + (A.state.datasetName || dsId), params: buildParams(), preprocessing: A.state.preprocessing || {} }, { onJob: function (j) { if (j && j.status === 'succeeded') jobOk = true; } }).then(function (r) {
       analysis = r;
       A.saveState({ analysisId: r.id });
       renderResult();
-      if (r.status === 'succeeded') A.toast('분석이 완료되었습니다.');
+      if (isDone()) A.toast('분석이 완료되었습니다.');
       else if (r.status === 'failed') A.toast('분석에 실패했습니다.', 'error');
     }).catch(function (e) {
       // 요청 자체가 실패한 경우(검증 오류·네트워크 등)도 연산 결과 패널에 실패로 표시

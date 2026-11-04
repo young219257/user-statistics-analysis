@@ -20,7 +20,6 @@
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xs font-medium text-ink-4" id="mgmt-total"></span>
-          <button type="button" id="mgmt-sync" aria-label="카드 동기화" class="text-blue-700 hover:text-blue-900 cursor-pointer text-xs underline">카드 동기화</button>
         </div>
       </div>
       <div class="sec-box flex flex-col space-y-3 flex-1">

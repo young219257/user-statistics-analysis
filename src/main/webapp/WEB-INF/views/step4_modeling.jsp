@@ -76,7 +76,7 @@
     <a href="${ctx}/analysis/step3" class="px-4 py-2.5 bg-white hover:bg-paper-2 text-ink-1 font-semibold text-body rounded-lg transition-colors border border-rule cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0">
       <i data-lucide="arrow-left" class="w-4 h-4"></i><span>3단계로 돌아가기</span>
     </a>
-    <a href="${ctx}/analysis/step4/report" class="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white font-bold text-body rounded-lg transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0">
+    <a href="${ctx}/analysis/step4/report" id="btn-report" aria-disabled="true" tabindex="-1" class="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white font-bold text-body rounded-lg transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0">
       <span>4-2 분석 결과 보기</span><i data-lucide="arrow-right" class="w-4 h-4"></i>
     </a>
   </div>
