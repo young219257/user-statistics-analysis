@@ -111,19 +111,18 @@
     if (/p_?value$/.test(k) && v < 0.0001) return '< 0.0001';
     return Number(v).toFixed(d === undefined ? 4 : d);
   }
-  /** 요약 지표 표: 지표 / 값 / 해석 (아래 회귀계수 표와 같은 디자인) */
+  /** 요약 지표 표: 지표 / 값 (해석 문구는 서버가 주지 않으므로 넣지 않는다) */
   function metricCards(metrics) {
     var keys = Object.keys(metrics || {}).filter(function (k) { return typeof metrics[k] === 'number' && isFinite(metrics[k]); });
     if (!keys.length) return '<div class="py-10 text-center text-xs text-ink-4">저장된 통계 지표가 없습니다.</div>';
     var th = 'py-3 px-4 font-semibold text-ink-2 text-xs whitespace-nowrap';
     var body = keys.map(function (k) {
       var meta = METRIC_META[k] || [A.viz.label(k), function () { return ''; }], v = metrics[k];
-      return '<tr class="border-b border-paper-2 last:border-0 hover:bg-paper-3/60"><td class="py-2.5 px-4 text-sm text-ink whitespace-nowrap">' + A.esc(meta[0]) + '</td>' +
-        '<td class="py-2.5 px-4 text-right font-mono font-bold text-ink whitespace-nowrap">' + fmtMetric(k, v, meta[3]) + '</td>' +
-        '<td class="py-2.5 px-4 text-xs whitespace-nowrap ' + (CAP_CLS[meta[2]] || 'text-ink-3') + '">' + A.esc(meta[1](v, metrics) || '') + '</td></tr>';
+      return '<tr class="border-b border-paper-2 last:border-0 hover:bg-paper-3/60"><td class="py-2.5 px-4 text-sm text-ink whitespace-nowrap text-center">' + A.esc(meta[0]) + '</td>' +
+        '<td class="py-2.5 px-4 text-center font-mono font-bold text-ink whitespace-nowrap">' + fmtMetric(k, v, meta[3]) + '</td>'+'</tr>';
     }).join('');
     return '<div class="rounded-lg border border-rule overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-rule bg-white"><span class="text-title font-semibold text-ink">요약 통계 지표</span><span class="text-xs text-ink-3">' + keys.length + '개 지표</span></div>' +
-      '<div class="overflow-x-auto md:max-h-[420px] md:overflow-y-auto"><table class="w-full border-collapse"><thead class="sticky top-0"><tr class="bg-paper-3 border-b border-rule"><th class="' + th + ' text-left w-[38%]">지표</th><th class="' + th + ' text-right w-[22%]">값</th><th class="' + th + ' text-left">해석</th></tr></thead><tbody>' + body + '</tbody></table></div></div>';
+      '<div class="overflow-x-auto md:max-h-[420px] md:overflow-y-auto"><table class="w-full border-collapse"><thead class="sticky top-0"><tr class="bg-paper-3 border-b border-rule"><th class="' + th + ' text-center w-1/2">지표</th><th class="' + th + ' text-center w-1/2">값</th></tr></thead><tbody>' + body + '</tbody></table></div></div>';
   }
 
   var PREP_LABEL = {
@@ -244,7 +243,7 @@
       var on = mTab === id;
       return '<button type="button" data-mtab="' + id + '" class="flex-1 py-2.5 px-2 flex items-center justify-center gap-2 break-keep leading-tight rounded-full border text-body font-semibold transition-colors cursor-pointer ' + (on ? 'bg-brand border-brand text-white' : 'bg-white border-rule-3 text-ink hover:bg-paper-2') + '">' + '<span>' + label + '</span></button>';
     };
-    var tabs = '<div class="flex gap-2">' + tabBtn('metrics', 'bar-chart-3', '통계 지표와 해석') + tabBtn('spec', 'sliders-horizontal', '변수와 전처리 규칙') + '</div>';
+    var tabs = '<div class="flex gap-2">' + tabBtn('metrics', 'bar-chart-3', '통계 지표') + tabBtn('spec', 'sliders-horizontal', '변수와 전처리 규칙') + '</div>';
     return '<div class="space-y-3">' + picker + tabs + (mTab === 'metrics' ? '<div class="space-y-4">' + metricCards(an.metrics) + coefTable(an) + '</div>' : specView(an)) + '</div>';
   }
 
