@@ -20,6 +20,9 @@
   function mb(bytes) { return (bytes / 1048576).toFixed(1) + 'MB'; }
   function dsOf(id) { return datasets.filter(function (x) { return x.id === id; })[0] || null; }
   function isMergedDs(id) { var d = dsOf(id); return !!d && d.source_type === 'merged'; }
+  function selectedCards() { return sel.filter(function (x) { return x.kind === 'card'; }).length; }
+  function cardsFull() { return selectedCards() >= MAX_CARDS; }
+  function mergedLocked() { return sel.some(function (x) { return x.kind === 'dataset' && isMergedDs(x.id); }); }
   function sizeOf(id) { var d = dsOf(id); return d && d.source_type !== 'merged' ? (d.size_bytes || 0) : 0; }   // 결합된 데이터셋은 용량 제한 대상이 아니다
   function selectedBytes() { return sel.filter(function (x) { return x.kind === 'dataset'; }).reduce(function (n, x) { return n + sizeOf(x.id); }, 0); }
   var sel = [];              // 선택한 데이터셋 [{id, kind:'card'|'dataset', d: DatasetDetail, use: {열이름: true}, alias}]
@@ -117,8 +120,8 @@
   }
   function renderCards() {
     function row(c) {
-      var on = !!find(c.id);
-      return '<div role="button" tabindex="0" data-card="' + A.esc(c.id) + '" class="p-3 flex items-center justify-between transition-colors select-none cursor-pointer ' + (on ? 'bg-brand-soft' : 'hover:bg-paper-3') + '">' +
+      var on = !!find(c.id), off = (mergedLocked() || cardsFull()) && !on;
+      return '<div role="button" tabindex="' + (off ? '-1' : '0') + '"' + (off ? ' aria-disabled="true"' : '') + ' data-card="' + A.esc(c.id) + '" class="p-3 flex items-center justify-between transition-colors select-none ' + (off ? 'cursor-not-allowed opacity-50' : 'cursor-pointer ') + (on ? 'bg-brand-soft' : (off ? '' : 'hover:bg-paper-3')) + '">' +
         '<div class="flex items-center gap-2.5 min-w-0 pr-2">' + checkBox(on) + '<span class="text-body truncate ' + (on ? 'font-semibold text-ink' : 'text-ink-1') + '" title="' + A.esc(c.name) + '">' + A.esc(c.name) + '</span></div>' +
         '<span class="text-xs font-mono text-ink-3 shrink-0">' + A.num(c.n_rows) + '행</span></div>';
     }
@@ -139,11 +142,11 @@
   }
   function renderDatasets() {
     A.$('#ds-list').innerHTML = datasets.map(function (d) {
-      var on = !!find(d.id), big = d.source_type !== 'merged' && (d.size_bytes || 0) > RUN_LIMIT_BYTES;
-      return '<div role="button" tabindex="0" data-ds="' + A.esc(d.id) + '" class="p-3 flex items-center justify-between gap-2 select-none transition-colors ' + (big ? 'cursor-not-allowed opacity-60' : 'cursor-pointer ') + (on ? 'bg-blue-50/70' : (big ? '' : 'hover:bg-paper-3/80')) + '">' +
+      var on = !!find(d.id), isM = d.source_type === 'merged', big = !isM && (d.size_bytes || 0) > RUN_LIMIT_BYTES, off = mergedLocked() && !on;
+      return '<div role="button" tabindex="' + (off ? '-1' : '0') + '"' + (off ? ' aria-disabled="true"' : '') + ' data-ds="' + A.esc(d.id) + '" class="p-3 flex items-center justify-between gap-2 select-none transition-colors ' + (big || off ? 'cursor-not-allowed opacity-50' : 'cursor-pointer ') + (on ? 'bg-blue-50/70' : (big || off ? '' : 'hover:bg-paper-3/80')) + '">' +
         '<div class="flex items-center gap-2.5 min-w-0">' + checkBox(on) + '<div class="min-w-0"><div class="ds-name"><span class="ds-name-text text-xs font-bold text-ink truncate">' + A.esc(d.name) + '</span>' +
         (d.source_type === 'merged' ? '<span class="ds-tag-merged">결합</span>' : '') + '</div>' +
-        '<div class="text-xs text-ink-4 font-mono mt-0.5">' + A.num(d.n_rows) + '행, ' + d.n_cols + '변수' + (d.source_format && d.source_type !== 'merged' ? ', ' + A.esc(d.source_format) : '') + (d.size_bytes ? ', ' + mb(d.size_bytes) : '') + (big ? ', <span class="ds-over">' + mb(RUN_LIMIT_BYTES) + ' 초과</span>' : '') + '</div></div></div>' +
+        '<div class="text-xs text-ink-4 font-mono mt-0.5">' + A.num(d.n_rows) + '행, ' + d.n_cols + '변수' + (d.source_format && d.source_type !== 'merged' ? ', ' + A.esc(d.source_format) : '') + (!isM && d.size_bytes ? ', ' + mb(d.size_bytes) : '') + (big ? ', <span class="ds-over">' + mb(RUN_LIMIT_BYTES) + ' 초과</span>' : '') + '</div></div></div>' +
         '<button type="button" data-del="' + A.esc(d.id) + '" class="p-1 text-rule-3 hover:text-rose-600 cursor-pointer shrink-0" title="삭제">' + A.icon('trash-2', 'w-3.5 h-3.5') + '</button></div>';
     }).join('') || '<div class="p-6 text-body text-muted text-center">반입된 파일이 없습니다.</div>';
     A.icons();
@@ -185,14 +188,8 @@
       // 결합된 데이터셋은 단독으로만 쓰므로, 지금 선택한 데이터는 자동으로 해제하고 이것만 고른다
       sel.slice().forEach(function (x) { remove(x.id); });
     }
-    if (sel.some(function (x) { return x.kind === 'dataset' && isMergedDs(x.id); })) {
-      // 결합된 데이터셋이 선택돼 있으면 해제하고 새로 고른 것을 선택한다
-      sel.slice().forEach(function (x) { remove(x.id); });
-    }
-    if (kind === 'card' && sel.filter(function (x) { return x.kind === 'card'; }).length >= MAX_CARDS) {
-      A.fail('데이터관리카드는 최대 ' + MAX_CARDS + '개까지 선택할 수 있습니다. 다른 카드를 고르려면 선택한 카드를 먼저 해제하세요.', '#mgmt-list');
-      return Promise.resolve();
-    }
+    if (mergedLocked()) return Promise.resolve();   // 결합된 데이터셋이 선택돼 있으면 다른 데이터는 고를 수 없다 (배너로 안내)
+    if (kind === 'card' && cardsFull()) return Promise.resolve();   // 카드 2개를 고르면 나머지 카드는 비활성이고, 안내는 목록 아래에 표시한다
     if (kind === 'dataset') {
       var own = sizeOf(id);
       if (own > RUN_LIMIT_BYTES) {
@@ -415,7 +412,48 @@
     A.$('#btn-proceed').disabled = !t;
   }
 
+  /** 결합된 데이터셋이 선택돼 있는 동안, "반입된 데이터셋" 목록 바로 아래에 안내를 보여 준다 (닫기 가능) */
+  var mergedNoteClosed = null;   // 닫은 안내가 어떤 결합 데이터셋에 대한 것인지
+  function renderBanner() {
+    var list = A.$('#ds-list'), box = A.$('#merged-note');
+    var lock = sel.filter(function (x) { return x.kind === 'dataset' && isMergedDs(x.id); })[0];
+    if (!lock) mergedNoteClosed = null;
+    var show = !!lock && mergedNoteClosed !== lock.id;
+    if (!show) { if (box) box.remove(); return; }
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'merged-note';
+      box.setAttribute('role', 'status');
+      box.className = 'flex items-start gap-2 text-[13.5px] py-1.5 mt-2 merged-note';
+      box.innerHTML = '<span class="flex-1 min-w-0 break-words">결합된 데이터셋은 데이터관리카드 및 다른 반입 데이터셋을 선택할 수 없습니다.</span>' +
+        '<button type="button" class="shrink-0 cursor-pointer" aria-label="안내 닫기">' + A.icon('x', 'w-4 h-4') + '</button>';
+      box.querySelector('button').addEventListener('click', function () { mergedNoteClosed = lock.id; box.remove(); });
+      list.insertAdjacentElement('afterend', box);
+      A.icons();
+    }
+  }
+  /** 데이터관리카드를 2개 고르면 목록 아래에 안내를 보여 준다 (닫기 가능) */
+  var cardsNoteClosed = false;
+  function renderCardsNote() {
+    var list = A.$('#mgmt-list'), box = A.$('#cards-note');
+    if (!cardsFull()) cardsNoteClosed = false;
+    var show = cardsFull() && !cardsNoteClosed;
+    if (!show) { if (box) box.remove(); return; }
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'cards-note';
+      box.setAttribute('role', 'alert');
+      box.className = 'flex items-start gap-2 text-[13.5px] text-rose-700 py-1.5 mt-2';
+      box.innerHTML = '<span class="flex-1 min-w-0 break-words">데이터관리카드는 최대 ' + MAX_CARDS + '개까지 선택할 수 있습니다. 다른 카드를 고르려면 선택한 카드를 먼저 해제하세요.</span>' +
+        '<button type="button" class="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer" aria-label="안내 닫기">' + A.icon('x', 'w-4 h-4') + '</button>';
+      box.querySelector('button').addEventListener('click', function () { cardsNoteClosed = true; box.remove(); });
+      list.insertAdjacentElement('afterend', box);
+      A.icons();
+    }
+  }
   function renderAll() {
+    renderBanner();
+    renderCardsNote();
     renderFooter();
     renderCards();
     renderDatasets();

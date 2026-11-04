@@ -1543,3 +1543,8 @@ body { font-size: 13px; }
 
 /* 4-2 결과 보기: 분석이 끝나기 전에는 비활성 */
 #btn-report[aria-disabled="true"] { background: var(--color-rule-3) !important; color: #fff !important; cursor: not-allowed; pointer-events: none; }
+
+/* 결합된 데이터셋 선택 안내: 반입된 데이터셋 아래, 글자 + 닫기(X), 경고라서 노랑 계열 */
+.merged-note { color: #e8590c; line-height: 1.6; }
+.merged-note button { color: #e8590c; }
+.merged-note button:hover { color: #c2410c; }
