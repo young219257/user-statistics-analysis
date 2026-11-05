@@ -10,10 +10,6 @@
     </div>
   </div>
 
-  <div id="pk-notice" class="hidden p-3.5 bg-paper-3 border border-rule rounded-lg text-body text-ink items-center gap-2 ">
-    <span id="pk-notice-msg"></span>
-  </div>
-
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
     <%-- 좌: 패키지 목록 --%>
     <div class="lg:col-span-5 space-y-4">

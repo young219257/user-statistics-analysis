@@ -113,7 +113,7 @@
       cards = (p.items || []).filter(function (c) { return !c.status || c.status === 'ready'; });
       A.$('#mgmt-total').textContent = '총 ' + A.num(cards.length) + '건';
       renderCards();
-    }).catch(function (e) { A.$('#mgmt-list').innerHTML = '<div class="p-4 text-xs text-rose-600">' + A.esc(e.message) + '</div>'; });
+    }).catch(function (e) { A.$('#mgmt-list').innerHTML = '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 p-4" role="alert">' + A.esc(e.message) + '</div>'; });
   }
   function checkBox(on) {
     return '<span class="w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ' + (on ? 'bg-brand border-brand text-white' : 'border-rule-3 bg-white') + '">' + (on ? A.icon('check', 'w-3 h-3') : '') + '</span>';
@@ -162,7 +162,8 @@
       html = '<label id="dropzone" class="block border border-dashed p-8 rounded-lg transition-colors cursor-pointer text-center ' + (dragging ? 'border-brand bg-brand-soft' : 'border-rule-3 hover:border-brand bg-white') + '">' +
         '<input type="file" accept=".csv,.txt,.xlsx,.xls,.json,.parquet" class="hidden" id="file-input">' +
         '<div class="dz-body">' + A.icon('upload', 'w-5 h-5') + '<span class="dz-text">클릭하여 파일을 선택하거나, 여기로 끌어다 놓으세요</span><span class="dz-type">CSV, XLSX</span></div>' +
-        (uploadError ? '<div class="mt-3 text-body text-rose-700">' + A.esc(uploadError) + '</div>' : '') + '</label>';
+        '</label>' +
+        (uploadError ? '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 mt-2" role="alert">' + A.esc(uploadError) + '</div>' : '');
     }
     A.$('#upload-area').innerHTML = html;
   }
@@ -395,7 +396,7 @@
   function setMsg(t) {
     var m = A.$('#s1-msg');
     m.textContent = t || '';
-    m.classList.toggle('hidden', !t);
+    m.classList.toggle('hidden', !t); m.classList.toggle('flex', !!t);
   }
 
   /** 상단 '현재 분석 대상'과 하단 '분석 투입 대상'·진행 버튼 */

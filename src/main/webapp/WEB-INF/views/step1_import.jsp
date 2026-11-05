@@ -109,7 +109,7 @@
     </div>
   </div>
 
-  <div id="s1-msg" class="hidden text-xs text-rose-700 py-1.5"></div>
+  <div id="s1-msg" role="alert" class="hidden krds-msg krds-danger items-start gap-2 py-1.5"></div>
 
   <%-- 6. 하단 액션 --%>
   <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">

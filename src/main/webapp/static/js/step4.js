@@ -86,7 +86,7 @@
   }
   function colSelect(id, key, from, selected, optional) {
     return selectWrap('<select id="' + id + '" data-key="' + key + '" class="' + SELECT_CLS + '">' +
-      '<option value="">' + (optional ? '(사용 안 함)' : '(선택)') + '</option>' +
+      '<option value="">' + (optional ? '(사용 안 함)' : '필수 선택') + '</option>' +
       pool(from).map(function (c) { return '<option value="' + A.esc(c.name) + '"' + (selected === c.name ? ' selected' : '') + '>' + A.esc(c.name) + '</option>'; }).join('') + '</select>');
   }
 

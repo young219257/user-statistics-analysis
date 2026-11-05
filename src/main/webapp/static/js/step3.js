@@ -67,7 +67,7 @@
 
   function loadCorr() {
     return A.get('/api/v1/datasets/' + encodeURIComponent(dsId) + '/correlation' + A.qs({ method: A.$('#corr-method').value })).then(renderCorr).catch(function (e) {
-      if (!A.datasetGone(e)) { A.$('#corr-wrap').innerHTML = '<div class="py-6 text-center text-xs text-rose-600">' + A.esc(e.message) + '</div>'; }
+      if (!A.datasetGone(e)) { A.$('#corr-wrap').innerHTML = '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 py-6" role="alert">' + A.esc(e.message) + '</div>'; }
     });
   }
 

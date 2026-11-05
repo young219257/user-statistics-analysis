@@ -59,7 +59,7 @@
   function setMsg(text) {
     var m = A.$('#prep-msg');
     m.textContent = text || '';
-    m.classList.toggle('hidden', !text);
+    m.classList.toggle('hidden', !text); m.classList.toggle('flex', !!text);
   }
 
   /* ---------------- 알고리즘 카드 ---------------- */

@@ -71,7 +71,7 @@
     </div>
   </div>
 
-  <div id="prep-msg" class="hidden text-xs text-rose-700 py-1.5"></div>
+  <div id="prep-msg" role="alert" class="hidden krds-msg krds-danger items-start gap-2 py-1.5"></div>
 
   <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
     <a href="${ctx}/analysis/step1" class="px-4 py-2.5 bg-white hover:bg-paper-3 border border-rule-3 text-ink-1 font-semibold text-body rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0">

@@ -786,8 +786,8 @@
     A.$('#rp-title').textContent = r.name;
     A.$('#btn-save').classList.remove('hidden'); A.$('#btn-save').classList.add('flex');
     var failed = r.status === 'failed';
-    A.$('#rp-diag').innerHTML = '<div class="flex items-center gap-2 pb-2 border-b border-paper-2">' + (failed ? A.icon('alert-triangle', 'w-4 h-4 text-rose-600') : '') + '<h4 class="text-title font-semibold text-ink">분석 결과 요약</h4></div>' +
-      (r.error ? '<div class="text-xs text-rose-700 py-1.5 font-mono whitespace-pre-wrap">' + A.esc(r.error) + '</div>' : '') +
+    A.$('#rp-diag').innerHTML = '<div class="flex items-center gap-2 pb-2 border-b border-paper-2">' + '<h4 class="text-title font-semibold text-ink">분석 결과 요약</h4></div>' +
+      (r.error ? '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 whitespace-pre-wrap" role="alert">' + A.esc(r.error) + '</div>' : '') +
       (renderSummaryCards(r.metrics || {}, r.result || {}) || A.viz.metricsGrid(r.metrics, 24) || '<div class="text-xs text-ink-4">표시할 스칼라 지표가 없습니다. \'표준 통계 결과표\' 탭을 확인하세요.</div>');
     renderResultTab();
     A.charts.gallery(A.$('#rp-charts'), r);

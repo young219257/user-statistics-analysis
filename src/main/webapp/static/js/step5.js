@@ -5,14 +5,7 @@
   var items = [], selected = null, detail = null, busy = null, shareOpen = false, mTab = 'metrics', aIdx = 0;
   var anCache = {};   // 분석 id → 분석 상세(계수표용). 매니페스트에는 result 가 없어서 따로 조회한다
 
-  function notice(msg, isError) {
-    A.$('#pk-notice-msg').textContent = msg;
-    var n = A.$('#pk-notice');
-    ['bg-paper-3', 'border-rule', 'text-ink'].forEach(function (c) { n.classList.toggle(c, !isError); });
-    ['text-rose-700'].forEach(function (c) { n.classList.toggle(c, !!isError); });
-    n.classList.remove('hidden'); n.classList.add('flex');
-    setTimeout(function () { n.classList.add('hidden'); n.classList.remove('flex'); }, 4000);
-  }
+  function notice(msg, isError) { A.toast(msg, isError ? 'error' : 'ok'); }
 
   /* ---------------- 목록 ---------------- */
   function loadPackages() {
