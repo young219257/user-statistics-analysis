@@ -179,7 +179,7 @@
     var hasSe = rows[0].std_error !== undefined;
     var f = function (v, n) { return v == null || isNaN(v) ? '-' : Number(v).toFixed(n); };
     var signed = function (v) { return v == null ? '-' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(3); };
-    var star = function (p) { return p == null ? '' : p < 0.001 ? '***' : p < 0.01 ? '**' : p < 0.05 ? '*' : 'ns'; };
+    var star = function (p) { return p == null ? '' : p < 0.001 ? '***' : p < 0.01 ? '**' : p < 0.05 ? '*' : ''; };
     var th = 'py-3 px-4 font-semibold text-ink-2 text-xs whitespace-nowrap';
     var head = '<tr class="bg-paper-3 border-b border-rule"><th class="' + th + ' text-left">변수명</th><th class="' + th + ' text-right">계수 (B)</th>' + (hasSe ? '<th class="' + th + ' text-right">표준오차</th>' : '') +
       (stat ? '<th class="' + th + ' text-right">' + (stat === 't_value' ? 't-값' : 'z-값') + '</th>' : '') + '<th class="' + th + ' text-right">p-값</th><th class="' + th + ' text-center">유의수준</th></tr>';
@@ -190,11 +190,11 @@
         (hasSe ? '<td class="py-3 px-4 text-right font-mono text-ink-3">' + f(r.std_error, 3) + '</td>' : '') +
         (stat ? '<td class="py-3 px-4 text-right font-mono text-ink-0">' + (r[stat] == null ? '-' : (r[stat] < 0 ? '−' : '') + Math.abs(r[stat]).toFixed(2)) + '</td>' : '') +
         '<td class="py-3 px-4 text-right font-mono text-emerald-700">' + (r.p_value == null ? '-' : r.p_value < 0.0001 ? '&lt; 0.0001' : f(r.p_value, 4)) + '</td>' +
-        '<td class="py-3 px-4 text-center font-mono font-bold ' + (st === 'ns' ? 'text-ink-3' : 'text-brand') + '">' + st + '</td></tr>';
+        '<td class="py-3 px-4 text-center font-mono font-bold ' + 'text-brand' + '">' + st + '</td></tr>';
     }).join('');
     return '<div class="rounded-lg border border-rule overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-rule bg-white"><span class="text-title font-semibold text-ink">주요 변수별 회귀계수 및 유의성 검정</span><span class="text-xs text-ink-3">신뢰구간: <span class="font-mono">95%</span></span></div>' +
       '<div class="overflow-x-auto md:max-h-[420px] md:overflow-y-auto"><table class="w-full border-collapse"><thead class="sticky top-0">' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
-      '<div class="px-4 py-2 text-xs text-ink-3 border-t border-paper-2 bg-paper-3/50">*** p &lt; 0.001, ** p &lt; 0.01, * p &lt; 0.05, ns 유의하지 않음' + (stat === 'z_value' ? ', 로지스틱 회귀 계수(로그 오즈)' : '') + '</div></div>';
+      '<div class="px-4 py-2 text-xs text-ink-3 border-t border-paper-2 bg-paper-3/50">*** p &lt; 0.001, ** p &lt; 0.01, * p &lt; 0.05' + '</div></div>';
   }
 
   /** 4-2 화면이 쓰는 영역(#rp-*)을 화면 밖에 만든다. 같은 report.js 로 그리기 위한 자리다 */

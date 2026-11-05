@@ -216,7 +216,7 @@
       '<td class="' + TD + '">' + sigFmt(metrics.llr_pvalue) + '</td>' +
       '<td class="' + TD + '">' + spssNum(metrics.aic, 3) + '</td>' +
       '<td class="' + TD + '">' + spssNum(metrics.bic, 3) + '</td></tr></tbody></table>';
-    return statCard('모형 적합도 (Model Fit)', table, ['우도비 검정: 절편만 있는 모형 대비 전체 모형의 유의성 (LLR p-value)', 'McFadden R²는 유사 결정계수로 0.2~0.4 이면 양호한 적합으로 봅니다.']);
+    return statCard('모형 적합도 (Model Fit)', table, ['우도비 검정: 절편만 있는 모형 대비 전체 모형의 유의성 (LLR p-value)']);
   }
 
   /** 이진 로지스틱 계수표 (SPSS '방정식에 있는 변수'): coefficient, std_error, z_value, p_value, odds_ratio, or_ci_lower, or_ci_upper */
@@ -307,7 +307,7 @@
     return '<div class="flex-1 min-w-[130px] bg-white rounded-xl border border-rule p-3.5">' +
       '<div class="text-xs font-semibold text-ink-3 mb-1.5 truncate">' + label + '</div>' +
       '<div class="text-xl font-extrabold font-mono ' + (colorClass || 'text-ink') + '">' + value + '</div>' +
-      '<div class="text-xs text-ink-4 mt-1 truncate">' + caption + '</div></div>';
+      (caption ? '<div class="text-xs text-ink-4 mt-1 truncate">' + caption + '</div>' : '') + '</div>';
   }
 
   /** 회귀분석류 결과(metrics.r_squared 가 있을 때)만 이 카드 행을 쓰고, 그 외 기법은 기존 범용 칩으로 폴백한다 */
@@ -317,14 +317,14 @@
   function renderClassificationCards(metrics, result) {
     var cards = [];
     var n = result.n_observations != null ? result.n_observations : metrics.n_samples;
-    if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), '유효 관측치'));
-    cards.push(kpiCard('정확도 (Accuracy)', (metrics.accuracy * 100).toFixed(1) + '%', '검증셋 기준', 'text-blue-600'));
-    if (has(metrics.precision)) cards.push(kpiCard('정밀도 (Precision)', Number(metrics.precision).toFixed(3), '예측 양성 중 적중'));
-    if (has(metrics.recall)) cards.push(kpiCard('재현율 (Recall)', Number(metrics.recall).toFixed(3), '실제 양성 중 적중'));
-    if (has(metrics.f1)) cards.push(kpiCard('F1 점수', Number(metrics.f1).toFixed(3), '정밀도·재현율 조화평균', 'text-blue-600'));
-    if (has(metrics.roc_auc)) cards.push(kpiCard('ROC-AUC', Number(metrics.roc_auc).toFixed(3), '분류 판별력', 'text-emerald-600'));
+    if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), ''));
+    cards.push(kpiCard('정확도 (Accuracy)', (metrics.accuracy * 100).toFixed(1) + '%', '', 'text-blue-600'));
+    if (has(metrics.precision)) cards.push(kpiCard('정밀도 (Precision)', Number(metrics.precision).toFixed(3), ''));
+    if (has(metrics.recall)) cards.push(kpiCard('재현율 (Recall)', Number(metrics.recall).toFixed(3), ''));
+    if (has(metrics.f1)) cards.push(kpiCard('F1 점수', Number(metrics.f1).toFixed(3), '', 'text-blue-600'));
+    if (has(metrics.roc_auc)) cards.push(kpiCard('ROC-AUC', Number(metrics.roc_auc).toFixed(3), '', 'text-emerald-600'));
     if (has(metrics.log_loss)) cards.push(kpiCard('Log Loss', spssNum(metrics.log_loss, 3), ''));
-    if (has(metrics.mcfadden)) cards.push(kpiCard('McFadden R²', spssNum(metrics.mcfadden, 3), '유사 결정계수', 'text-amber-600'));
+    if (has(metrics.mcfadden)) cards.push(kpiCard('McFadden R²', spssNum(metrics.mcfadden, 3), '', 'text-amber-600'));
     if (has(metrics.aic)) cards.push(kpiCard('AIC / BIC', spssNum(metrics.aic, 1), has(metrics.bic) ? 'BIC ' + spssNum(metrics.bic, 1) : ''));
     return cards;
   }
@@ -333,13 +333,13 @@
   function renderClusterCards(metrics, result) {
     var cards = [];
     var n = result.n_observations != null ? result.n_observations : metrics.n_samples;
-    if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), '유효 관측치'));
+    if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), ''));
     if (has(metrics.n_clusters)) cards.push(kpiCard('군집 수', A.num(metrics.n_clusters), '', 'text-blue-600'));
     cards.push(kpiCard('실루엣 (Silhouette)', Number(metrics.silhouette).toFixed(3), '', 'text-emerald-600'));
     if (has(metrics.calinski_harabasz)) cards.push(kpiCard('Calinski-Harabasz', spssNum(metrics.calinski_harabasz, 1), ''));
     if (has(metrics.davies_bouldin)) cards.push(kpiCard('Davies-Bouldin', Number(metrics.davies_bouldin).toFixed(3), '', 'text-blue-600'));
-    if (has(metrics.variance_ratio)) cards.push(kpiCard('군집 간 분산 비율', (metrics.variance_ratio * 100).toFixed(1) + '%', 'between_ss / total_ss'));
-    if (has(metrics.inertia)) cards.push(kpiCard('Inertia', spssNum(metrics.inertia, 1), '군집 내 제곱합'));
+    if (has(metrics.variance_ratio)) cards.push(kpiCard('군집 간 분산 비율', (metrics.variance_ratio * 100).toFixed(1) + '%', ''));
+    if (has(metrics.inertia)) cards.push(kpiCard('Inertia', spssNum(metrics.inertia, 1), ''));
     if (has(metrics.n_noise)) cards.push(kpiCard('노이즈 점', A.num(metrics.n_noise), has(metrics.noise_ratio) ? (metrics.noise_ratio * 100).toFixed(1) + '%' : '', 'text-amber-600'));
     return cards;
   }
@@ -392,11 +392,11 @@
   /** 상관분석 요약 카드: n_variables, n_pairs, n_strong_pairs, max_abs_coefficient */
   function renderCorrelationCards(metrics, result) {
     var cards = [];
-    if (has(result.n_observations)) cards.push(kpiCard('표본수 (N)', A.num(result.n_observations), '유효 관측치'));
+    if (has(result.n_observations)) cards.push(kpiCard('표본수 (N)', A.num(result.n_observations), ''));
     if (has(metrics.n_variables)) cards.push(kpiCard('변수 수', A.num(metrics.n_variables), corrMethodLabel(result.correlation_method) + ' 상관'));
-    if (has(metrics.n_pairs)) cards.push(kpiCard('변수 쌍 수', A.num(metrics.n_pairs), '분석된 조합'));
-    if (has(metrics.n_strong_pairs)) cards.push(kpiCard('강한 상관 쌍', A.num(metrics.n_strong_pairs), '|r| ≥ 0.7', metrics.n_strong_pairs ? 'text-blue-600' : 'text-ink'));
-    if (has(metrics.max_abs_coefficient)) cards.push(kpiCard('최대 |r|', Number(metrics.max_abs_coefficient).toFixed(3), '가장 강한 상관', 'text-blue-600'));
+    if (has(metrics.n_pairs)) cards.push(kpiCard('변수 쌍 수', A.num(metrics.n_pairs), ''));
+    if (has(metrics.n_strong_pairs)) cards.push(kpiCard('강한 상관 쌍', A.num(metrics.n_strong_pairs), '', metrics.n_strong_pairs ? 'text-blue-600' : 'text-ink'));
+    if (has(metrics.max_abs_coefficient)) cards.push(kpiCard('최대 |r|', Number(metrics.max_abs_coefficient).toFixed(3), '', 'text-blue-600'));
     return cards;
   }
 
@@ -405,31 +405,31 @@
   function renderOtherCards(metrics, result) {
     var c = [], sig = function (p) { return p == null ? '' : p < 0.001 ? 'p < .001' : 'p = ' + spssNum(p); };
     if (has(metrics.n_components) && has(metrics.total_explained_variance)) {
-      if (has(result.n_observations)) c.push(kpiCard('표본수 (N)', A.num(result.n_observations), '유효 관측치'));
-      c.push(kpiCard('주성분 수', A.num(metrics.n_components), '추출 성분'));
-      c.push(kpiCard('누적 설명분산', (metrics.total_explained_variance * 100).toFixed(1) + '%', '전체 분산 중 설명 비율', 'text-blue-600'));
-      if (has(metrics.first_component_ratio)) c.push(kpiCard('제1주성분 비율', (metrics.first_component_ratio * 100).toFixed(1) + '%', '첫 성분 설명력', 'text-blue-600'));
+      if (has(result.n_observations)) c.push(kpiCard('표본수 (N)', A.num(result.n_observations), ''));
+      c.push(kpiCard('주성분 수', A.num(metrics.n_components), ''));
+      c.push(kpiCard('누적 설명분산', (metrics.total_explained_variance * 100).toFixed(1) + '%', '', 'text-blue-600'));
+      if (has(metrics.first_component_ratio)) c.push(kpiCard('제1주성분 비율', (metrics.first_component_ratio * 100).toFixed(1) + '%', '', 'text-blue-600'));
     } else if (has(metrics.model_r_squared)) {
-      if (has(metrics.n_observations)) c.push(kpiCard('표본수 (N)', A.num(metrics.n_observations), '유효 관측치'));
-      c.push(kpiCard('모형 R²', Number(metrics.model_r_squared).toFixed(3), '설명력 ' + (metrics.model_r_squared * 100).toFixed(1) + '%', 'text-blue-600'));
-      if (has(metrics.n_significant_terms)) c.push(kpiCard('유의한 효과 수', A.num(metrics.n_significant_terms), 'p < .05'));
-      if (has(metrics.max_eta_squared)) c.push(kpiCard('최대 효과크기 (η²)', Number(metrics.max_eta_squared).toFixed(3), '가장 큰 효과', 'text-blue-600'));
+      if (has(metrics.n_observations)) c.push(kpiCard('표본수 (N)', A.num(metrics.n_observations), ''));
+      c.push(kpiCard('모형 R²', Number(metrics.model_r_squared).toFixed(3), '', 'text-blue-600'));
+      if (has(metrics.n_significant_terms)) c.push(kpiCard('유의한 효과 수', A.num(metrics.n_significant_terms), ''));
+      if (has(metrics.max_eta_squared)) c.push(kpiCard('최대 효과크기 (η²)', Number(metrics.max_eta_squared).toFixed(3), '', 'text-blue-600'));
       if (has(metrics.levene_p_value)) c.push(kpiCard('Levene 등분산', 'p=' + spssNum(metrics.levene_p_value), '', 'text-amber-600'));
     } else if (has(metrics.n_individuals)) {
       c.push(kpiCard('개체 수', A.num(metrics.n_individuals), '관측치 ' + A.num(metrics.n_observations)));
-      if (has(metrics.average_growth_rate)) c.push(kpiCard('평균 성장률', spssNum(metrics.average_growth_rate, 3), '시간 1단위당, ' + sig(metrics.average_growth_rate_p_value), 'text-blue-600'));
-      if (has(metrics.slope_variance)) c.push(kpiCard('기울기 분산', spssNum(metrics.slope_variance, 4), '개체 간 성장률 차이', 'text-blue-600'));
+      if (has(metrics.average_growth_rate)) c.push(kpiCard('평균 성장률', spssNum(metrics.average_growth_rate, 3), '', 'text-blue-600'));
+      if (has(metrics.slope_variance)) c.push(kpiCard('기울기 분산', spssNum(metrics.slope_variance, 4), '', 'text-blue-600'));
       if (has(metrics.aic)) c.push(kpiCard('AIC / BIC', spssNum(metrics.aic, 1), has(metrics.bic) ? 'BIC ' + spssNum(metrics.bic, 1) : ''));
     } else if (has(metrics.icc) && has(metrics.n_groups)) {
       c.push(kpiCard('집단 수', A.num(metrics.n_groups), '관측치 ' + A.num(metrics.n_observations)));
-      c.push(kpiCard('ICC', Number(metrics.icc).toFixed(3), '집단 간 분산 비율', 'text-blue-600'));
-      if (has(metrics.unconditional_icc)) c.push(kpiCard('무조건모형 ICC', Number(metrics.unconditional_icc).toFixed(3), '예측변수 투입 전', 'text-blue-600'));
+      c.push(kpiCard('ICC', Number(metrics.icc).toFixed(3), '', 'text-blue-600'));
+      if (has(metrics.unconditional_icc)) c.push(kpiCard('무조건모형 ICC', Number(metrics.unconditional_icc).toFixed(3), '', 'text-blue-600'));
       if (has(metrics.log_likelihood)) c.push(kpiCard('로그 우도', spssNum(metrics.log_likelihood, 2), has(metrics.aic) ? 'AIC ' + spssNum(metrics.aic, 1) : ''));
     } else if (has(metrics.n_treated)) {
       c.push(kpiCard('처치군', A.num(metrics.n_treated), '매칭 ' + A.num(metrics.n_matched_treated) + '명'));
-      if (has(metrics.match_rate)) c.push(kpiCard('매칭률', (metrics.match_rate * 100).toFixed(1) + '%', '처치군 중 매칭 성공', 'text-blue-600'));
+      if (has(metrics.match_rate)) c.push(kpiCard('매칭률', (metrics.match_rate * 100).toFixed(1) + '%', '', 'text-blue-600'));
       if (has(metrics.mean_abs_smd_after)) c.push(kpiCard('평균 |SMD|', spssNum(metrics.mean_abs_smd_before) + ' → ' + spssNum(metrics.mean_abs_smd_after), '', 'text-emerald-600'));
-      if (has(metrics.att)) c.push(kpiCard('ATT', spssNum(metrics.att, 3) + stars(metrics.att_p_value), sig(metrics.att_p_value), 'text-blue-600'));
+      if (has(metrics.att)) c.push(kpiCard('ATT', spssNum(metrics.att, 3) + stars(metrics.att_p_value), '', 'text-blue-600'));
     }
     return c;
   }
@@ -445,16 +445,16 @@
     }
     var cards = [];
     var n = result.n_observations != null ? result.n_observations : metrics.n_samples;
-    if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), '유효 관측치'));
-    cards.push(kpiCard('결정계수 (R²)', Number(metrics.r_squared).toFixed(3), '설명력 ' + (metrics.r_squared * 100).toFixed(1) + '%', 'text-blue-600'));
-    if (metrics.adjusted_r_squared != null) cards.push(kpiCard('수정 R² (Adj.)', Number(metrics.adjusted_r_squared).toFixed(3), '자유도 보정', 'text-blue-600'));
+    if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), ''));
+    cards.push(kpiCard('결정계수 (R²)', Number(metrics.r_squared).toFixed(3), '', 'text-blue-600'));
+    if (metrics.adjusted_r_squared != null) cards.push(kpiCard('수정 R² (Adj.)', Number(metrics.adjusted_r_squared).toFixed(3), '', 'text-blue-600'));
     if (metrics.f_statistic != null) {
       var fp = metrics.f_pvalue;
       var fStars = starSup(fp);
-      var fCaption = fp == null ? '' : fp < 0.001 ? 'p < .001 (유의)' : fp < 0.01 ? 'p < .01 (유의)' : fp < 0.05 ? 'p < .05 (유의)' : 'p = ' + spssNum(fp) + ' (유의하지 않음)';
+      var fCaption = fp == null ? '' : fp < 0.0005 ? 'p < .001' : 'p = ' + spssNum(fp);   // 서버가 준 p값만 (유의 여부 판정은 붙이지 않는다)
       cards.push(kpiCard('F 통계량', spssNum(metrics.f_statistic, 2) + fStars, fCaption));
     }
-    if (metrics.rmse != null) cards.push(kpiCard('추정 표준오차', spssNum(metrics.rmse, 3), 'RMSE 추정치'));
+    if (metrics.rmse != null) cards.push(kpiCard('추정 표준오차', spssNum(metrics.rmse, 3), ''));
     var norm = result.diagnostics && result.diagnostics.normality;
     if (norm && norm.statistic != null) cards.push(kpiCard('잔차 정규성 (S-W)', 'W=' + Number(norm.statistic).toFixed(3), 'p = ' + spssNum(norm.p_value) + (norm.normal ? ' (정규성 만족)' : ' (정규성 위배)'), 'text-emerald-600'));
     var homo = result.diagnostics && result.diagnostics.homoscedasticity;
