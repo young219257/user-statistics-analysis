@@ -17,7 +17,12 @@
 
   var MAX_CARDS = 2;                          // 한 번에 고를 수 있는 데이터관리카드 수
   var RUN_LIMIT_BYTES = 30 * 1024 * 1024;     // 분석·결합에 쓸 수 있는 반입 데이터셋 용량(선택한 것의 합). 반입 자체는 서버 한도(업로드 한도)까지 가능
-  function mb(bytes) { return (bytes / 1048576).toFixed(1) + 'MB'; }
+  /** 용량 표시: 1MB 미만은 KB, 1KB 미만은 B 단위 그대로 보여 준다 */
+  function mb(bytes) {
+    if (bytes < 1024) return bytes + 'B';
+    if (bytes < 1048576) return Math.round(bytes / 1024) + 'KB';
+    return (bytes / 1048576).toFixed(1) + 'MB';
+  }
   function dsOf(id) { return datasets.filter(function (x) { return x.id === id; })[0] || null; }
   function isMergedDs(id) { var d = dsOf(id); return !!d && d.source_type === 'merged'; }
   function selectedCards() { return sel.filter(function (x) { return x.kind === 'card'; }).length; }
