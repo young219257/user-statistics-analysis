@@ -110,12 +110,29 @@
     A.saveState({ datasetId: t ? t.id : null, datasetName: t ? t.name : null, datasetRows: t ? t.n_rows : null, usedColumns: null, rawDatasetId: null, analysisId: null });
   }
 
+  /** 서버는 한 번에 최대 200건까지만 주므로, 전체 건수(total)에 닿을 때까지 이어서 요청해 모두 모은다 */
+  var PAGE_MAX = 200;
+  function fetchAll(path, params) {
+    var items = [];
+    function next(offset) {
+      var q = {}; for (var k in params) q[k] = params[k];
+      q.limit = PAGE_MAX; q.offset = offset;
+      return A.get(path + A.qs(q)).then(function (p) {
+        var got = p.items || [];
+        items = items.concat(got);
+        if (got.length >= PAGE_MAX && items.length < (p.total == null ? Infinity : p.total)) return next(offset + got.length);
+        return items;
+      });
+    }
+    return next(0);
+  }
+
   /* ---------------- 데이터관리카드 ---------------- */
   function loadCards() {
     var q = A.$('#mgmt-search').value || '';
-    return A.get('/api/v1/data-cards' + A.qs({ limit: 100, q: q })).then(function (p) {
+    return fetchAll('/api/v1/data-cards', { q: q }).then(function (all) {
       // 적재가 끝난 카드만 보여 준다 (적재 중·실패는 목록과 건수에서 뺀다)
-      cards = (p.items || []).filter(function (c) { return !c.status || c.status === 'ready'; });
+      cards = all.filter(function (c) { return !c.status || c.status === 'ready'; });
       A.$('#mgmt-total').textContent = '총 ' + A.num(cards.length) + '건';
       renderCards();
     }).catch(function (e) { A.$('#mgmt-list').innerHTML = '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 p-4" role="alert">' + A.esc(e.message) + '</div>'; });
@@ -137,10 +154,10 @@
   /* ---------------- 반입 데이터셋 ---------------- */
   function loadDatasets() {
     return Promise.all([
-      A.get('/api/v1/datasets' + A.qs({ limit: 100, source_type: 'upload' })),
-      A.get('/api/v1/datasets' + A.qs({ limit: 100, source_type: 'merged' }))
+      fetchAll('/api/v1/datasets', { source_type: 'upload' }),
+      fetchAll('/api/v1/datasets', { source_type: 'merged' })
     ]).then(function (r) {
-      datasets = (r[0].items || []).concat(r[1].items || []);
+      datasets = r[0].concat(r[1]);
       A.$('#ds-total').textContent = datasets.length + '건';
       renderDatasets();
     }).catch(function (e) { A.fail(e.message, '#ds-list'); });
