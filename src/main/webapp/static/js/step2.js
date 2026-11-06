@@ -14,6 +14,8 @@
     { id: 'lof', name: 'LOF (국소 이상치 계수)', tag: '국소 밀도', desc: '이웃 밀도차 기반 국소 고립치 탐지', label: 'LOF 임계치:', def: 1.5, opts: [[1.3, '1.3 (민감 탐지)'], [1.5, '1.5 (표준 권장 기준)'], [1.8, '1.8 (극단 희박 밀도치)']], formula: 'LOF > 임계치' }
   ];
   // PreprocessingSpec 값(API) ↔ 화면 표시
+  // 처음 들어오면 API 기본값과 같게: 아무것도 바꾸지 않는다 (사용자가 직접 고른 것만 적용)
+  var DEFAULTS = { missing_strategy: 'none', outlier_treatment: 'keep', scaling: 'none', drop_duplicates: false };
   var STRATS = {
     missing_strategy: { title: '1. 결측치 정제', opts: [['median', '중앙값으로 대체', '왜곡 방지 권장'], ['mean', '평균값으로 대체', '정규분포형 적합'], ['mode', '최빈값으로 대체', '이산/범주형 적합'], ['drop_rows', '결측치 행 제거 (Drop)', '완전 관측치만 보존'], ['zero', '0 대체 (Zero)', '0으로 치환'], ['none', '처리 안 함 (None)', '원본 유지']] },
     outlier_treatment: { title: '2. 이상치(Outlier) 정제', opts: [['winsorize', '윈저라이징 (클리핑)', '임계 경계값 보정'], ['drop', '이상치 행 제거 (Drop)', '이상 관측치 삭제'], ['log', '로그 변환 (Log)', '스케일 완화'], ['keep', '원본값 보존 (Keep)', '진단만 수행']] },
@@ -33,21 +35,29 @@
   Object.keys(STRATS).forEach(function (k) {
     var saved = ui.prep && ui.prep[k];
     var valid = STRATS[k].opts.some(function (o) { return o[0] === saved; });
-    pcfg[k] = valid ? saved : STRATS[k].opts[0][0];
+    pcfg[k] = valid ? saved : DEFAULTS[k];
   });
   var profile = null, dataset = null, selectedCol = null;
 
   function algo(id) { return ALGOS.filter(function (a) { return a.id === id; })[0] || null; }
-  /* 변수별 판정 — 화면이 정한 기준(서버 판정 아님). 기준은 표 아래에 그대로 표시한다 */
-  var OUT_REVIEW_RATIO = 0.01;   // 이상치 비율 1% 이상이면 '검토 필요', 그 미만이면 '확인 권장'
-  var SKEW_LIMIT = 1;            // |왜도| > 1 이면 비대칭 분포
-  function judge(n, mc, o, detected) {
-    var out = [];
-    if (mc > 0) out.push(['결측치 있음', true]);
-    if (detected && o && o.n_outliers > 0) out.push(o.ratio >= OUT_REVIEW_RATIO ? ['이상치 검토 필요', true] : ['이상치 확인 권장', false]);
-    if (n.skewness != null && Math.abs(n.skewness) > SKEW_LIMIT) out.push([n.min != null && n.min > 0 ? '비대칭 분포, 로그 변환 권장' : '비대칭 분포', false]);
-    if (!out.length) return detected ? [['양호', false]] : [];
-    return out;
+  /* 변수별 상태: 결측과 이상치를 따로 표시한다. 이상치 상태는 서버 recommendation 을 우선하고, 비율 기준은 상수로 둔다 */
+  var OUT_LOW_RATIO = 0.01;   // 이상치 비율이 이 값 미만이면 '확인 권장'
+  var SKEW_LIMIT = 1;         // recommendation 이 없는 응답에서만 쓰는 |왜도| 기준
+  function missStatus(mc) { return mc > 0 ? [['결측 있음', true]] : [['양호', false]]; }
+  function outStatus(n, o, detected) {
+    if (!detected || !o) return [];
+    var lines = [], rec = o.recommendation;
+    if (!(o.n_outliers > 0)) lines.push(['양호', false]);
+    else if (o.ratio < OUT_LOW_RATIO) lines.push(['확인 권장', false]);
+    else if (rec !== 'log') lines.push(['검토 필요', true]);
+    if (o.n_outliers > 0 && rec === 'log') lines.push(['비대칭 분포 – 로그 변환 권장', false]);
+    else if (rec === undefined && n && n.skewness != null && Math.abs(n.skewness) > SKEW_LIMIT && n.min != null && n.min > 0) lines.push(['비대칭 분포 – 로그 변환 권장', false]);
+    return lines;
+  }
+  function statusHtml(lines) { return lines.map(function (j) { return '<span class="block ' + (j[1] ? 'text-warn-ink font-bold' : 'text-ink-2') + '">' + j[0] + '</span>'; }).join('') || '<span class="text-rule-3">-</span>'; }
+  function outCount(o) {
+    var s = A.num(o.n_outliers);
+    return o.n_lower != null && o.n_upper != null ? s + ' <span class="text-xs font-normal text-ink-3">(하 ' + A.num(o.n_lower) + ' / 상 ' + A.num(o.n_upper) + ')</span>' : s;
   }
   function byCol(list) { var m = {}; (list || []).forEach(function (x) { m[x.column] = x; }); return m; }
 
@@ -128,25 +138,25 @@
     var miss = byCol(profile.missing), outl = byCol(profile.outliers);
     var nums = profile.numeric || [];
     if (!selectedCol && nums.length) selectedCol = nums[0].column;
+    var TD = '<td class="py-2.5 px-3 text-right">', DASH = '<span class="text-rule-3">-</span>';
+    function missCell(mc) { return TD + (mc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(mc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>'; }
+    function rowOpen(col) { return '<tr data-col="' + A.esc(col) + '" class="cursor-pointer transition-colors ' + (col === selectedCol ? 'bg-brand-soft font-semibold' : 'hover:bg-paper-3') + '">'; }
+    var NAME = '<td class="py-2.5 px-3 font-sans font-medium text-ink whitespace-nowrap">';
     A.$('#var-body').innerHTML = nums.map(function (n) {
-      var mc = (miss[n.column] || {}).n_missing || n.missing || 0, oc = (outl[n.column] || {}).n_outliers || 0;
-      return '<tr data-col="' + A.esc(n.column) + '" class="cursor-pointer transition-colors ' + (n.column === selectedCol ? 'bg-brand-soft font-semibold' : 'hover:bg-paper-3') + '">' +
-        '<td class="py-2.5 px-3 font-sans font-medium text-ink whitespace-nowrap">' + A.esc(n.column) + '</td>' +
-        '<td class="py-2.5 px-3 text-right">' + (mc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(mc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
-        '<td class="py-2.5 px-3 text-right">' + (!a ? '<span class="text-rule-3">-</span>' : oc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(oc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
-        '<td class="py-2.5 px-3 text-right">' + (!a || !outl[n.column] ? '<span class="text-rule-3">-</span>' : '<span class="text-ink-2">' + A.fix((outl[n.column].ratio || 0) * 100, 2) + '%</span>') + '</td>' +
-        '<td class="py-2.5 px-3 text-right">' + (n.skewness == null ? '<span class="text-rule-3">-</span>' : '<span class="text-ink-2">' + A.fix(n.skewness, 2) + '</span>') + '</td>' +
-        '<td class="py-2.5 px-3 font-sans text-xs">' + (judge(n, mc, outl[n.column], !!a).map(function (j) { return '<span class="block ' + (j[1] ? 'text-warn-ink font-bold' : 'text-ink-2') + '">' + j[0] + '</span>'; }).join('') || '<span class="text-rule-3">-</span>') + '</td></tr>';
+      var mc = (miss[n.column] || {}).n_missing || n.missing || 0, o = outl[n.column];
+      return rowOpen(n.column) + NAME + A.esc(n.column) + '</td>' + missCell(mc) +
+        TD + (!a || !o ? DASH : o.n_outliers > 0 ? '<span class="text-warn-ink font-bold">' + outCount(o) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
+        TD + (!a || !o ? DASH : '<span class="text-ink-2">' + A.fix((o.ratio || 0) * 100, 2) + '%</span>') + '</td>' +
+        TD + (n.skewness == null ? DASH : '<span class="text-ink-2">' + A.fix(n.skewness, 2) + '</span>') + '</td>' +
+        '<td class="py-2.5 px-3 font-sans text-xs">' + statusHtml(missStatus(mc)) + '</td>' +
+        '<td class="py-2.5 px-3 font-sans text-xs">' + statusHtml(outStatus(n, o, !!a)) + '</td></tr>';
     }).join('') + (profile.categorical || []).map(function (c) {
       var mc = (miss[c.column] || {}).n_missing != null ? miss[c.column].n_missing : c.missing || 0;
-      var jd = mc > 0 ? '<span class="block text-warn-ink font-bold">결측치 있음</span>' : a ? '<span class="block text-ink-2">양호</span>' : '<span class="text-rule-3">-</span>';
-      return '<tr data-col="' + A.esc(c.column) + '" class="cursor-pointer transition-colors ' + (c.column === selectedCol ? 'bg-brand-soft font-semibold' : 'hover:bg-paper-3') + '">' +
-        '<td class="py-2.5 px-3 font-sans font-medium text-ink whitespace-nowrap">' + A.esc(c.column) + '<span class="ml-1.5 text-xs font-normal text-ink-3">범주형</span></td>' +
-        '<td class="py-2.5 px-3 text-right">' + (mc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(mc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
-        '<td class="py-2.5 px-3 text-right"><span class="text-rule-3">-</span></td><td class="py-2.5 px-3 text-right"><span class="text-rule-3">-</span></td><td class="py-2.5 px-3 text-right"><span class="text-rule-3">-</span></td>' +
-        '<td class="py-2.5 px-3 font-sans text-xs">' + jd + '</td></tr>';
-    }).join('') || '<tr><td colspan="6" class="py-6 text-center text-ink-4 font-sans">표시할 변수가 없습니다.</td></tr>';
-    A.$('#judge-note').textContent = '판정 기준(화면 기준이며 서버 판정이 아닙니다): 이상치 비율 ' + (OUT_REVIEW_RATIO * 100) + '% 미만은 확인 권장, ' + (OUT_REVIEW_RATIO * 100) + '% 이상은 검토 필요 · |왜도| > ' + SKEW_LIMIT + '이면 비대칭 분포(최솟값이 0보다 큰 변수만 로그 변환 권장) · 이상치 판정은 탐지를 실행한 뒤에 표시됩니다.';
+      return rowOpen(c.column) + NAME + A.esc(c.column) + '<span class="ml-1.5 text-xs font-normal text-ink-3">범주형</span></td>' + missCell(mc) +
+        TD + DASH + '</td>' + TD + DASH + '</td>' + TD + DASH + '</td>' +
+        '<td class="py-2.5 px-3 font-sans text-xs">' + statusHtml(missStatus(mc)) + '</td><td class="py-2.5 px-3 font-sans text-xs">' + DASH + '</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="py-6 text-center text-ink-4 font-sans">표시할 변수가 없습니다.</td></tr>';
+    A.$('#judge-note').textContent = '이상치 상태: 이상치 없음 → 양호, 비율 ' + (OUT_LOW_RATIO * 100) + '% 미만 → 확인 권장, 그 외 → 검토 필요. 로그 변환 권장은 서버 권고(recommendation)를 따릅니다. 이상치 상태는 탐지를 실행한 뒤에 표시됩니다.';
     renderDetail();
     renderAlgos();
   }

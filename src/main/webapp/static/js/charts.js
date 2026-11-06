@@ -204,6 +204,10 @@
     } };
   }
 
+  /** 표와 같은 변수 표기: 보고서가 만든 사전(A.viz.nameMap)이 있으면 계수 이름을 바꿔 쓴다 */
+  function relabel(name) { var m = A.viz && A.viz.nameMap; return m && m[name] != null ? m[name] : name; }
+  /** 축 이름이 '실제값'·'예측값'·'잔차' 처럼 일반적이면 종속변수 표기(변환 포함)를 앞에 붙인다 */
+  function axisLab(l) { var t = A.viz && A.viz.targetLabel; return t && typeof l === 'string' && /^(실제값|예측값|잔차)$/.test(l) ? t + ' ' + l : l; }
   /** 실제값 대 예측값(대각 기준선·회귀선) / 잔차도(기준선 0) */
   function planScatterFit(rec, data, uid) {
     var rows = rowsOf(data), e = enc(rec), o = opt(rec);
@@ -216,8 +220,8 @@
     if (fit) s.push({ type: 'line', name: '회귀선', data: [[xs[0], fit.a + fit.b * xs[0]], [xs[1], fit.a + fit.b * xs[1]]], color: PALETTE[1], marker: { enabled: false }, enableMouseTracking: false });
     var ref = isNum(o.reference_line) ? [{ value: o.reference_line, color: PALETTE[1], width: 1.5, dashStyle: 'Dash', zIndex: 3 }] : [];
     return { html: box(uid), draw: function (el) {
-      return Highcharts.chart(el, baseHc('scatter', { legend: { enabled: s.length > 1 }, xAxis: { title: { text: o.x_label || e.x } }, yAxis: { title: { text: o.y_label || e.y }, plotLines: ref }, series: s,
-        tooltip: { pointFormatter: function () { return (o.x_label || e.x) + ': <b>' + fx(this.x) + '</b><br/>' + (o.y_label || e.y) + ': <b>' + fx(this.y) + '</b>'; } } }));
+      return Highcharts.chart(el, baseHc('scatter', { legend: { enabled: s.length > 1 }, xAxis: { title: { text: axisLab(o.x_label || e.x) } }, yAxis: { title: { text: axisLab(o.y_label || e.y) }, plotLines: ref }, series: s,
+        tooltip: { pointFormatter: function () { return axisLab(o.x_label || e.x) + ': <b>' + fx(this.x) + '</b><br/>' + axisLab(o.y_label || e.y) + ': <b>' + fx(this.y) + '</b>'; } } }));
     } };
   }
 
@@ -270,7 +274,8 @@
     var valF = [e.x, e.y].filter(function (f) { return f && isNum(f0[f]); })[0];
     if (!valF) return null;
     rows = sortRows(rows, o.sort, e);
-    var cats = catF ? rows.map(function (r) { return String(r[catF]); }) : rows.length === 1 ? [A.viz.label(valF)] : rows.map(function (_, i) { return String(i + 1); });
+    if (catF) rows = rows.filter(function (r) { return !/^residual$/i.test(String(r[catF]).trim()); });   // 효과크기 차트에 Residual 이 섞여 와도 그리지 않는다
+    var cats = catF ? rows.map(function (r) { return relabel(String(r[catF])); }) : rows.length === 1 ? [A.viz.label(valF)] : rows.map(function (_, i) { return String(i + 1); });
     // 회귀계수 차트의 변수 이름도 계수표와 같은 표기(log(변수) 등)로 맞춘다. 계수 행에 없는 이름은 그대로 둔다
     if (catF && ctx && ctx.result) cats = cats.map(function (c) { return A.txName(ctx.result, c); });
     var horiz = catF === e.y;   // 범주가 y 축으로 지정되면 가로 막대
@@ -278,7 +283,14 @@
     var pts = rows.map(function (r) { return { y: r[valF], color: boolColor ? (r[e.color] ? PALETTE[0] : C.rule3) : undefined }; });
     var series = [{ name: valF, data: pts, color: PALETTE[0] }];
     var eb = o.error_bars;
-    if (Array.isArray(eb) && eb.length === 2 && isNum(f0[eb[0]])) series.push({ type: 'errorbar', name: '95% 신뢰구간', data: rows.map(function (r) { return [r[eb[0]], r[eb[1]]]; }), color: C.ink1, whiskerLength: '40%' });
+    if (!Array.isArray(eb)) {   // 서버가 구간(하한·상한)을 주면 그대로 오차막대로, 표준오차만 주면 ± 표준오차로 그린다 (화면에서 계산하지 않음)
+      var lo = ['ci_lower', 'lower', 'lower_bound'].filter(function (k) { return isNum(f0[k]); })[0], hi = ['ci_upper', 'upper', 'upper_bound'].filter(function (k) { return isNum(f0[k]); })[0];
+      var se = ['std_error', 'se', 'standard_error'].filter(function (k) { return isNum(f0[k]); })[0];
+      if (lo && hi) eb = [lo, hi];
+      else if (se && valF) { rows.forEach(function (r) { r.__lo = r[valF] - r[se]; r.__hi = r[valF] + r[se]; }); eb = ['__lo', '__hi']; }
+    }
+    f0 = rows[0] || f0;
+    if (Array.isArray(eb) && eb.length === 2 && isNum(f0[eb[0]])) series.push({ type: 'errorbar', name: eb[0] === '__lo' ? '± 표준오차' : '95% 신뢰구간', data: rows.map(function (r) { return [r[eb[0]], r[eb[1]]]; }), color: C.ink1, whiskerLength: '40%' });
     return { html: sized(uid, horiz ? Math.max(256, cats.length * 26 + 70) : 256), draw: function (el) {
       return Highcharts.chart(el, baseHc(horiz ? 'bar' : 'column', {
         xAxis: { categories: cats }, yAxis: { title: { text: null }, plotLines: ref, labels: { formatter: function () { return isPctFmt ? pct(this.value) : this.value; } } },

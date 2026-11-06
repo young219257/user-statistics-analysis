@@ -43,7 +43,7 @@
     group_column: { t: 'col', label: '집단(상위 수준) 변수', from: 'any', required: true },
     time_column: { t: 'col', label: '시간 변수', from: 'numeric', required: true },
     random_slope: { t: 'check', label: '랜덤 기울기 포함', def: false },
-    treatment_column: { t: 'col', label: '처치(0/1) 변수', from: 'any', required: true },
+    treatment_column: { t: 'col', label: '처치(0/1) 변수', from: 'binary', required: true },
     caliper: { t: 'select', label: '캘리퍼 (매칭 허용 거리)', def: '', num: true, opts: [['', '제한 없음'], [0.05, '0.05'], [0.1, '0.1'], [0.2, '0.2']] },
     n_neighbors: { t: 'select', label: '매칭 이웃 수', def: 1, num: true, opts: [[1, '1:1'], [2, '1:2'], [3, '1:3'], [5, '1:5']] },
     label_columns: { t: 'cols', label: '식별자 변수 (원시데이터 표시용, 선택)', from: 'any' }
@@ -64,7 +64,9 @@
     var list = CAT_FEAT[cfg.method] ? cols().filter(function (c) { return c.role === 'numeric' || c.role === 'boolean' || c.role === 'categorical'; }) : numericCols();
     return list.filter(function (c) { return !exceptTarget || !m.target || c.name !== cfg.target; });
   }
-  function pool(kind) { return kind === 'numeric' ? numericCols() : anyCols(); }
+  /** 처치 변수 후보: boolean 열과 고유값이 정확히 2개인 수치형 열 */
+  function binaryCols() { return cols().filter(function (c) { return c.role === 'boolean' || (c.role === 'numeric' && c.n_unique === 2); }); }
+  function pool(kind) { return kind === 'numeric' ? numericCols() : kind === 'binary' ? binaryCols() : anyCols(); }
 
   function pv(key) { return cfg.params[key] !== undefined ? cfg.params[key] : FIELDS[key].def; }
 
@@ -95,31 +97,48 @@
   function colSelect(id, key, from, selected, optional) {
     return selectWrap('<select id="' + id + '" data-key="' + key + '" class="' + SELECT_CLS + '">' +
       '<option value="">' + (optional ? '(사용 안 함)' : '필수 선택') + '</option>' +
-      pool(from).map(function (c) { return '<option value="' + A.esc(c.name) + '"' + (selected === c.name ? ' selected' : '') + '>' + A.esc(c.name) + '</option>'; }).join('') + '</select>');
+      pool(from).filter(function (c) { return !(key === 'treatment_column' || key === 'group_column' || key === 'time_column') || c.name !== cfg.target; }).map(function (c) { return '<option value="' + A.esc(c.name) + '"' + (selected === c.name ? ' selected' : '') + '>' + A.esc(c.name) + '</option>'; }).join('') + '</select>');
   }
 
-  /** 선형회귀인데 종속변수가 두 값뿐이면 실행 전에 안내한다 (고유값 수는 데이터셋 열 정보 n_unique) */
-  function targetWarning() {
-    if (cfg.method !== 'linear_regression' || !cfg.target) return '';
-    var c = cols().filter(function (x) { return x.name === cfg.target; })[0];
-    if (!c || c.n_unique !== 2) return '';
-    return '<div class="krds-msg krds-warning flex items-start gap-2 py-1.5 mt-2" role="alert"><span class="flex-1 min-w-0">종속변수 \'' + A.esc(c.name) + '\'의 값이 두 가지뿐입니다. 선형회귀 대신 로지스틱 회귀를 권장합니다.</span></div>';
+  /** 선형회귀·의사결정나무(회귀)인데 종속변수의 고유값이 2개면 실행 버튼 위에 안내한다 (고유값 수는 열 정보 n_unique) */
+  function updatePreWarn() {
+    var el = A.$('#pre-warn');
+    if (!el) return;
+    var c = (cfg.method === 'linear_regression' || cfg.method === 'decision_tree_regressor') && cfg.target ? cols().filter(function (x) { return x.name === cfg.target; })[0] : null;
+    el.innerHTML = c && c.n_unique === 2 ? '<div class="krds-msg krds-warning flex items-start gap-2 py-1.5 mb-3" role="alert"><span class="flex-1 min-w-0">이분형 종속변수입니다. 로지스틱 회귀를 권장합니다.</span></div>' : '';
+  }
+  /** 다른 역할(종속·처치·집단·시간·가중치·요인·공변량)로 이미 쓴 열은 독립변수 목록에서 선택할 수 없게 한다 */
+  var ROLE_NAME = { target: '종속변수', treatment_column: '처치 변수', group_column: '집단 변수', time_column: '시간 변수', weight_column: '가중치 변수', factors: '요인', covariates: '공변량' };
+  function usedRoles() {
+    var m = meta(cfg.method), used = {};
+    if (m.target && cfg.target) used[cfg.target] = ROLE_NAME.target;
+    m.fields.forEach(function (k) {
+      var v = cfg.params[k];
+      if (!ROLE_NAME[k] || v == null || v === '') return;
+      [].concat(v).forEach(function (n) { if (n) used[n] = ROLE_NAME[k]; });
+    });
+    return used;
+  }
+  function renderFeatList() {
+    var used = usedRoles();
+    cfg.features = cfg.features.filter(function (f) { return !used[f]; });
+    A.$('#feat-list').innerHTML = featCols(false).map(function (c) {
+      var on = cfg.features.indexOf(c.name) >= 0, role = used[c.name];
+      return '<label class="flex items-center gap-2 p-1.5 rounded text-xs transition-colors ' + (role ? 'text-ink-4 cursor-not-allowed' : 'text-ink-1 hover:bg-white cursor-pointer') + '"' + (role ? ' aria-disabled="true"' : '') + '><input type="checkbox" data-feat="' + A.esc(c.name) + '" ' + (on ? 'checked' : '') + (role ? ' disabled' : '') + ' class="rounded text-blue-600 focus:ring-blue-500 border-rule-3 ' + (role ? 'cursor-not-allowed' : 'cursor-pointer') + '"><span class="truncate">' + A.esc(c.name) + '</span><span class="ml-auto text-xs text-ink-4 font-mono shrink-0">' + (role ? role + '로 사용 중' : A.esc(c.role)) + '</span></label>';
+    }).join('') || '<div class="text-xs text-ink-4 p-2">선택 가능한 변수가 없습니다. 1단계에서 변수 타입을 확인하세요.</div>';
+    A.$('#feat-count').textContent = cfg.features.length + '개 선택';
   }
   function renderVars() {
     var m = meta(cfg.method);
     var box = A.$('#target-box');
     if (m.target) {
-      box.innerHTML = field(cfg.method === 'psm' ? '결과변수' : '종속변수', colSelect('sel-target', 'target', 'numeric', cfg.target, false)) + targetWarning();
+      box.innerHTML = field(cfg.method === 'psm' ? '결과변수' : '종속변수', colSelect('sel-target', 'target', 'numeric', cfg.target, false)); updatePreWarn();
     } else {
       // 오른쪽 파라미터 박스와 같은 크기가 되도록 같은 field 틀(라벨 + 입력 높이)로 안내를 표시
       box.innerHTML = field('종속변수', '<div class="w-full bg-paper-2/70 border border-rule rounded-lg px-3 py-2 text-xs text-ink-3">선택한 <strong class="text-ink-1">' + A.esc(m.name) + '</strong> 기법은 종속변수 지정이 필요하지 않습니다.</div>');
     }
     A.$('#feat-title').textContent = m.feat;
-    var avail = featCols(true);
-    A.$('#feat-list').innerHTML = avail.map(function (c) {
-      var on = cfg.features.indexOf(c.name) >= 0;
-      return '<label class="flex items-center gap-2 p-1.5 rounded hover:bg-white text-xs text-ink-1 cursor-pointer transition-colors"><input type="checkbox" data-feat="' + A.esc(c.name) + '" ' + (on ? 'checked' : '') + ' class="rounded text-blue-600 focus:ring-blue-500 border-rule-3 cursor-pointer"><span class="truncate">' + A.esc(c.name) + '</span><span class="ml-auto text-xs text-ink-4 font-mono">' + A.esc(c.role) + '</span></label>';
-    }).join('') || '<div class="text-xs text-ink-4 p-2">선택 가능한 수치형 변수가 없습니다. 1단계에서 변수 타입을 확인하세요.</div>';
+    renderFeatList();
     A.$('#feat-count').textContent = cfg.features.length + '개 선택';
 
     A.$('#extra-params').innerHTML = m.fields.map(function (k) {
@@ -288,7 +307,8 @@
     });
     A.$('#feat-all').addEventListener('click', function () {
       var m = meta(cfg.method);
-      cfg.features = featCols(true).map(function (c) { return c.name; });
+      var usedNow = usedRoles();
+      cfg.features = featCols(true).filter(function (c) { return !usedNow[c.name]; }).map(function (c) { return c.name; });
       renderVars(); renderPipe(); A.icons();
     });
     A.$('#feat-none').addEventListener('click', function () { cfg.features = []; renderVars(); renderPipe(); A.icons(); });
@@ -300,10 +320,12 @@
         if (t.checked && i < 0) arr.push(t.value);
         if (!t.checked && i >= 0) arr.splice(i, 1);
         cfg.params[mk] = arr;
+        if (ROLE_NAME[mk]) renderFeatList();
         return;
       }
       if (!k) return;
       cfg.params[k] = t.type === 'checkbox' ? t.checked : t.value;
+      if (ROLE_NAME[k]) { renderFeatList(); updatePreWarn(); }
       if (k === 'auto_k') { renderVars(); A.icons(); }
     });
     A.$('#btn-run').addEventListener('click', run);

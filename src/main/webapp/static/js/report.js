@@ -47,7 +47,7 @@
     Highcharts.chart(id, {
       chart: { inverted: true, height: Math.max(320, leaves * 56), spacingRight: 140 },
       title: { text: null }, credits: { enabled: false },
-      tooltip: { pointFormatter: function () { return '<b>' + this.name + '</b><br/>표본수: ' + this.n + '<br/>불순도: ' + (this.impurity != null ? Number(this.impurity).toFixed(4) : '-') + '<br/>예측값: ' + this.pred; } },
+      tooltip: { pointFormatter: function () { return '<b>' + this.name + '</b><br/>표본수: ' + this.n + '<br/>불순도: ' + (this.impurity != null ? cardNum(this.impurity, 4) : '-') + '<br/>예측값: ' + this.pred; } },
       series: [{
         type: 'treegraph', data: data, marker: { symbol: 'circle', radius: 6 },
         link: { color: A.tok('rule-3'), lineWidth: 1.5 },
@@ -107,12 +107,18 @@
   }
 
   /* ---------------- SPSS 스타일 통계표 (model_summary / anova / coefficients) ---------------- */
-  function spssNum(v, d) {
+  /** 숫자 표시 공통 함수: 표(앞의 0 생략 `.123`)와 카드(`0.123`)가 같은 자릿수 규칙을 쓴다.
+   *  0이 아닌데 |값| < 0.001 이면 고정 소수점 대신 유효숫자 3자리 지수형(`2.04e-4`)으로 보여 `.000` 으로 뭉개지지 않게 한다 */
+  function fmtNum(v, d, keepZero) {
     if (v === null || v === undefined || isNaN(v)) return '';
-    var s = Number(v).toFixed(d === undefined ? 3 : d);
-    if (Math.abs(Number(v)) < 1) s = s.replace(/^(-?)0\./, '$1.');
+    v = Number(v);
+    if (v !== 0 && Math.abs(v) < 0.001) return v.toExponential(2);
+    var s = v.toFixed(d === undefined ? 3 : d);
+    if (!keepZero && Math.abs(v) < 1) s = s.replace(/^(-?)0\./, '$1.');
     return s;
   }
+  function spssNum(v, d) { return fmtNum(v, d, false); }
+  function cardNum(v, d) { return fmtNum(v, d, true); }
   /** 유효숫자 3자리 표시(SPSS 처럼 |값| < 1 이면 앞의 0 을 뗀다). 작은 값이 고정 소수점 반올림으로 .000 이 되는 것을 막는다: 0.000204 → 2.04e-4, 0.014 → .0140 */
   function spssSig(v, n) {
     var s = A.sig(v, n);
@@ -224,7 +230,7 @@
     (vifRows || []).forEach(function (v) { vifMap[v.term] = v.vif; });
     var body = rows.map(function (row, i) {
       var vif = vifMap[row.term];
-      var base = row.source_variable || row.term, name = row.transform !== undefined ? txApply(base, row.transform) : txLabel(base);
+      var name = coefName(row);
       return '<tr class="hover:bg-paper-3/50">' + (i === 0 ? '<td class="' + TD + ' font-sans font-semibold align-middle" rowspan="' + rows.length + '">1</td>' : '') +
         '<td class="' + TD + ' text-left font-sans">' + A.esc(name) + '</td>' +
         '<td class="' + TD + ' border-l border-paper-2">' + spssNum(row.coefficient) + '</td>' +
@@ -263,7 +269,7 @@
   function renderLogisticCoefficients(rows, targetLabel, positive) {
     if (!rows || !rows.length || rows[0].z_value === undefined) return '';
     var body = rows.map(function (row) {
-      return '<tr class="hover:bg-paper-3/50"><td class="' + TD + ' text-left font-sans">' + A.esc(row.source_variable || row.term) + '</td>' +
+      return '<tr class="hover:bg-paper-3/50"><td class="' + TD + ' text-left font-sans">' + A.esc(coefName(row)) + '</td>' +
         '<td class="' + TD + ' border-l border-paper-2">' + spssNum(row.coefficient) + '</td>' +
         '<td class="' + TD + '">' + spssNum(row.std_error) + '</td>' +
         '<td class="' + TD + ' font-bold">' + spssNum(row.z_value) + '</td>' +
@@ -344,9 +350,10 @@
   }
 
   function kpiCard(label, value, caption, colorClass) {
-    return '<div class="flex-1 min-w-[130px] bg-white rounded-xl border border-rule p-3.5">' +
+    var long = String(value).length > 11;   // '학습 5,029 / 검증 2,156' 처럼 긴 값은 한 줄에 들어가도록 카드를 넓힌다
+    return '<div class="flex-1 ' + (long ? 'min-w-[210px]' : 'min-w-[130px]') + ' bg-white rounded-xl border border-rule p-3.5">' +
       '<div class="text-xs font-semibold text-ink-3 mb-1.5 truncate">' + label + '</div>' +
-      '<div class="text-xl font-extrabold font-mono ' + (colorClass || 'text-ink') + '">' + value + '</div>' +
+      '<div class="font-extrabold font-mono whitespace-nowrap ' + (long ? 'text-base' : 'text-xl') + ' ' + (colorClass || 'text-ink') + '">' + value + '</div>' +
       (caption ? '<div class="text-xs text-ink-4 mt-1 truncate">' + caption + '</div>' : '') + '</div>';
   }
 
@@ -356,7 +363,9 @@
   /** 제외된 행: 서버 metrics.n_dropped / dropped_reasons [{reason, rows}] */
   function droppedCaption(metrics) {
     if (!has(metrics.n_dropped) || !(metrics.n_dropped > 0)) return '';
-    var rs = Array.isArray(metrics.dropped_reasons) ? metrics.dropped_reasons.filter(function (r) { return r && r.reason; }).map(function (r) { return A.esc(r.reason) + ' ' + A.num(r.rows) + '행'; }).join(', ') : '';
+    var KO = { filter: '필터', missing: '결측', missing_target: '종속변수 결측', missing_covariate: '공변량 결측', missing_factor: '요인 결측' };
+    var list = Array.isArray(metrics.dropped_reasons) ? metrics.dropped_reasons.filter(function (r) { return r && r.reason; }) : [];
+    var rs = list.length === 1 ? A.esc(KO[list[0].reason] || list[0].reason) : list.map(function (r) { return A.esc(KO[r.reason] || r.reason) + ' ' + A.num(r.rows) + '행'; }).join(', ');
     return '제외 ' + A.num(metrics.n_dropped) + '행' + (rs ? ' (' + rs + ')' : '');
   }
   /** 표본수: 서버 metrics.{n_total, n_train, n_test, n_dropped}. 홀드아웃이면 학습/검증으로 나눠 보여 준다 */
@@ -400,12 +409,12 @@
     var np = nParts(result, metrics);
     if (np) cards.push(kpiCard('표본수 (N)', np.value, np.caption));
     cards.push(kpiCard('정확도 (Accuracy)', (metrics.accuracy * 100).toFixed(1) + '%', '', 'text-blue-600'));
-    if (has(metrics.precision)) cards.push(kpiCard('정밀도 (Precision)', Number(metrics.precision).toFixed(3), ''));
-    if (has(metrics.recall)) cards.push(kpiCard('재현율 (Recall)', Number(metrics.recall).toFixed(3), ''));
-    if (has(metrics.f1)) cards.push(kpiCard('F1 점수', Number(metrics.f1).toFixed(3), '', 'text-blue-600'));
-    if (has(metrics.roc_auc)) cards.push(kpiCard('ROC-AUC', Number(metrics.roc_auc).toFixed(3), '', 'text-emerald-600'));
+    if (has(metrics.precision)) cards.push(kpiCard('정밀도 (Precision)', cardNum(metrics.precision, 3), ''));
+    if (has(metrics.recall)) cards.push(kpiCard('재현율 (Recall)', cardNum(metrics.recall, 3), ''));
+    if (has(metrics.f1)) cards.push(kpiCard('F1 점수', cardNum(metrics.f1, 3), '', 'text-blue-600'));
+    if (has(metrics.roc_auc)) cards.push(kpiCard('ROC-AUC', cardNum(metrics.roc_auc, 3), '', 'text-emerald-600'));
     if (has(metrics.log_loss)) cards.push(kpiCard('Log Loss', spssNum(metrics.log_loss, 3), ''));
-    if (has(metrics.mcfadden)) cards.push(kpiCard('McFadden R²', spssNum(metrics.mcfadden, 3), '', 'text-amber-600'));
+    if (has(metrics.mcfadden)) cards.push(kpiCard('McFadden R²', spssNum(metrics.mcfadden, 3), ''));
     if (has(metrics.aic)) cards.push(kpiCard('AIC / BIC', spssNum(metrics.aic, 1), has(metrics.bic) ? 'BIC ' + spssNum(metrics.bic, 1) : ''));
     return cards;
   }
@@ -416,12 +425,12 @@
     var n = result.n_observations != null ? result.n_observations : metrics.n_samples;
     if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), ''));
     if (has(metrics.n_clusters)) cards.push(kpiCard('군집 수', A.num(metrics.n_clusters), '', 'text-blue-600'));
-    cards.push(kpiCard('실루엣 (Silhouette)', Number(metrics.silhouette).toFixed(3), '', 'text-emerald-600'));
+    cards.push(kpiCard('실루엣 (Silhouette)', cardNum(metrics.silhouette, 3), '', 'text-emerald-600'));
     if (has(metrics.calinski_harabasz)) cards.push(kpiCard('Calinski-Harabasz', spssNum(metrics.calinski_harabasz, 1), ''));
-    if (has(metrics.davies_bouldin)) cards.push(kpiCard('Davies-Bouldin', Number(metrics.davies_bouldin).toFixed(3), '', 'text-blue-600'));
+    if (has(metrics.davies_bouldin)) cards.push(kpiCard('Davies-Bouldin', cardNum(metrics.davies_bouldin, 3), '', 'text-blue-600'));
     if (has(metrics.variance_ratio)) cards.push(kpiCard('군집 간 분산 비율', (metrics.variance_ratio * 100).toFixed(1) + '%', ''));
     if (has(metrics.inertia)) cards.push(kpiCard('Inertia', spssNum(metrics.inertia, 1), ''));
-    if (has(metrics.n_noise)) cards.push(kpiCard('노이즈 점', A.num(metrics.n_noise), has(metrics.noise_ratio) ? (metrics.noise_ratio * 100).toFixed(1) + '%' : '', 'text-amber-600'));
+    if (has(metrics.n_noise)) cards.push(kpiCard('노이즈 점', A.num(metrics.n_noise), has(metrics.noise_ratio) ? (metrics.noise_ratio * 100).toFixed(1) + '%' : ''));
     return cards;
   }
 
@@ -477,7 +486,7 @@
     if (has(metrics.n_variables)) cards.push(kpiCard('변수 수', A.num(metrics.n_variables), corrMethodLabel(result.correlation_method) + ' 상관'));
     if (has(metrics.n_pairs)) cards.push(kpiCard('변수 쌍 수', A.num(metrics.n_pairs), ''));
     if (has(metrics.n_strong_pairs)) cards.push(kpiCard('강한 상관 쌍', A.num(metrics.n_strong_pairs), '', metrics.n_strong_pairs ? 'text-blue-600' : 'text-ink'));
-    if (has(metrics.max_abs_coefficient)) cards.push(kpiCard('최대 |r|', Number(metrics.max_abs_coefficient).toFixed(3), '', 'text-blue-600'));
+    if (has(metrics.max_abs_coefficient)) cards.push(kpiCard('최대 |r|', cardNum(metrics.max_abs_coefficient, 3), '', 'text-blue-600'));
     return cards;
   }
 
@@ -492,11 +501,11 @@
       if (has(metrics.first_component_ratio)) c.push(kpiCard('제1주성분 비율', (metrics.first_component_ratio * 100).toFixed(1) + '%', '', 'text-blue-600'));
     } else if (has(metrics.model_r_squared)) {
       if (has(metrics.n_observations)) c.push(kpiCard('표본수 (N)', A.num(metrics.n_observations), droppedCaption(metrics)));
-      c.push(kpiCard('모형 R²', Number(metrics.model_r_squared).toFixed(3), '', 'text-blue-600'));
+      c.push(kpiCard('모형 R²', cardNum(metrics.model_r_squared, 3), '', 'text-blue-600'));
       if (has(metrics.n_significant_terms)) c.push(kpiCard('유의한 효과 수', A.num(metrics.n_significant_terms), ''));
       var me = metrics.max_effect;   // 서버: {term, value, measure: 'partial_eta_sq' | 'eta_sq'} — 효과가 없으면 null
-      if (me && has(me.value)) c.push(kpiCard('최대 효과크기 (' + (me.measure === 'partial_eta_sq' ? '부분 η²' : 'η²') + ')', Number(me.value).toFixed(3), me.term ? A.esc(me.term) : '', 'text-blue-600'));
-      else if (!('max_effect' in metrics) && has(metrics.max_eta_squared)) c.push(kpiCard('최대 효과크기 (η²)', Number(metrics.max_eta_squared).toFixed(3), '', 'text-blue-600'));
+      if (me && has(me.value)) c.push(kpiCard('최대 효과크기 (' + (me.measure === 'partial_eta_sq' ? '부분 η²' : 'η²') + ')', cardNum(me.value, 3), me.term ? A.esc(me.term) : '', 'text-blue-600'));
+      else if (!('max_effect' in metrics) && has(metrics.max_eta_squared)) c.push(kpiCard('최대 효과크기 (η²)', cardNum(metrics.max_eta_squared, 3), '', 'text-blue-600'));
       if (has(metrics.levene_p_value)) {
         var lv = result.assumption_checks && result.assumption_checks.levene;   // 색은 서버가 준 판정(equal_variance)을 따른다: 가정 검정 표와 같은 기준
         c.push(kpiCard('Levene 등분산', 'p=' + spssNum(metrics.levene_p_value), '', lv && lv.equal_variance != null ? (lv.equal_variance ? 'text-emerald-700' : 'text-rose-600') : ''));
@@ -508,8 +517,8 @@
       if (has(metrics.aic)) c.push(kpiCard('AIC / BIC', spssNum(metrics.aic, 1), has(metrics.bic) ? 'BIC ' + spssNum(metrics.bic, 1) : ''));
     } else if (has(metrics.icc) && has(metrics.n_groups)) {
       c.push(kpiCard('집단 수', A.num(metrics.n_groups), '관측치 ' + A.num(metrics.n_observations)));
-      c.push(kpiCard('ICC', Number(metrics.icc).toFixed(3), '', 'text-blue-600'));
-      if (has(metrics.unconditional_icc)) c.push(kpiCard('무조건모형 ICC', Number(metrics.unconditional_icc).toFixed(3), '', 'text-blue-600'));
+      c.push(kpiCard('ICC', cardNum(metrics.icc, 3), '', 'text-blue-600'));
+      if (has(metrics.unconditional_icc)) c.push(kpiCard('무조건모형 ICC', cardNum(metrics.unconditional_icc, 3), '', 'text-blue-600'));
       if (has(metrics.log_likelihood)) c.push(kpiCard('로그 우도', spssNum(metrics.log_likelihood, 2), has(metrics.aic) ? 'AIC ' + spssNum(metrics.aic, 1) : ''));
     } else if (has(metrics.n_treated)) {
       c.push(kpiCard('처치군', A.num(metrics.n_treated), '매칭 ' + A.num(metrics.n_matched_treated) + '명'));
@@ -532,8 +541,8 @@
     var cards = [];
     var np = nParts(result, metrics);
     if (np) cards.push(kpiCard('표본수 (N)', np.value, np.caption));
-    cards.push(kpiCard('결정계수 (R²)', Number(metrics.r_squared).toFixed(3), '', 'text-blue-600'));
-    if (metrics.adjusted_r_squared != null) cards.push(kpiCard('수정 R² (Adj.)', Number(metrics.adjusted_r_squared).toFixed(3), '', 'text-blue-600'));
+    cards.push(kpiCard('결정계수 (R²)', cardNum(metrics.r_squared, 3), '', 'text-blue-600'));
+    if (metrics.adjusted_r_squared != null) cards.push(kpiCard('수정 R² (Adj.)', cardNum(metrics.adjusted_r_squared, 3), '', 'text-blue-600'));
     if (metrics.f_statistic != null) {
       var fp = metrics.f_pvalue;
       var fStars = starSup(fp);
@@ -542,12 +551,12 @@
     }
     if (metrics.std_error_estimate != null) cards.push(kpiCard('추정 표준오차', spssSmall(metrics.std_error_estimate, 3), ''));
     var norm = result.diagnostics && result.diagnostics.normality;
-    if (norm && norm.statistic != null) cards.push(kpiCard('잔차 정규성 (S-W)', 'W=' + Number(norm.statistic).toFixed(3), 'p = ' + spssNum(norm.p_value) + (norm.normal ? ' (정규성 만족)' : ' (정규성 위배)'), 'text-emerald-600'));
+    if (norm && norm.statistic != null) cards.push(kpiCard('잔차 정규성 (S-W)', 'W=' + cardNum(norm.statistic, 3), 'p = ' + spssNum(norm.p_value) + (norm.normal ? ' (정규성 만족)' : ' (정규성 위배)'), 'text-emerald-600'));
     var homo = result.diagnostics && result.diagnostics.homoscedasticity;
     if (metrics.durbin_watson != null || homo) {
       var dwText = metrics.durbin_watson != null ? 'DW = ' + spssNum(metrics.durbin_watson, 3) : '-';
       var bpText = homo ? 'BP p=' + spssNum(homo.p_value) + (homo.homoscedastic ? ' (등분산 충족)' : ' (이분산 의심)') : '';
-      cards.push(kpiCard('등분산 / 자기상관', dwText, bpText, 'text-amber-600'));
+      cards.push(kpiCard('등분산 / 자기상관', dwText, bpText, homo && homo.homoscedastic != null ? (homo.homoscedastic ? 'text-emerald-700' : 'text-rose-600') : ''));   // 색은 서버 판정(homoscedastic)을 따른다
     }
     return '<div class="flex flex-wrap gap-3">' + cards.join('') + '</div>';
   }
@@ -608,14 +617,14 @@
   /* 고정효과 계수표 (다층모형·성장모형): coefficient, std_error, p_value, ci_lower, ci_upper */
   function renderFixedEffects(rows, targetLabel, title) {
     if (!rows || !rows.length) return '';
-    var body = rows.map(function (r) { return [A.esc(r.source_variable || r.term), spssNum(r.coefficient), spssNum(r.std_error), '<b>' + sigFmt(r.p_value) + '</b>', spssNum(r.ci_lower), spssNum(r.ci_upper)]; });
+    var body = rows.map(function (r) { return [A.esc(coefName(r)), spssNum(r.coefficient), spssNum(r.std_error), '<b>' + sigFmt(r.p_value) + '</b>', spssNum(r.ci_lower), spssNum(r.ci_upper)]; });
     return statCard((title || '고정효과 (Fixed Effects)') + ' <sup class="text-blue-600">a</sup>', tbl(['모수', 'B', '표준오차', '유의확률', '95% CI 하한', '95% CI 상한'], body), ['a. 종속변수: ' + A.esc(targetLabel), SIG_NOTE]);
   }
 
   /* 의사결정나무: 구조 + 변수 중요도 + 트리 */
   function renderTreeStructure(metrics, result) {
     var t = kvRow([['트리 깊이', n0(result.tree_depth)], ['리프 노드 수', n0(result.n_leaves)], ['분할 기준', A.esc(result.criterion || '')], ['표본수', (nParts(result, metrics) || {}).plain || n0(result.n_observations)],
-      ['결정계수 (R²)', spssNum(metrics.r_squared)], ['학습셋 R²', spssNum(metrics.train_r_squared)], ['RMSE', spssSmall(metrics.rmse, 3)], ['MSE', spssSmall(metrics.mse, 3)], ['MAE', spssSmall(metrics.mae, 3)]]);
+      ['결정계수 (R²)', metrics.train ? '' : spssNum(metrics.r_squared)], ['학습셋 R²', metrics.train ? '' : spssNum(metrics.train_r_squared)], ['RMSE', metrics.train ? '' : spssSmall(metrics.rmse, 3)], ['MSE', metrics.train ? '' : spssSmall(metrics.mse, 3)], ['MAE', metrics.train ? '' : spssSmall(metrics.mae, 3)]]);
     if (!t) return '';
     if (!has(metrics.r_squared)) return statCard('모형 구조', t, ['분류 성능 지표는 상단 요약 카드를 참고하세요.']);
     return statCard('모형 구조 및 성능', t, [metrics.evaluation === 'in_sample' ? '검증셋을 따로 두지 않아 학습셋 기준으로 계산했습니다.' : '성능 지표는 검증셋 기준입니다.']);
@@ -720,14 +729,21 @@
   }
 
   /* 다층모형 / 성장모형 */
+  /** AIC/BIC 가 null 이면 '−' 와 사유 툴팁(추정 방법 때문에 산출하지 않음)을 보여 준다. 값이 있으면 추정 방법을 함께 단다 */
+  function aicCell(v, metrics, fit) {
+    var em = (metrics && metrics.estimation_method) || (fit && fit.estimation_method);
+    if (has(v)) return spssNum(v, 3) + (em ? ' <span class="text-xs font-sans text-ink-3">(' + A.esc(em) + ')</span>' : '');
+    return '<span class="text-rule-3" title="' + A.esc(em ? em + ' 추정이라 산출하지 않음' : '추정 방법상 산출하지 않음') + '">−</span>';
+  }
   function renderMultilevelInfo(metrics, result) {
     var fit = result.model_fit || {};
     var t = kvRow([[has(metrics.n_individuals) ? '개체 수' : '집단 수', n0(has(metrics.n_groups) ? metrics.n_groups : metrics.n_individuals)], ['관측치 수', n0(metrics.n_observations)], ['ICC', spssNum(metrics.icc)], ['무조건모형 ICC', spssNum(metrics.unconditional_icc)],
       ['평균 성장률', has(metrics.average_growth_rate) ? '<b>' + spssNum(metrics.average_growth_rate, 3) + '</b>' : ''], ['성장률 유의확률', sigFmt(metrics.average_growth_rate_p_value)],
-      ['로그 우도', spssNum(has(metrics.log_likelihood) ? metrics.log_likelihood : fit.log_likelihood, 3)], ['AIC', has(metrics.aic) ? spssNum(metrics.aic, 3) : '-'], ['BIC', has(metrics.bic) ? spssNum(metrics.bic, 3) : '-'], ['수렴', yes(fit.converged, '수렴', '미수렴')]]);
+      ['로그 우도', spssNum(has(metrics.log_likelihood) ? metrics.log_likelihood : fit.log_likelihood, 3)], ['AIC', aicCell(metrics.aic, metrics, fit)], ['BIC', aicCell(metrics.bic, metrics, fit)], ['수렴', yes(fit.converged, '수렴', '미수렴')]]);
     if (!t) return '';
     var title = has(metrics.n_individuals) ? '성장모형 요약 (개체 ' + A.num(metrics.n_individuals) + '명)' : '다층모형 요약';
-    return statCard(title, t, ['AIC/BIC는 REML 추정에서는 제공되지 않아 "-"로 표시됩니다.'].concat(noteOf(result)));
+    var em = metrics.estimation_method || fit.estimation_method;
+    return statCard(title, t, (em && has(metrics.aic) ? [srv('추정 방법: ' + A.esc(em))] : []).concat(noteOf(result)));
   }
   function renderVarianceComponents(result, metrics) {
     var vc = result.variance_components, uv = result.unconditional_variance;
@@ -773,15 +789,76 @@
   function renderPropensityModel(pm, result) {
     if (!pm || !pm.coefficients || !pm.coefficients.length) return '';
     return statCard('성향점수 모형 (로지스틱, 종속변수: ' + A.esc(result.treatment_column || '처치') + ')', tbl(['변수', 'B', '유의확률', '95% CI 하한', '95% CI 상한'], pm.coefficients.map(function (r) {
-      return [A.esc(r.source_variable || r.term), spssNum(r.coefficient), sigFmt(r.p_value), spssNum(r.ci_lower), spssNum(r.ci_upper)];
+      return [A.esc(coefName(r)), spssNum(r.coefficient), sigFmt(r.p_value), spssNum(r.ci_lower), spssNum(r.ci_upper)];
     })), ['유사 R² (McFadden) = ' + spssNum(pm.pseudo_r_squared), SIG_NOTE]);
+  }
+
+  /** 계수 행 이름: 표와 차트가 같은 함수를 쓴다. 서버 term/variable/level/transform 우선, 없으면 기존 이름 */
+  function coefName(row) {
+    if (row.term === 'const' || row.source_variable === '(절편)') return '(절편)';
+    var variable = row.variable || row.source_variable || row.term;
+    if (row.level != null && row.level !== '') return variable + '=' + row.level;
+    if (row.term && String(row.term).indexOf('=') >= 0) return row.term;   // 범주형 더미: 성별=여
+    if (row.transform !== undefined) return txApply(variable, row.transform);
+    return txLabel(variable);
+  }
+  /** 차트가 쓰는 이름(term·변수명)을 표와 같은 표시 이름으로 바꾸는 사전 */
+  function buildNameMap(result) {
+    var m = {}, cnt = {};
+    [].concat(result.coefficients || [], result.fixed_effects || [], (result.propensity_model && result.propensity_model.coefficients) || []).forEach(function (row) {
+      if (!row || typeof row !== 'object') return;
+      var nm = coefName(row);
+      if (row.term) m[row.term] = nm;
+      var v = row.variable || row.source_variable;
+      if (v) { cnt[v] = (cnt[v] || 0) + 1; m[v] = nm; }
+    });
+    Object.keys(cnt).forEach(function (v) { if (cnt[v] > 1) delete m[v]; });   // 한 변수에 행이 여러 개(더미)면 변수명으로는 바꾸지 않는다
+    return m;
+  }
+  /** 역할별 변수와 변환 한 줄: 서버 result.variables 가 있으면 그것을, 없으면 응답의 params 를 쓴다 */
+  var ROLE_LABEL = { target: '종속변수', dependent: '종속변수', outcome: '결과변수', features: '독립변수', independent: '독립변수', predictors: '독립변수', covariates: '공변량',
+    factors: '요인', time: '시점 변수', time_column: '시점 변수', group: '집단 변수', group_column: '집단 변수', treatment: '처치 변수', treatment_column: '처치 변수' };
+  function roleVarText(v) {
+    if (v == null) return '';
+    if (Array.isArray(v)) return v.map(roleVarText).filter(Boolean).join(', ');
+    if (typeof v === 'object') { var nm = v.display || v.label || v.name || v.column || v.variable; return nm ? (v.transform !== undefined && !v.display && !v.label ? txApply(nm, v.transform) : nm) : ''; }
+    return txLabel(String(v));
+  }
+  function variablesLine(r) {
+    var result = r.result || {}, rows = [], vars = result.variables;
+    if (Array.isArray(vars)) vars.forEach(function (x) { var t = roleVarText(x); if (t) rows.push([ROLE_LABEL[x.role] || x.role_label || x.role || '변수', t]); });
+    else if (vars && typeof vars === 'object') Object.keys(vars).forEach(function (k) { var t = roleVarText(vars[k]); if (t) rows.push([ROLE_LABEL[k] || k, t]); });
+    if (!rows.length) {
+      var p = r.params || {};
+      [['target', p.target || result.target], ['group_column', p.group_column], ['time_column', p.time_column], ['treatment_column', p.treatment_column]].forEach(function (x) { if (x[1]) rows.push([ROLE_LABEL[x[0]], txLabel(x[1])]); });
+    }
+    if (!rows.length) return '';
+    return '<div class="text-xs text-ink-3 pt-2 flex flex-wrap gap-x-4 gap-y-1">' + rows.map(function (x) { return '<span><span class="font-semibold text-ink-2">' + A.esc(x[0]) + ':</span> ' + A.esc(x[1]) + '</span>'; }).join('') + '</div>';
+  }
+
+  /** 학습셋·검증셋 지표를 두 줄로 나눠 보여 준다 (metrics.train / metrics.test). test 가 null 이면 검증셋 줄은 숨긴다.
+   *  skip: 이미 다른 표에 있는 지표 키 */
+  var SPLIT_COLS = [['r2', 'R²'], ['adj_r2', '수정 R²'], ['accuracy', '정확도'], ['precision', '정밀도'], ['recall', '재현율'], ['f1', 'F1'], ['roc_auc', 'ROC-AUC'], ['rmse', 'RMSE'], ['mse', 'MSE'], ['mae', 'MAE'],
+    ['log_loss', 'Log Loss'], ['mcfadden', 'McFadden R²'], ['aic', 'AIC'], ['bic', 'BIC'], ['log_likelihood', '로그 우도']];
+  function renderSplitMetrics(metrics, title, skip) {
+    var tr = metrics.train, te = metrics.test;
+    if (!tr || typeof tr !== 'object') return '';
+    te = te && typeof te === 'object' ? te : null;
+    var cols = SPLIT_COLS.filter(function (c) { return (!skip || skip.indexOf(c[0]) < 0) && (has(tr[c[0]]) || (te && has(te[c[0]]))); });
+    if (!cols.length) return '';
+    function row(label, o) { return [label + (has(o.n) ? ' (n=' + A.num(o.n) + ')' : '')].concat(cols.map(function (c) { return has(o[c[0]]) ? spssSmall(o[c[0]], 3) : ''; })); }
+    var rows = [row('학습셋', tr)].concat(te ? [row('검증셋', te)] : []);
+    return statCard(title || '학습셋·검증셋 지표', tbl(['구분'].concat(cols.map(function (c) { return c[1]; })), rows), te ? [] : [srv('검증셋을 따로 두지 않았습니다.')]);
   }
 
   /** 서버 result.warnings = [{code, message, suggestion}] */
   function renderWarnings(warnings) {
     if (!Array.isArray(warnings) || !warnings.length) return '';
-    var rows = warnings.map(function (w) { return ['<span class="krds-warning font-sans font-semibold" style="background:none">' + A.esc(w.message || w.code || '') + '</span>', A.esc(w.suggestion || '')]; });
-    return statCard('분석 경고', tbl(['내용', '권고'], rows));
+    var W = TD.replace('whitespace-nowrap', 'whitespace-normal text-left align-top');   // 긴 문장은 줄바꿈
+    var body = warnings.map(function (w) {
+      return '<tr><td class="' + W + ' font-sans text-warn-ink font-semibold">' + A.esc(w.message || w.code || '') + '</td><td class="' + W + ' font-sans">' + A.esc(w.suggestion || '') + '</td></tr>';
+    }).join('');
+    return statCard('분석 경고', '<table class="w-full text-body border-collapse"><thead><tr><th class="' + TH + ' text-left">내용</th><th class="' + TH + ' text-left">권고</th></tr></thead><tbody>' + body + '</tbody></table>');
   }
 
   /** 기법별 결과표 구성. 알려진 기법은 지표정리표에 있는 항목만 표시하고, 모르는 기법만 범용 렌더링으로 폴백 */
@@ -800,11 +877,11 @@
         break;
       case 'logistic_regression':
         cards = [renderLogisticFit(metrics), renderLogisticCoefficients(result.coefficients, target, result.binary ? ((r.params && r.params.positive_label) || (result.classes && result.classes[result.classes.length - 1])) : null),
-          renderMultinomialCoefficients(result.coefficients, target), renderConfusionMatrix(result.confusion_matrix)];
+          renderMultinomialCoefficients(result.coefficients, target), renderSplitMetrics(metrics, '학습셋·검증셋 분류 성능', ['aic', 'bic', 'log_likelihood', 'mcfadden']), renderConfusionMatrix(result.confusion_matrix)];
         break;
       case 'decision_tree_regressor':
       case 'decision_tree_classifier':
-        cards = [renderTreeStructure(metrics, result), renderImportance(result.feature_importance), renderConfusionMatrix(result.confusion_matrix), renderTreeCards(result.tree)];
+        cards = [renderTreeStructure(metrics, result), renderSplitMetrics(metrics, '학습셋·검증셋 성능'), renderImportance(result.feature_importance), renderConfusionMatrix(result.confusion_matrix), renderTreeCards(result.tree)];
         break;
       case 'kmeans':
       case 'hierarchical':
@@ -904,7 +981,11 @@
     A.$('#rp-title').textContent = r.name;
     A.$('#btn-save').classList.remove('hidden'); A.$('#btn-save').classList.add('flex');
     var failed = r.status === 'failed';
-    A.$('#rp-diag').innerHTML = '<div class="flex items-center gap-2 pb-2 border-b border-paper-2">' + '<h4 class="text-title font-semibold text-ink">분석 결과 요약</h4></div>' +
+    // 차트가 표와 같은 이름·종속변수 표기를 쓰도록 공유한다
+    A.viz.nameMap = buildNameMap(r.result || {});
+    var tgt = (r.result && r.result.variables && roleVarText(r.result.variables.target || r.result.variables.dependent)) || ((r.params && r.params.target) ? txLabel(r.params.target) : '');
+    A.viz.targetLabel = tgt || '';
+    A.$('#rp-diag').innerHTML = '<div class="flex items-center gap-2 pb-2 border-b border-paper-2">' + '<h4 class="text-title font-semibold text-ink">분석 결과 요약</h4></div>' + variablesLine(r) +
       (r.error ? '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 whitespace-pre-wrap" role="alert">' + A.esc(r.error) + '</div>' : '') +
       (renderSummaryCards(r.metrics || {}, r.result || {}) || A.viz.metricsGrid(r.metrics, 24) || '<div class="text-xs text-ink-4">표시할 스칼라 지표가 없습니다. \'표준 통계 결과표\' 탭을 확인하세요.</div>');
     renderResultTab();

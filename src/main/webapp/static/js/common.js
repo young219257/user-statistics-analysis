@@ -302,6 +302,13 @@
   };
   /* 인라인 오류: 토스트 대신 문제가 난 영역(anchor) 바로 아래에 표시. anchor 없으면 본문 맨 위.
    * 같은 영역에 다시 오면 내용만 바꾸고, App.fail(null, anchor) 로 지운다. */
+  /** 표시·PDF·파일명용 한글 정규화(NFC). API 요청에 싣는 값에는 쓰지 않는다 — 요청은 응답으로 받은 원래 문자열을 그대로 보낸다 */
+  App.nfc = function (v) {
+    if (typeof v === 'string') return v.normalize ? v.normalize('NFC') : v;
+    if (Array.isArray(v)) return v.map(App.nfc);
+    if (v && typeof v === 'object') { var o = {}; Object.keys(v).forEach(function (k) { o[k] = App.nfc(v[k]); }); return o; }
+    return v;
+  };
   App.fail = function (msg, anchor) {
     var el = typeof anchor === 'string' ? document.querySelector(anchor) : anchor;
     var main = document.getElementById('main-content');

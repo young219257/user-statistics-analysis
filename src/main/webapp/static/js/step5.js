@@ -367,7 +367,7 @@
         // PDF·Excel 모두 같은 4-2 화면 내용으로 만든다 (Excel 에는 차트 이미지는 넣지 않는다)
         var job = collectScreens(selected).then(function (screens) {
           if (act === 'excel') screens.forEach(function (sc) { sc.images = []; });
-          return A.downloadFile('POST', '/export/package/' + encodeURIComponent(id) + '/' + act, { screens: screens }, fname);
+          return A.downloadFile('POST', '/export/package/' + encodeURIComponent(id) + '/' + act, { screens: A.nfc(screens) }, A.nfc(fname));
         });
         job
           .then(function (name) { notice("'" + name + "' 파일이 다운로드되었습니다."); })

@@ -50,7 +50,7 @@
       <div class="overflow-x-auto md:max-h-64">
         <table class="w-full min-w-[420px] text-left text-body border-collapse whitespace-nowrap">
           <thead><tr class="bg-paper-3 text-ink-2 border-b border-rule text-xs">
-            <th class="py-2.5 px-3">변수명</th><th class="py-2.5 px-3 text-right">결측치</th><th class="py-2.5 px-3 text-right" id="th-out">이상치</th><th class="py-2.5 px-3 text-right">이상치 비율</th><th class="py-2.5 px-3 text-right">왜도</th><th class="py-2.5 px-3">판정</th>
+            <th class="py-2.5 px-3">변수명</th><th class="py-2.5 px-3 text-right">결측치</th><th class="py-2.5 px-3 text-right" id="th-out">이상치</th><th class="py-2.5 px-3 text-right">이상치 비율</th><th class="py-2.5 px-3 text-right">왜도</th><th class="py-2.5 px-3">결측 상태</th><th class="py-2.5 px-3">이상치 상태</th>
           </tr></thead>
           <tbody class="divide-y divide-paper-2 font-mono text-body" id="var-body"></tbody>
         </table>

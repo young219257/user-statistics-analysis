@@ -50,6 +50,7 @@
       </div>
     </div>
     <div class="pt-2">
+      <div id="pre-warn"></div>
       <button type="button" id="btn-run" class="block ml-auto px-8 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-semibold text-body rounded-lg transition-colors cursor-pointer whitespace-nowrap">
         <span>분석 실행</span>
       </button>
