@@ -1349,7 +1349,7 @@ div:has(> #main-content) { background-color: #fff; }
 
 /* 필수 선택 항목: 라벨 뒤 빨간 별표(*) + 미선택 시 "필수 선택 항목입니다." 오류 문구 */
 .req-star { margin-left: 3px; color: #e03131 !important; font-weight: 700; }
-.req-legend { margin: 4px 0 0; font-size: 12px; line-height: 16px; color: var(--color-ink-3, #6b7684); }
+.req-legend { margin: 0 0 0 10px; font-size: 12px; line-height: 16px; color: var(--color-ink-3, #6b7684); }
 .req-legend .req-star { margin: 0 2px 0 0; }
 .req-msg { display: none; margin: 4px 0 0; font-size: 13px; line-height: 18px; color: #d63a2f; }
 .req-field.is-error .req-msg { display: block; }

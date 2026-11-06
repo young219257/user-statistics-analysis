@@ -17,7 +17,7 @@
     { id: 'dbscan', name: 'DBSCAN', en: 'DBSCAN', cat: '군집', icon: 'pie-chart', desc: '밀도 기반 군집·노이즈 탐지', target: false, feat: '투입 변수', fields: ['eps', 'min_samples', 'label_columns'] },
     { id: 'pca', name: '주성분분석', en: 'PCA', cat: '기초', icon: 'layers', desc: '차원 축소·요인 구조 파악', target: false, feat: '투입 변수', fields: ['n_components'] },
     { id: 'anova', name: '분산분석 (ANOVA/ANCOVA)', en: 'ANOVA', cat: '고급', icon: 'award', desc: '집단 간 평균 차이 검정', target: true, feat: '추가 독립변수 (선택)', fields: ['factors', 'covariates', 'include_interaction'], featOptional: true },
-    { id: 'multilevel', name: '다층모형 (HLM)', en: 'Multilevel', cat: '고급', icon: 'layers', desc: '집단 내 위계 구조 반영 회귀', target: true, feat: '고정효과 변수', fields: ['group_column', 'random_slope'] },
+    { id: 'multilevel', name: '다층모형 (HLM)', en: 'Multilevel', cat: '고급', icon: 'layers', desc: '집단 내 위계 구조 반영 회귀', target: true, feat: '고정효과 변수 (선택)', fields: ['group_column', 'random_slope'], featOptional: true },
     { id: 'growth_curve', name: '성장곡선모형', en: 'Growth Curve', cat: '고급', icon: 'trending-up', desc: '시간에 따른 변화 궤적', target: true, feat: '추가 독립변수 (선택)', fields: ['time_column', 'group_column', 'random_slope'], featOptional: true },
     { id: 'psm', name: '성향점수매칭 (PSM)', en: 'Propensity Score Matching', cat: '고급', icon: 'award', desc: '처치 효과 추정을 위한 매칭', target: true, feat: '공변량 (Covariates / X)', fields: ['treatment_column', 'caliper', 'n_neighbors'] }
   ];
