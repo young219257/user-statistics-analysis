@@ -90,11 +90,18 @@
       pool(from).map(function (c) { return '<option value="' + A.esc(c.name) + '"' + (selected === c.name ? ' selected' : '') + '>' + A.esc(c.name) + '</option>'; }).join('') + '</select>');
   }
 
+  /** 선형회귀인데 종속변수가 두 값뿐이면 실행 전에 안내한다 (고유값 수는 데이터셋 열 정보 n_unique) */
+  function targetWarning() {
+    if (cfg.method !== 'linear_regression' || !cfg.target) return '';
+    var c = cols().filter(function (x) { return x.name === cfg.target; })[0];
+    if (!c || c.n_unique !== 2) return '';
+    return '<div class="krds-msg krds-warning flex items-start gap-2 py-1.5 mt-2" role="alert"><span class="flex-1 min-w-0">종속변수 \'' + A.esc(c.name) + '\'의 값이 두 가지뿐입니다. 선형회귀 대신 로지스틱 회귀를 권장합니다.</span></div>';
+  }
   function renderVars() {
     var m = meta(cfg.method);
     var box = A.$('#target-box');
     if (m.target) {
-      box.innerHTML = field(cfg.method === 'psm' ? '결과변수' : '종속변수', colSelect('sel-target', 'target', 'numeric', cfg.target, false));
+      box.innerHTML = field(cfg.method === 'psm' ? '결과변수' : '종속변수', colSelect('sel-target', 'target', 'numeric', cfg.target, false)) + targetWarning();
     } else {
       // 오른쪽 파라미터 박스와 같은 크기가 되도록 같은 field 틀(라벨 + 입력 높이)로 안내를 표시
       box.innerHTML = field('종속변수', '<div class="w-full bg-paper-2/70 border border-rule rounded-lg px-3 py-2 text-xs text-ink-3">선택한 <strong class="text-ink-1">' + A.esc(m.name) + '</strong> 기법은 종속변수 지정이 필요하지 않습니다.</div>');

@@ -157,22 +157,52 @@
       '<td class="' + TD + ' font-sans font-semibold">1</td>' +
       '<td class="' + TD + ' font-bold">' + spssNum(r2) + '</td>' +
       '<td class="' + TD + '">' + spssNum(adjR2) + '</td>' +
-      '<td class="' + TD + '">' + spssNum(metrics.rmse, 2) + '</td>' +
+      '<td class="' + TD + '">' + spssNum(metrics.std_error_estimate, 2) + '</td>' +
       '<td class="' + TD + ' border-l border-paper-2">' + spssNum(metrics.f_statistic, 2) + '</td>' +
       '<td class="' + TD + '">' + sigFmt(metrics.f_pvalue) + '</td>' +
       '<td class="' + TD + '">' + spssNum(metrics.durbin_watson) + '</td></tr></tbody></table>';
-    return statCard('모형 요약 (Model Summary) <sup class="text-blue-600">b</sup>', table, [predictorsFootnote, targetFootnote, '· 추정값의 표준오차는 RMSE 기준입니다.']);
+    return statCard('모형 요약 (Model Summary) <sup class="text-blue-600">b</sup>', table, [predictorsFootnote, targetFootnote, '· 추정값의 표준오차는 √(잔차 MS) 기준입니다(학습셋).']);
   }
 
-  /** 실제 API 가 주는 df_model/df_residual/f_statistic/f_pvalue 만 표시한다 (제곱합은 응답에 없으므로 역산하지 않음) */
+  /** ANOVA 표: 회귀 / 잔차 / 합계 × 제곱합·자유도·평균제곱·F·유의확률. 서버가 준 값만 쓰고 역산하지 않는다.
+   *  서버 응답: anova 안의 행 배열(회귀·잔차·합계 순서), 각 행 {sum_sq, df, mean_sq, f, p_value} (이름이 있으면 term/name 으로 구분).
+   *  행 배열이 없는 이전 응답은 df_model/df_residual/f_statistic/f_pvalue 로 회귀·잔차 행만 채운다 */
+  function anovaRows(anova) {
+    var arr = null;
+    Object.keys(anova).forEach(function (k) { if (!arr && Array.isArray(anova[k]) && anova[k].length && typeof anova[k][0] === 'object') arr = anova[k]; });
+    var kinds = ['model', 'residual', 'total'], out = { model: null, residual: null, total: null };
+    if (arr) {
+      arr.forEach(function (r, i) {
+        var nm = String(r.term || r.name || r.source || r.label || '').toLowerCase(), k;
+        k = /resid|잔차|error|오차/.test(nm) ? 'residual' : /total|합계|전체/.test(nm) ? 'total' : /regress|model|회귀|모형/.test(nm) ? 'model' : kinds[i];
+        if (k && !out[k]) out[k] = r;
+      });
+    } else {
+      out.model = { df: anova.df_model, f: anova.f_statistic, p_value: anova.f_pvalue };
+      out.residual = { df: anova.df_residual };
+    }
+    return out;
+  }
   function renderAnova(anova, metrics, nObs, targetLabel, featureLabels) {
-    if (!anova || anova.f_statistic === undefined) return '';
-    var df1 = anova.df_model, df2 = anova.df_residual;
-    var body = '<tr class="hover:bg-paper-3/50"><td class="' + TD + ' font-sans font-semibold">1</td><td class="' + TD + ' text-left font-sans">회귀 (Regression)</td><td class="' + TD + '">' + A.esc(df1) + '</td><td class="' + TD + '">' + A.esc(df2) + '</td><td class="' + TD + ' font-bold">' + spssNum(anova.f_statistic) + '</td><td class="' + TD + '">' + sigFmt(anova.f_pvalue) + '<sup class="text-blue-600">b</sup></td></tr>';
+    if (!anova) return '';
+    var rw = anovaRows(anova), m = rw.model || {}, e = rw.residual || {}, t = rw.total || {};
+    if (!rw.model && !rw.residual && !rw.total) return '';
+    function pick(r, a, b) { return has(r[a]) ? r[a] : r[b]; }
+    function cell(v, d) { return '<td class="' + TD + '">' + (has(v) ? spssNum(v, d) : '') + '</td>'; }
+    function dfc(v) { return '<td class="' + TD + '">' + (has(v) ? A.esc(v) : '') + '</td>'; }
+    var lab = function (txt, bold) { return '<td class="' + TD + ' text-left font-sans' + (bold ? ' font-semibold' : '') + '">' + txt + '</td>'; };
+    var fm = pick(m, 'f', 'f_statistic');
+    var body =
+      '<tr class="hover:bg-paper-3/50"><td class="' + TD + ' font-sans font-semibold align-middle" rowspan="3">1</td>' + lab('회귀 (Regression)') + cell(m.sum_sq, 3) + dfc(m.df) + cell(m.mean_sq, 3) +
+        '<td class="' + TD + ' font-bold">' + (has(fm) ? spssNum(fm) : '') + '</td><td class="' + TD + '">' + (has(m.p_value) ? sigFmt(m.p_value) : '') + '</td></tr>' +
+      '<tr class="hover:bg-paper-3/50">' + lab('잔차 (Residual)') + cell(e.sum_sq, 3) + dfc(e.df) + cell(e.mean_sq, 3) + '<td class="' + TD + '"></td><td class="' + TD + '"></td></tr>' +
+      '<tr class="hover:bg-paper-3/50">' + lab('합계 (Total)', true) + cell(t.sum_sq, 3) + dfc(t.df) + cell(t.mean_sq, 3) + '<td class="' + TD + '"></td><td class="' + TD + '"></td></tr>';
     var table = '<table class="w-full text-center text-body border-collapse"><thead><tr>' +
-      '<th class="' + TH + '">모형</th><th class="' + TH + '">구분</th><th class="' + TH + '">자유도(모형)</th><th class="' + TH + '">자유도(잔차)</th>' + '<th class="' + TH + '">F</th><th class="' + TH + '">유의확률 (Sig.)</th>' +
+      '<th class="' + TH + '">모형</th><th class="' + TH + '">구분</th><th class="' + TH + '">제곱합 (SS)</th><th class="' + TH + '">자유도 (df)</th><th class="' + TH + '">평균제곱 (MS)</th><th class="' + TH + '">F</th><th class="' + TH + '">유의확률 (Sig.)</th>' +
       '</tr></thead><tbody class="font-mono">' + body + '</tbody></table>';
-    return statCard('ANOVA (분산분석) <sup class="text-blue-600">a</sup>', table, ['a. 종속변수: ' + A.esc(targetLabel), 'b. 예측값: (상수)' + (featureLabels.length ? ', ' + featureLabels.map(A.esc).join(', ') : '')]);
+    var fs = res && res.result && res.result.fit_sample;
+    var basisNote = anova.basis === 'train' ? [srv('학습셋 기준' + (fs && has(fs.n) ? ' (n = ' + A.num(fs.n) + ')' : ''))] : [];
+    return statCard('ANOVA (분산분석) <sup class="text-blue-600">a</sup>', table, basisNote.concat(['a. 종속변수: ' + A.esc(txLabel(targetLabel)), 'b. 예측값: (상수)' + (featureLabels.length ? ', ' + featureLabels.map(function (f) { return A.esc(txLabel(f)); }).join(', ') : '')]));
   }
 
   /** 실제 API: result.coefficients = [{term, source_variable, coefficient, std_error, t_value, p_value, ci_lower, ci_upper, significant}],
@@ -184,7 +214,7 @@
     (vifRows || []).forEach(function (v) { vifMap[v.term] = v.vif; });
     var body = rows.map(function (row, i) {
       var vif = vifMap[row.term];
-      var name = row.source_variable || row.term;
+      var base = row.source_variable || row.term, name = row.transform !== undefined ? txApply(base, row.transform) : txLabel(base);
       return '<tr class="hover:bg-paper-3/50">' + (i === 0 ? '<td class="' + TD + ' font-sans font-semibold align-middle" rowspan="' + rows.length + '">1</td>' : '') +
         '<td class="' + TD + ' text-left font-sans">' + A.esc(name) + '</td>' +
         '<td class="' + TD + ' border-l border-paper-2">' + spssNum(row.coefficient) + '</td>' +
@@ -313,11 +343,52 @@
   /** 회귀분석류 결과(metrics.r_squared 가 있을 때)만 이 카드 행을 쓰고, 그 외 기법은 기존 범용 칩으로 폴백한다 */
   function has(v) { return v !== undefined && v !== null; }
 
+  /** 제외된 행: 서버 metrics.n_dropped / dropped_reasons [{reason, rows}] */
+  function droppedCaption(metrics) {
+    if (!has(metrics.n_dropped) || !(metrics.n_dropped > 0)) return '';
+    var rs = Array.isArray(metrics.dropped_reasons) ? metrics.dropped_reasons.filter(function (r) { return r && r.reason; }).map(function (r) { return A.esc(r.reason) + ' ' + A.num(r.rows) + '행'; }).join(', ') : '';
+    return '제외 ' + A.num(metrics.n_dropped) + '행' + (rs ? ' (' + rs + ')' : '');
+  }
+  /** 표본수: 서버 metrics.{n_total, n_train, n_test, n_dropped}. 홀드아웃이면 학습/검증으로 나눠 보여 준다 */
+  function nParts(result, metrics) {
+    var n = has(metrics.n_total) ? metrics.n_total : (result.n_observations != null ? result.n_observations : metrics.n_samples);
+    if (n == null) return null;
+    var nTr = has(metrics.n_train) ? metrics.n_train : result.n_train, nTe = has(metrics.n_test) ? metrics.n_test : result.n_test;
+    var dropped = droppedCaption(metrics);
+    if (has(nTr) && has(nTe) && nTe > 0)
+      return { value: '학습 ' + A.num(nTr) + ' / 검증 ' + A.num(nTe), caption: ['전체 ' + A.num(n), dropped].filter(Boolean).join(' · '), plain: A.num(nTr) + ' / ' + A.num(nTe) };
+    return { value: A.num(n), caption: dropped, plain: A.num(n) };
+  }
+  /** MAPE: 서버가 실제값 0 때문에 못 구하면 null + mape_unavailable_reason('zero_in_target') 을 준다 */
+  function mapeText(metrics) {
+    if (has(metrics.mape)) return pc(metrics.mape);
+    return metrics.mape_unavailable_reason === 'zero_in_target' ? '산출 불가 (실제값 0 포함)' : '';
+  }
+  /** 서버가 계수 행마다 주는 transform(none/log/log1p/winsorize/standard/minmax/robust, 여러 개면 적용 순서의 배열)으로 변수명을 표시한다 */
+  var TX_FMT = { log: function (x) { return 'log(' + x + ')'; }, log1p: function (x) { return 'log(1 + ' + x + ')'; }, winsorize: function (x) { return '윈저라이징(' + x + ')'; },
+    standard: function (x) { return '표준화(' + x + ')'; }, minmax: function (x) { return '정규화(' + x + ')'; }, robust: function (x) { return '로버스트(' + x + ')'; } };
+  function txApply(name, transform) {
+    var list = [].concat(transform == null ? [] : transform);
+    return list.reduce(function (acc, t) { return TX_FMT[t] ? TX_FMT[t](acc) : acc; }, name);
+  }
+  /** 변환이 적용된 변수는 log(변수명) 으로 표시 (서버 preprocessing_steps 의 outlier_log_transform 기준) */
+  function txLabel(name) {
+    var steps = (res && res.result && res.result.preprocessing_steps) || [];
+    for (var i = 0; i < steps.length; i++) {
+      var st = steps[i];
+      if (st && st.step === 'outlier_log_transform' && st.column === name) {
+        var sh = Number(st.shift) || 0;
+        return 'log(' + name + (sh > 0 ? ' + ' + String(+sh.toFixed(4)) : '') + ')';
+      }
+    }
+    return name;
+  }
+
   /** 분류 계열(accuracy 보유): 로지스틱/의사결정나무(분류) */
   function renderClassificationCards(metrics, result) {
     var cards = [];
-    var n = result.n_observations != null ? result.n_observations : metrics.n_samples;
-    if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), ''));
+    var np = nParts(result, metrics);
+    if (np) cards.push(kpiCard('표본수 (N)', np.value, np.caption));
     cards.push(kpiCard('정확도 (Accuracy)', (metrics.accuracy * 100).toFixed(1) + '%', '', 'text-blue-600'));
     if (has(metrics.precision)) cards.push(kpiCard('정밀도 (Precision)', Number(metrics.precision).toFixed(3), ''));
     if (has(metrics.recall)) cards.push(kpiCard('재현율 (Recall)', Number(metrics.recall).toFixed(3), ''));
@@ -410,11 +481,14 @@
       c.push(kpiCard('누적 설명분산', (metrics.total_explained_variance * 100).toFixed(1) + '%', '', 'text-blue-600'));
       if (has(metrics.first_component_ratio)) c.push(kpiCard('제1주성분 비율', (metrics.first_component_ratio * 100).toFixed(1) + '%', '', 'text-blue-600'));
     } else if (has(metrics.model_r_squared)) {
-      if (has(metrics.n_observations)) c.push(kpiCard('표본수 (N)', A.num(metrics.n_observations), ''));
+      if (has(metrics.n_observations)) c.push(kpiCard('표본수 (N)', A.num(metrics.n_observations), droppedCaption(metrics)));
       c.push(kpiCard('모형 R²', Number(metrics.model_r_squared).toFixed(3), '', 'text-blue-600'));
       if (has(metrics.n_significant_terms)) c.push(kpiCard('유의한 효과 수', A.num(metrics.n_significant_terms), ''));
       if (has(metrics.max_eta_squared)) c.push(kpiCard('최대 효과크기 (η²)', Number(metrics.max_eta_squared).toFixed(3), '', 'text-blue-600'));
-      if (has(metrics.levene_p_value)) c.push(kpiCard('Levene 등분산', 'p=' + spssNum(metrics.levene_p_value), '', 'text-amber-600'));
+      if (has(metrics.levene_p_value)) {
+        var lv = result.assumption_checks && result.assumption_checks.levene;   // 색은 서버가 준 판정(equal_variance)을 따른다: 가정 검정 표와 같은 기준
+        c.push(kpiCard('Levene 등분산', 'p=' + spssNum(metrics.levene_p_value), '', lv && lv.equal_variance != null ? (lv.equal_variance ? 'text-emerald-700' : 'text-rose-600') : ''));
+      }
     } else if (has(metrics.n_individuals)) {
       c.push(kpiCard('개체 수', A.num(metrics.n_individuals), '관측치 ' + A.num(metrics.n_observations)));
       if (has(metrics.average_growth_rate)) c.push(kpiCard('평균 성장률', spssNum(metrics.average_growth_rate, 3), '', 'text-blue-600'));
@@ -444,8 +518,8 @@
       return oc.length ? wrap(oc) : null;
     }
     var cards = [];
-    var n = result.n_observations != null ? result.n_observations : metrics.n_samples;
-    if (n != null) cards.push(kpiCard('표본수 (N)', A.num(n), ''));
+    var np = nParts(result, metrics);
+    if (np) cards.push(kpiCard('표본수 (N)', np.value, np.caption));
     cards.push(kpiCard('결정계수 (R²)', Number(metrics.r_squared).toFixed(3), '', 'text-blue-600'));
     if (metrics.adjusted_r_squared != null) cards.push(kpiCard('수정 R² (Adj.)', Number(metrics.adjusted_r_squared).toFixed(3), '', 'text-blue-600'));
     if (metrics.f_statistic != null) {
@@ -454,7 +528,7 @@
       var fCaption = fp == null ? '' : fp < 0.0005 ? 'p < .001' : 'p = ' + spssNum(fp);   // 서버가 준 p값만 (유의 여부 판정은 붙이지 않는다)
       cards.push(kpiCard('F 통계량', spssNum(metrics.f_statistic, 2) + fStars, fCaption));
     }
-    if (metrics.rmse != null) cards.push(kpiCard('추정 표준오차', spssNum(metrics.rmse, 3), ''));
+    if (metrics.std_error_estimate != null) cards.push(kpiCard('추정 표준오차', spssNum(metrics.std_error_estimate, 3), ''));
     var norm = result.diagnostics && result.diagnostics.normality;
     if (norm && norm.statistic != null) cards.push(kpiCard('잔차 정규성 (S-W)', 'W=' + Number(norm.statistic).toFixed(3), 'p = ' + spssNum(norm.p_value) + (norm.normal ? ' (정규성 만족)' : ' (정규성 위배)'), 'text-emerald-600'));
     var homo = result.diagnostics && result.diagnostics.homoscedasticity;
@@ -487,7 +561,7 @@
 
   /* 선형 회귀: 적합도·예측 오차·모형 비교 / 잔차 진단 */
   function renderLinearFit(metrics) {
-    var t = kvRow([['검증셋 R²', spssNum(metrics.holdout_r_squared)], ['RMSE', spssNum(metrics.rmse, 3)], ['MSE', spssNum(metrics.mse, 3)], ['MAE', spssNum(metrics.mae, 3)], ['MAPE', pc(metrics.mape)],
+    var t = kvRow([['검증셋 R²', spssNum(metrics.holdout_r_squared)], ['RMSE', spssNum(metrics.rmse, 3)], ['MSE', spssNum(metrics.mse, 3)], ['MAE', spssNum(metrics.mae, 3)], ['MAPE', mapeText(metrics)],
       ['AIC', spssNum(metrics.aic, 3)], ['BIC', spssNum(metrics.bic, 3)], ['로그 우도', spssNum(metrics.log_likelihood, 3)]]);
     if (!t) return '';
     return statCard('모형 적합도 및 예측 오차', t, [metrics.evaluation === 'in_sample' ? '검증셋을 따로 두지 않아 학습셋 기준으로 계산했습니다.' : 'R²·AIC 등은 학습셋, 검증셋 R²와 오차 지표(RMSE·MSE·MAE·MAPE)는 검증셋 기준입니다.']);
@@ -512,7 +586,7 @@
 
   /* 의사결정나무: 구조 + 변수 중요도 + 트리 */
   function renderTreeStructure(metrics, result) {
-    var t = kvRow([['트리 깊이', n0(result.tree_depth)], ['리프 노드 수', n0(result.n_leaves)], ['분할 기준', A.esc(result.criterion || '')], ['표본수', n0(result.n_observations)],
+    var t = kvRow([['트리 깊이', n0(result.tree_depth)], ['리프 노드 수', n0(result.n_leaves)], ['분할 기준', A.esc(result.criterion || '')], ['표본수', (nParts(result, metrics) || {}).plain || n0(result.n_observations)],
       ['결정계수 (R²)', spssNum(metrics.r_squared)], ['학습셋 R²', spssNum(metrics.train_r_squared)], ['RMSE', spssNum(metrics.rmse, 3)], ['MSE', spssNum(metrics.mse, 3)], ['MAE', spssNum(metrics.mae, 3)]]);
     if (!t) return '';
     if (!has(metrics.r_squared)) return statCard('모형 구조', t, ['분류 성능 지표는 상단 요약 카드를 참고하세요.']);
@@ -570,8 +644,9 @@
     var rows = result.anova_table;
     if (!rows || !rows.length) return '';
     var body = rows.map(function (r) {
-      var resid = r.term === 'Residual';
-      return [resid ? '오차 (Residual)' : A.esc(r.term.replace(/^Q\('(.*)'\)$/, '$1')), spssNum(r.sum_sq, 3), n0(r.df), resid ? '' : '<b>' + spssNum(r.f_statistic, 3) + '</b>', resid ? '' : sigFmt(r.p_value), resid ? '' : spssNum(r.eta_squared)];
+      var key = String(r.source || r.term || ''), total = /^total$|합계|전체/i.test(key), resid = r.term === 'Residual' || /^residual$/i.test(r.source || '');
+      var plain = resid || total || r.f_statistic == null;
+      return [total ? '합계 (Total)' : resid ? '오차 (Residual)' : A.esc(String(r.term || r.source).replace(/^Q\('(.*)'\)$/, '$1')), spssNum(r.sum_sq, 3), n0(r.df), plain ? '' : '<b>' + spssNum(r.f_statistic, 3) + '</b>', plain ? '' : sigFmt(r.p_value), plain ? '' : spssNum(r.eta_squared)];
     });
     var notes = ['a. 종속변수: ' + A.esc(result.target || '-'), 'R 제곱 = ' + spssNum(has(result.model_r_squared) ? result.model_r_squared : metrics.model_r_squared), 'Type II 제곱합, 효과크기 η² = 해당 항 제곱합 / 전체 제곱합', SIG_NOTE];
     if (result.covariates && result.covariates.length) notes.splice(1, 0, '공변량: ' + result.covariates.map(A.esc).join(', '));
@@ -603,7 +678,7 @@
       var rows = ph[f] || [];
       if (!rows.length) return '';
       return statCard('사후검정: Tukey HSD (' + A.esc(f) + ')', tbl(['(I) 집단', '(J) 집단', '평균차 (J-I)', '유의확률', '95% CI 하한', '95% CI 상한'], rows.map(function (r) {
-        return [A.esc(r.group1), A.esc(r.group2), '<b>' + spssNum(r.mean_diff, 3) + '</b>' + (r.significant ? starSup(0.04) : ''), sigFmt(r.p_adj, true), spssNum(r.ci_lower, 3), spssNum(r.ci_upper, 3)];
+        return [A.esc(r.group1), A.esc(r.group2), '<b>' + spssNum(r.mean_diff, 3) + '</b>' + starSup(r.p_adj), sigFmt(r.p_adj, true), spssNum(r.ci_lower, 3), spssNum(r.ci_upper, 3)];
       })), ['*. 평균차는 0.05 수준에서 유의합니다 (Tukey 보정 p).'], true);
     }).join('');
   }
@@ -666,6 +741,13 @@
     })), ['유사 R² (McFadden) = ' + spssNum(pm.pseudo_r_squared), SIG_NOTE]);
   }
 
+  /** 서버 result.warnings = [{code, message, suggestion}] */
+  function renderWarnings(warnings) {
+    if (!Array.isArray(warnings) || !warnings.length) return '';
+    var rows = warnings.map(function (w) { return ['<span class="krds-warning font-sans font-semibold" style="background:none">' + A.esc(w.message || w.code || '') + '</span>', A.esc(w.suggestion || '')]; });
+    return statCard('분석 경고', tbl(['내용', '권고'], rows));
+  }
+
   /** 기법별 결과표 구성. 알려진 기법은 지표정리표에 있는 항목만 표시하고, 모르는 기법만 범용 렌더링으로 폴백 */
   function renderResultTab() {
     var r = res, result = r.result || {}, metrics = r.metrics || {}, cd = r.chart_data || {};
@@ -716,7 +798,7 @@
     }
     var html;
     if (cards) {
-      html = cards.filter(Boolean).join('');
+      html = renderWarnings(result.warnings) + cards.filter(Boolean).join('');
     } else {
       // 알 수 없는 기법: 기존 범용 렌더링
       var special = [renderModelSummary(metrics, result.anova, target, features), renderAnova(result.anova, metrics, nObs, target, features), renderCoefficients(result.coefficients, diag.vif, target), renderConfusionMatrix(result.confusion_matrix)].filter(Boolean);

@@ -293,7 +293,9 @@
     if (!rows || !isNum(rows[0][e.y])) return null;
     var cats = groupCats(rows, e.x, o.group_by), eb = o.error_bars;
     return { html: box(uid), draw: function (el) {
-      var s = [{ type: 'line', name: '평균', data: rows.map(function (r) { return r[e.y]; }), color: PALETTE[0], lineWidth: 1.5, marker: { enabled: true, radius: 4 } }];
+      // 순서가 없는 범주형 집단은 선으로 잇지 않고 점과 오차막대만 보여 준다 (x 가 숫자일 때만 선)
+      var ordered = !!e.x && rows.every(function (r) { return isNum(r[e.x]); });
+      var s = [{ type: 'line', name: '평균', data: rows.map(function (r) { return r[e.y]; }), color: PALETTE[0], lineWidth: ordered ? 1.5 : 0, states: { hover: { lineWidthPlus: 0 } }, marker: { enabled: true, radius: 4 } }];
       if (Array.isArray(eb) && isNum(rows[0][eb[0]])) s.push({ type: 'errorbar', name: '95% 신뢰구간', data: rows.map(function (r) { return [r[eb[0]], r[eb[1]]]; }), color: C.ink1 });
       return Highcharts.chart(el, baseHc('line', { xAxis: { categories: cats }, yAxis: { title: { text: '평균' } }, tooltip: { shared: true, valueDecimals: 3 }, series: s }));
     } };

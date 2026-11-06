@@ -41,7 +41,8 @@
     adjusted_r_squared: ['수정 R² (Adj R²)', function () { return '자유도 보정 계수'; }],
     holdout_r_squared: ['검증셋 R²', function () { return '홀드아웃 기준 설명력'; }],
     train_r_squared: ['학습셋 R²', function () { return '학습 데이터 기준'; }],
-    rmse: ['RMSE (표준오차)', function () { return '평균제곱근오차'; }],
+    rmse: ['RMSE', function () { return '평균제곱근오차'; }],
+    std_error_estimate: ['추정 표준오차', function () { return '√(잔차 MS), 학습셋'; }, null, 4],
     mse: ['MSE (평균제곱오차)', function () { return '오차 제곱의 평균'; }],
     mae: ['MAE (절대오차)', function () { return '평균절대오차'; }],
     mape: ['MAPE (백분율오차)', function (v) { return '평균 ' + pctCap(v) + ' 오차'; }, null, 4],
@@ -170,6 +171,16 @@
     if (!Array.isArray(rows) || !rows.length || rows[0].coefficient === undefined) return '';   // 다항 로지스틱 등 다른 구조는 생략
     var stat = rows[0].t_value !== undefined ? 't_value' : rows[0].z_value !== undefined ? 'z_value' : null;
     var hasSe = rows[0].std_error !== undefined;
+    var TXF = { log: function (x) { return 'log(' + x + ')'; }, log1p: function (x) { return 'log(1 + ' + x + ')'; }, winsorize: function (x) { return '윈저라이징(' + x + ')'; },
+      standard: function (x) { return '표준화(' + x + ')'; }, minmax: function (x) { return '정규화(' + x + ')'; }, robust: function (x) { return '로버스트(' + x + ')'; } };
+    var txApply = function (name, t) { return [].concat(t == null ? [] : t).reduce(function (a, k) { return TXF[k] ? TXF[k](a) : a; }, name); };   // 서버 coefficients[].transform
+    var txName = function (name) {   // 서버가 기록한 로그 변환(outlier_log_transform)이 적용된 변수는 log(변수명)으로 표시
+      var steps = d.result.preprocessing_steps || [];
+      for (var i = 0; i < steps.length; i++) {
+        if (steps[i] && steps[i].step === 'outlier_log_transform' && steps[i].column === name) { var sh = Number(steps[i].shift) || 0; return 'log(' + name + (sh > 0 ? ' + ' + String(+sh.toFixed(4)) : '') + ')'; }
+      }
+      return name;
+    };
     var f = function (v, n) { return v == null || isNaN(v) ? '-' : Number(v).toFixed(n); };
     var signed = function (v) { return v == null ? '-' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(3); };
     var star = function (p) { return p == null ? '' : p < 0.001 ? '***' : p < 0.01 ? '**' : p < 0.05 ? '*' : ''; };
@@ -178,7 +189,7 @@
       (stat ? '<th class="' + th + ' text-right">' + (stat === 't_value' ? 't-값' : 'z-값') + '</th>' : '') + '<th class="' + th + ' text-right">p-값</th><th class="' + th + ' text-center">유의수준</th></tr>';
     var body = rows.map(function (r) {
       var st = star(r.p_value);
-      return '<tr class="border-b border-paper-2 last:border-0 hover:bg-paper-3/60"><td class="py-3 px-4 text-sm text-ink whitespace-nowrap">' + A.esc(r.source_variable || r.term) + '</td>' +
+      return '<tr class="border-b border-paper-2 last:border-0 hover:bg-paper-3/60"><td class="py-3 px-4 text-sm text-ink whitespace-nowrap">' + A.esc(r.transform !== undefined ? txApply(r.source_variable || r.term, r.transform) : txName(r.source_variable || r.term)) + '</td>' +
         '<td class="py-3 px-4 text-right font-mono font-bold text-blue-700">' + signed(r.coefficient) + '</td>' +
         (hasSe ? '<td class="py-3 px-4 text-right font-mono text-ink-3">' + f(r.std_error, 3) + '</td>' : '') +
         (stat ? '<td class="py-3 px-4 text-right font-mono text-ink-0">' + (r[stat] == null ? '-' : (r[stat] < 0 ? '−' : '') + Math.abs(r[stat]).toFixed(2)) + '</td>' : '') +

@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class Upstream implements DisposableBean {
     private static final String BASE =
-            Config.get("UPSTREAM_API_BASE", "https://testlab-edmgr.kr/apps/1").replaceAll("/+$", "");
+            Config.get("UPSTREAM_API_BASE", "https://testlab-edmgr.kr/apps/rest-api").replaceAll("/+$", "");
     private static final String ACCESS_COOKIE = "keris_testlab_access";
 
     private final CloseableHttpClient client = HttpClients.custom()
