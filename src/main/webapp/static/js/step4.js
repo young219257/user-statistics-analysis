@@ -56,6 +56,13 @@
   function cols() { return dataset ? dataset.columns || [] : []; }
   function numericCols() { return cols().filter(function (c) { return c.role === 'numeric' || c.role === 'boolean'; }); }
   function anyCols() { return cols().filter(function (c) { return c.role !== 'constant'; }); }
+  /** 독립변수 후보: 범주형도 선택할 수 있는 기법(서버가 원-핫 인코딩으로 처리)은 범주형 변수를 함께 보여 준다 */
+  var CAT_FEAT = { linear_regression: 1, logistic_regression: 1, decision_tree_regressor: 1, decision_tree_classifier: 1, multilevel: 1 };
+  function featCols(exceptTarget) {
+    var m = meta(cfg.method);
+    var list = CAT_FEAT[cfg.method] ? cols().filter(function (c) { return c.role === 'numeric' || c.role === 'boolean' || c.role === 'categorical'; }) : numericCols();
+    return list.filter(function (c) { return !exceptTarget || !m.target || c.name !== cfg.target; });
+  }
   function pool(kind) { return kind === 'numeric' ? numericCols() : anyCols(); }
 
   function pv(key) { return cfg.params[key] !== undefined ? cfg.params[key] : FIELDS[key].def; }
@@ -107,7 +114,7 @@
       box.innerHTML = field('종속변수', '<div class="w-full bg-paper-2/70 border border-rule rounded-lg px-3 py-2 text-xs text-ink-3">선택한 <strong class="text-ink-1">' + A.esc(m.name) + '</strong> 기법은 종속변수 지정이 필요하지 않습니다.</div>');
     }
     A.$('#feat-title').textContent = m.feat;
-    var avail = numericCols().filter(function (c) { return !m.target || c.name !== cfg.target; });
+    var avail = featCols(true);
     A.$('#feat-list').innerHTML = avail.map(function (c) {
       var on = cfg.features.indexOf(c.name) >= 0;
       return '<label class="flex items-center gap-2 p-1.5 rounded hover:bg-white text-xs text-ink-1 cursor-pointer transition-colors"><input type="checkbox" data-feat="' + A.esc(c.name) + '" ' + (on ? 'checked' : '') + ' class="rounded text-blue-600 focus:ring-blue-500 border-rule-3 cursor-pointer"><span class="truncate">' + A.esc(c.name) + '</span><span class="ml-auto text-xs text-ink-4 font-mono">' + A.esc(c.role) + '</span></label>';
@@ -280,7 +287,7 @@
     });
     A.$('#feat-all').addEventListener('click', function () {
       var m = meta(cfg.method);
-      cfg.features = numericCols().filter(function (c) { return !m.target || c.name !== cfg.target; }).map(function (c) { return c.name; });
+      cfg.features = featCols(true).map(function (c) { return c.name; });
       renderVars(); renderPipe(); A.icons();
     });
     A.$('#feat-none').addEventListener('click', function () { cfg.features = []; renderVars(); renderPipe(); A.icons(); });

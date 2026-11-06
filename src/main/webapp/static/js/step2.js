@@ -137,7 +137,15 @@
         '<td class="py-2.5 px-3 text-right">' + (!a || !outl[n.column] ? '<span class="text-rule-3">-</span>' : '<span class="text-ink-2">' + A.fix((outl[n.column].ratio || 0) * 100, 2) + '%</span>') + '</td>' +
         '<td class="py-2.5 px-3 text-right">' + (n.skewness == null ? '<span class="text-rule-3">-</span>' : '<span class="text-ink-2">' + A.fix(n.skewness, 2) + '</span>') + '</td>' +
         '<td class="py-2.5 px-3 font-sans text-xs">' + (judge(n, mc, outl[n.column], !!a).map(function (j) { return '<span class="block ' + (j[1] ? 'text-warn-ink font-bold' : 'text-ink-2') + '">' + j[0] + '</span>'; }).join('') || '<span class="text-rule-3">-</span>') + '</td></tr>';
-    }).join('') || '<tr><td colspan="6" class="py-6 text-center text-ink-4 font-sans">수치형 변수가 없습니다.</td></tr>';
+    }).join('') + (profile.categorical || []).map(function (c) {
+      var mc = (miss[c.column] || {}).n_missing != null ? miss[c.column].n_missing : c.missing || 0;
+      var jd = mc > 0 ? '<span class="block text-warn-ink font-bold">결측치 있음</span>' : a ? '<span class="block text-ink-2">양호</span>' : '<span class="text-rule-3">-</span>';
+      return '<tr data-col="' + A.esc(c.column) + '" class="cursor-pointer transition-colors ' + (c.column === selectedCol ? 'bg-brand-soft font-semibold' : 'hover:bg-paper-3') + '">' +
+        '<td class="py-2.5 px-3 font-sans font-medium text-ink whitespace-nowrap">' + A.esc(c.column) + '<span class="ml-1.5 text-xs font-normal text-ink-3">범주형</span></td>' +
+        '<td class="py-2.5 px-3 text-right">' + (mc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(mc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
+        '<td class="py-2.5 px-3 text-right"><span class="text-rule-3">-</span></td><td class="py-2.5 px-3 text-right"><span class="text-rule-3">-</span></td><td class="py-2.5 px-3 text-right"><span class="text-rule-3">-</span></td>' +
+        '<td class="py-2.5 px-3 font-sans text-xs">' + jd + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="py-6 text-center text-ink-4 font-sans">표시할 변수가 없습니다.</td></tr>';
     A.$('#judge-note').textContent = '판정 기준(화면 기준이며 서버 판정이 아닙니다): 이상치 비율 ' + (OUT_REVIEW_RATIO * 100) + '% 미만은 확인 권장, ' + (OUT_REVIEW_RATIO * 100) + '% 이상은 검토 필요 · |왜도| > ' + SKEW_LIMIT + '이면 비대칭 분포(최솟값이 0보다 큰 변수만 로그 변환 권장) · 이상치 판정은 탐지를 실행한 뒤에 표시됩니다.';
     renderDetail();
     renderAlgos();
@@ -146,7 +154,18 @@
   function renderDetail() {
     var card = A.$('#detail-card');
     var n = (profile.numeric || []).filter(function (x) { return x.column === selectedCol; })[0];
-    if (!n) { card.innerHTML = '<div class="text-xs text-ink-4 text-center py-6">분석할 수치형 변수가 없습니다.</div>'; return; }
+    if (!n) {
+      var cat = (profile.categorical || []).filter(function (x) { return x.column === selectedCol; })[0];
+      if (cat) {   // 범주형 변수: 서버가 준 요약(고유값 수·최빈값·상위 값)
+        var tv = (cat.top_values || []).slice(0, 8).map(function (t) { var k = Object.keys(t); return '<div class="flex items-center justify-between text-xs px-1 py-1.5 border-b border-paper-2 gap-2"><span class="text-ink-2 font-bold truncate">' + A.esc(t.value != null ? t.value : t[k[0]]) + '</span><span class="text-ink-0 font-bold">' + A.num(t.count != null ? t.count : t[k[1]]) + '건</span></div>'; }).join('');
+        card.innerHTML = '<div class="sec-head flex items-center justify-between flex-wrap gap-2"><h4 class="text-title font-semibold text-ink">[' + A.esc(cat.column) + '] 범주형 변수 요약</h4></div>' +
+          '<div class="sec-box space-y-3"><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-body font-mono">' +
+          [['유효 관측치', A.num(cat.count)], ['결측치', A.num(cat.missing)], ['고유값 수', A.num(cat.n_unique)], ['최빈값', A.esc(cat.mode == null ? '-' : cat.mode)]].map(function (b) { return '<div class="p-3 rounded-xl border text-left bg-paper-3 border-rule"><span class="text-ink-3 text-xs block font-sans whitespace-nowrap">' + b[0] + '</span><span class="block mt-0.5 truncate">' + b[1] + '</span></div>'; }).join('') +
+          '</div>' + (tv ? '<div class="pt-2 border-t border-paper-2"><div class="text-xs font-bold text-ink-0 mb-1.5">값별 건수 (상위)</div>' + tv + '</div>' : '') + '</div>';
+        return;
+      }
+      card.innerHTML = '<div class="text-xs text-ink-4 text-center py-6">표시할 변수가 없습니다.</div>'; return;
+    }
     var o = byCol(profile.outliers)[selectedCol];
     var a = active && algo(active.method);
     function box(label, v, hi) { return '<div class="p-3 rounded-xl border text-left ' + (hi ? 'bg-brand-soft border-brand/40' : 'bg-paper-3 border-rule') + '"><span class="' + (hi ? 'text-brand font-semibold' : 'text-ink-3') + ' text-xs block font-sans whitespace-nowrap">' + label + '</span><strong class="text-ink text-[15px]">' + A.fix(v, 2) + '</strong></div>'; }
