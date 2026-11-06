@@ -113,6 +113,16 @@
     if (Math.abs(Number(v)) < 1) s = s.replace(/^(-?)0\./, '$1.');
     return s;
   }
+  /** 유효숫자 3자리 표시(SPSS 처럼 |값| < 1 이면 앞의 0 을 뗀다). 작은 값이 고정 소수점 반올림으로 .000 이 되는 것을 막는다: 0.000204 → 2.04e-4, 0.014 → .0140 */
+  function spssSig(v, n) {
+    var s = A.sig(v, n);
+    return /e/.test(s) ? s : s.replace(/^(-?)0\./, '$1.');
+  }
+  /** 0.1 미만의 작은 값만 유효숫자 3자리로, 나머지는 고정 소수점(d 자리). 평균제곱·오차 지표·표준오차처럼 크기가 들쭉날쭉한 값에 쓴다 */
+  function spssSmall(v, d) {
+    if (v === null || v === undefined || isNaN(v)) return '';
+    return Math.abs(Number(v)) < 0.1 ? spssSig(v) : spssNum(v, d);
+  }
   /** 유의수준 별표: 숫자와 구분되도록 작은 위첨자로 표시 (*** p<.001, ** p<.01, * p<.05) */
   function starSup(p) {
     var st = p == null || isNaN(p) ? '' : p < 0.001 ? '***' : p < 0.01 ? '**' : p < 0.05 ? '*' : '';
@@ -157,7 +167,7 @@
       '<td class="' + TD + ' font-sans font-semibold">1</td>' +
       '<td class="' + TD + ' font-bold">' + spssNum(r2) + '</td>' +
       '<td class="' + TD + '">' + spssNum(adjR2) + '</td>' +
-      '<td class="' + TD + '">' + spssNum(metrics.std_error_estimate, 2) + '</td>' +
+      '<td class="' + TD + '">' + spssSmall(metrics.std_error_estimate, 3) + '</td>' +
       '<td class="' + TD + ' border-l border-paper-2">' + spssNum(metrics.f_statistic, 2) + '</td>' +
       '<td class="' + TD + '">' + sigFmt(metrics.f_pvalue) + '</td>' +
       '<td class="' + TD + '">' + spssNum(metrics.durbin_watson) + '</td></tr></tbody></table>';
@@ -188,7 +198,7 @@
     var rw = anovaRows(anova), m = rw.model || {}, e = rw.residual || {}, t = rw.total || {};
     if (!rw.model && !rw.residual && !rw.total) return '';
     function pick(r, a, b) { return has(r[a]) ? r[a] : r[b]; }
-    function cell(v, d) { return '<td class="' + TD + '">' + (has(v) ? spssNum(v, d) : '') + '</td>'; }
+    function cell(v, d) { return '<td class="' + TD + '">' + (has(v) ? spssSmall(v, d) : '') + '</td>'; }   // 0.1 미만은 유효숫자 3자리(평균제곱 0.000204 가 .000 으로 보이지 않게)
     function dfc(v) { return '<td class="' + TD + '">' + (has(v) ? A.esc(v) : '') + '</td>'; }
     var lab = function (txt, bold) { return '<td class="' + TD + ' text-left font-sans' + (bold ? ' font-semibold' : '') + '">' + txt + '</td>'; };
     var fm = pick(m, 'f', 'f_statistic');
@@ -530,7 +540,7 @@
       var fCaption = fp == null ? '' : fp < 0.0005 ? 'p < .001' : 'p = ' + spssNum(fp);   // 서버가 준 p값만 (유의 여부 판정은 붙이지 않는다)
       cards.push(kpiCard('F 통계량', spssNum(metrics.f_statistic, 2) + fStars, fCaption));
     }
-    if (metrics.std_error_estimate != null) cards.push(kpiCard('추정 표준오차', spssNum(metrics.std_error_estimate, 3), ''));
+    if (metrics.std_error_estimate != null) cards.push(kpiCard('추정 표준오차', spssSmall(metrics.std_error_estimate, 3), ''));
     var norm = result.diagnostics && result.diagnostics.normality;
     if (norm && norm.statistic != null) cards.push(kpiCard('잔차 정규성 (S-W)', 'W=' + Number(norm.statistic).toFixed(3), 'p = ' + spssNum(norm.p_value) + (norm.normal ? ' (정규성 만족)' : ' (정규성 위배)'), 'text-emerald-600'));
     var homo = result.diagnostics && result.diagnostics.homoscedasticity;
@@ -562,11 +572,27 @@
   var SIG_NOTE = '*. p &lt; .05, **. p &lt; .01, ***. p &lt; .001';
 
   /* 선형 회귀: 적합도·예측 오차·모형 비교 / 잔차 진단 */
+  /** 학습셋 지표(R²·AIC·BIC·로그우도)와 검증셋 지표(R²·RMSE·MSE·MAE·MAPE)는 계산한 데이터가 달라서 표를 둘로 나눠 보인다.
+   *  서버가 metrics.train / metrics.test 로 나눠 주면 그 값을 쓰고, 아직 평평한 응답(r_squared·aic… = 학습셋, holdout_r_squared·rmse… = 검증셋)이면 그 필드로 채운다.
+   *  검증셋을 따로 두지 않은 경우(evaluation = 'in_sample')는 모든 지표가 학습셋 기준이라 표 하나로 보인다. */
   function renderLinearFit(metrics) {
-    var t = kvRow([['검증셋 R²', spssNum(metrics.holdout_r_squared)], ['RMSE', spssNum(metrics.rmse, 3)], ['MSE', spssNum(metrics.mse, 3)], ['MAE', spssNum(metrics.mae, 3)], ['MAPE', mapeText(metrics)],
-      ['AIC', spssNum(metrics.aic, 3)], ['BIC', spssNum(metrics.bic, 3)], ['로그 우도', spssNum(metrics.log_likelihood, 3)]]);
-    if (!t) return '';
-    return statCard('모형 적합도 및 예측 오차', t, [metrics.evaluation === 'in_sample' ? '검증셋을 따로 두지 않아 학습셋 기준으로 계산했습니다.' : 'R²·AIC 등은 학습셋, 검증셋 R²와 오차 지표(RMSE·MSE·MAE·MAPE)는 검증셋 기준입니다.']);
+    var obj = function (o) { return o && typeof o === 'object' ? o : null; };
+    var tr = obj(metrics.train), te = obj(metrics.test), inSample = metrics.evaluation === 'in_sample';
+    var pickTr = function (k) { return tr ? tr[k] : metrics[k]; }, pickTe = function (k) { return te ? te[k] : metrics[k]; };
+    var nTr = tr && has(tr.n) ? tr.n : metrics.n_train, nTe = te && has(te.n) ? te.n : metrics.n_test;
+    var mapeTe = te ? (has(te.mape) ? pc(te.mape) : mapeText({ mape_unavailable_reason: te.mape_unavailable_reason || metrics.mape_unavailable_reason })) : mapeText(metrics);
+    var trainItems = [['표본수 (n)', has(nTr) ? A.num(nTr) : ''], ['R²', spssNum(tr ? tr.r_squared : (has(metrics.train_r_squared) ? metrics.train_r_squared : metrics.r_squared))],
+      ['AIC', spssNum(pickTr('aic'), 3)], ['BIC', spssNum(pickTr('bic'), 3)], ['로그 우도', spssNum(pickTr('log_likelihood'), 3)]];
+    var errItems = [['RMSE', spssSmall(pickTe('rmse'), 3)], ['MSE', spssSmall(pickTe('mse'), 3)], ['MAE', spssSmall(pickTe('mae'), 3)], ['MAPE', mapeTe]];
+    var sub = function (title, note) { return '<div class="px-3 py-1.5 text-left text-xs font-semibold text-ink-2 bg-paper-3/60 border-b border-rule">' + title + (note ? ' <span class="font-normal text-ink-3">' + note + '</span>' : '') + '</div>'; };
+    if (inSample && !te) {   // 검증셋 없음: 오차 지표도 학습셋에서 계산한 값
+      var one = kvRow(trainItems.concat(errItems));
+      return one ? statCard('모형 적합도 및 예측 오차', sub('학습셋 지표', '검증셋을 따로 두지 않아 모든 지표를 학습셋에서 계산했습니다') + one) : '';
+    }
+    var testItems = [['표본수 (n)', has(nTe) ? A.num(nTe) : ''], ['R²', spssNum(te ? te.r_squared : metrics.holdout_r_squared)]].concat(errItems);
+    var t1 = kvRow(trainItems), t2 = kvRow(testItems);
+    if (!t1 && !t2) return '';
+    return statCard('모형 적합도 및 예측 오차', (t1 ? sub('학습셋 지표', '모형을 만든 데이터 기준') + t1 : '') + (t2 ? sub('검증셋 지표', '모형을 만들 때 쓰지 않은 데이터 기준') + t2 : ''));
   }
   function renderLinearDiagnostics(metrics, diag) {
     diag = diag || {};
@@ -589,7 +615,7 @@
   /* 의사결정나무: 구조 + 변수 중요도 + 트리 */
   function renderTreeStructure(metrics, result) {
     var t = kvRow([['트리 깊이', n0(result.tree_depth)], ['리프 노드 수', n0(result.n_leaves)], ['분할 기준', A.esc(result.criterion || '')], ['표본수', (nParts(result, metrics) || {}).plain || n0(result.n_observations)],
-      ['결정계수 (R²)', spssNum(metrics.r_squared)], ['학습셋 R²', spssNum(metrics.train_r_squared)], ['RMSE', spssNum(metrics.rmse, 3)], ['MSE', spssNum(metrics.mse, 3)], ['MAE', spssNum(metrics.mae, 3)]]);
+      ['결정계수 (R²)', spssNum(metrics.r_squared)], ['학습셋 R²', spssNum(metrics.train_r_squared)], ['RMSE', spssSmall(metrics.rmse, 3)], ['MSE', spssSmall(metrics.mse, 3)], ['MAE', spssSmall(metrics.mae, 3)]]);
     if (!t) return '';
     if (!has(metrics.r_squared)) return statCard('모형 구조', t, ['분류 성능 지표는 상단 요약 카드를 참고하세요.']);
     return statCard('모형 구조 및 성능', t, [metrics.evaluation === 'in_sample' ? '검증셋을 따로 두지 않아 학습셋 기준으로 계산했습니다.' : '성능 지표는 검증셋 기준입니다.']);

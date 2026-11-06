@@ -271,6 +271,8 @@
     if (!valF) return null;
     rows = sortRows(rows, o.sort, e);
     var cats = catF ? rows.map(function (r) { return String(r[catF]); }) : rows.length === 1 ? [A.viz.label(valF)] : rows.map(function (_, i) { return String(i + 1); });
+    // 회귀계수 차트의 변수 이름도 계수표와 같은 표기(log(변수) 등)로 맞춘다. 계수 행에 없는 이름은 그대로 둔다
+    if (catF && ctx && ctx.result) cats = cats.map(function (c) { return A.txName(ctx.result, c); });
     var horiz = catF === e.y;   // 범주가 y 축으로 지정되면 가로 막대
     var boolColor = e.color && typeof f0[e.color] === 'boolean';
     var pts = rows.map(function (r) { return { y: r[valF], color: boolColor ? (r[e.color] ? PALETTE[0] : C.rule3) : undefined }; });

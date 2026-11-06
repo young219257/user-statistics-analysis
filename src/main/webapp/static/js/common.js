@@ -20,6 +20,44 @@
     if (v === null || v === undefined || v === '' || isNaN(v)) return '-';
     return Number(v).toFixed(d === undefined ? 2 : d);
   };
+  /** 유효숫자 n자리(기본 3)로 표시. 0.001 미만·1e6 이상은 지수 표기(2.04e-4), 그 밖은 일반 표기(0.0140). 고정 소수점으로 .000 처럼 0 으로 보이는 일을 막는다. 값이 없으면 '' */
+  App.sig = function (v, n) {
+    if (v === null || v === undefined || v === '' || isNaN(v)) return '';
+    v = Number(v); n = n || 3;
+    if (v === 0) return '0';
+    var a = Math.abs(v);
+    if (a < 1e-3 || a >= 1e6) return v.toExponential(n - 1).replace(/e([+-])0*(\d+)/, function (_, sg, d) { return 'e' + (sg === '-' ? '-' : '') + d; });
+    var s = v.toPrecision(n);
+    return /e/.test(s) ? String(Number(s)) : s;
+  };
+  /** 서버가 계수 행마다 주는 transform(log/log1p/winsorize/standard/minmax/robust, 여러 개면 적용 순서의 배열)을 이름에 입혀 log(x) 처럼 표시 */
+  var TX_FMT = { log: function (x) { return 'log(' + x + ')'; }, log1p: function (x) { return 'log(1 + ' + x + ')'; }, winsorize: function (x) { return '윈저라이징(' + x + ')'; },
+    standard: function (x) { return '표준화(' + x + ')'; }, minmax: function (x) { return '정규화(' + x + ')'; }, robust: function (x) { return '로버스트(' + x + ')'; } };
+  App.txApply = function (name, transform) {
+    return [].concat(transform == null ? [] : transform).reduce(function (acc, t) { return TX_FMT[t] ? TX_FMT[t](acc) : acc; }, name);
+  };
+  /** 분석 결과(result)에서 변수 이름을 계수표와 같은 표기로 바꾼다: 계수 행의 transform 우선, 없으면 전처리 기록(outlier_log_transform)의 log(변수 + 상수). 해당 없으면 이름 그대로 */
+  App.txName = function (result, name) {
+    result = result || {};
+    var rows = Array.isArray(result.coefficients) ? result.coefficients : [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r && r.coefficient !== undefined && (r.term === name || r.source_variable === name)) {
+        var base = r.source_variable || r.term;
+        if (r.transform !== undefined) return App.txApply(base, r.transform);
+        name = base; break;
+      }
+    }
+    var steps = result.preprocessing_steps || [];
+    for (var j = 0; j < steps.length; j++) {
+      var st = steps[j];
+      if (st && st.step === 'outlier_log_transform' && st.column === name) {
+        var sh = Number(st.shift) || 0;
+        return 'log(' + name + (sh > 0 ? ' + ' + String(+sh.toFixed(4)) : '') + ')';
+      }
+    }
+    return name;
+  };
   App.pFmt = function (p) {
     if (p === null || p === undefined || isNaN(p)) return '-';
     return p < 0.001 ? '< 0.001' : Number(p).toFixed(4);
