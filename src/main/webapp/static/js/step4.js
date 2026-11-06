@@ -57,7 +57,8 @@
   function numericCols() { return cols().filter(function (c) { return c.role === 'numeric' || c.role === 'boolean'; }); }
   function anyCols() { return cols().filter(function (c) { return c.role !== 'constant'; }); }
   /** 독립변수 후보: 범주형도 선택할 수 있는 기법(서버가 원-핫 인코딩으로 처리)은 범주형 변수를 함께 보여 준다 */
-  var CAT_FEAT = { linear_regression: 1, logistic_regression: 1, decision_tree_regressor: 1, decision_tree_classifier: 1, multilevel: 1 };
+  var CAT_FEAT = { linear_regression: 1, logistic_regression: 1, decision_tree_regressor: 1, decision_tree_classifier: 1, multilevel: 1,
+    correlation: 1, kmeans: 1, hierarchical: 1, dbscan: 1, pca: 1, anova: 1, growth_curve: 1, psm: 1 };   // 모든 기법에서 범주형 독립변수 허용
   function featCols(exceptTarget) {
     var m = meta(cfg.method);
     var list = CAT_FEAT[cfg.method] ? cols().filter(function (c) { return c.role === 'numeric' || c.role === 'boolean' || c.role === 'categorical'; }) : numericCols();
