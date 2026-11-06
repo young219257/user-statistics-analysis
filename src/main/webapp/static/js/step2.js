@@ -17,9 +17,9 @@
   // 처음 들어오면 API 기본값과 같게: 아무것도 바꾸지 않는다 (사용자가 직접 고른 것만 적용)
   var DEFAULTS = { missing_strategy: 'none', outlier_treatment: 'keep', scaling: 'none', drop_duplicates: false };
   var STRATS = {
-    missing_strategy: { title: '1. 결측치 정제', opts: [['median', '중앙값으로 대체', '왜곡 방지 권장'], ['mean', '평균값으로 대체', '정규분포형 적합'], ['mode', '최빈값으로 대체', '이산/범주형 적합'], ['drop_rows', '결측치 행 제거 (Drop)', '완전 관측치만 보존'], ['zero', '0 대체 (Zero)', '0으로 치환'], ['none', '처리 안 함 (None)', '원본 유지']] },
-    outlier_treatment: { title: '2. 이상치(Outlier) 정제', opts: [['winsorize', '윈저라이징 (클리핑)', '임계 경계값 보정'], ['drop', '이상치 행 제거 (Drop)', '이상 관측치 삭제'], ['log', '로그 변환 (Log)', '스케일 완화'], ['keep', '원본값 보존 (Keep)', '진단만 수행']] },
-    scaling: { title: '3. 특성 스케일링', opts: [['standard', '표준화 (Standard)', '평균 0, 분산 1'], ['minmax', '정규화 (MinMax)', '0~1 범위'], ['robust', '로버스트 (Robust)', 'IQR 기반 스케일'], ['none', '미적용 (None)', '원시 스케일']] },
+    missing_strategy: { title: '1. 결측치 정제', opts: [['none', '처리 안 함 (None)', '원본 유지'], ['median', '중앙값으로 대체', '왜곡 방지 권장'], ['mean', '평균값으로 대체', '정규분포형 적합'], ['mode', '최빈값으로 대체', '이산/범주형 적합'], ['drop_rows', '결측치 행 제거 (Drop)', '완전 관측치만 보존'], ['zero', '0 대체 (Zero)', '0으로 치환']] },
+    outlier_treatment: { title: '2. 이상치(Outlier) 정제', opts: [['keep', '원본값 보존 (Keep)', '진단만 수행'], ['winsorize', '윈저라이징 (클리핑)', '임계 경계값 보정'], ['drop', '이상치 행 제거 (Drop)', '이상 관측치 삭제'], ['log', '로그 변환 (Log)', '스케일 완화']] },
+    scaling: { title: '3. 특성 스케일링', opts: [['none', '미적용 (None)', '원시 스케일'], ['standard', '표준화 (Standard)', '평균 0, 분산 1'], ['minmax', '정규화 (MinMax)', '0~1 범위'], ['robust', '로버스트 (Robust)', 'IQR 기반 스케일']] },
     drop_duplicates: { title: '4. 중복 행 처리', opts: [[false, '유지 (Keep)', '중복 행 그대로'], [true, '중복 제거 (Drop)', '완전 동일 행 삭제']] }
   };
 

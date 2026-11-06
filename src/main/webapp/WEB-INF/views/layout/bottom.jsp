@@ -76,7 +76,7 @@
       <ol class="mt-2">
         <li class="flex gap-3 py-3 border-t border-rule first:border-t-0">
           <span class="w-6 h-6 shrink-0 rounded-full bg-brand text-white text-xs font-bold flex items-center justify-center">1</span>
-          <div><div class="text-[15px] font-bold text-ink">데이터 반입</div><p class="mt-0.5 text-[13px] leading-relaxed text-ink-2">데이터관리카드나 직접 올린 파일(CSV·TXT·XLSX·XLS·JSON·Parquet, 최대 10MB)을 고릅니다. 여러 개를 고르면 공통 키로 결합하고, 데이터셋마다 분석에 쓸 열을 체크할 수 있습니다.</p></div>
+          <div><div class="text-[15px] font-bold text-ink">데이터 반입</div><p class="mt-0.5 text-[13px] leading-relaxed text-ink-2">데이터관리카드나 직접 올린 파일(CSV·XLSX, 파일 1건당 최대 10MB)을 고릅니다. 여러 개를 고르면 공통 키로 결합하고, 데이터셋마다 분석에 쓸 열을 체크할 수 있습니다.</p></div>
         </li>
         <li class="flex gap-3 py-3 border-t border-rule first:border-t-0">
           <span class="w-6 h-6 shrink-0 rounded-full bg-brand text-white text-xs font-bold flex items-center justify-center">2</span>
@@ -137,5 +137,5 @@
 </div>
 
 <script>window.__CTX__ = '${ctx}';</script>
-<script src="${ctx}/static/js/common.js"></script>
-<script src="${ctx}/static/js/viz.js"></script>
+<script src="${ctx}/static/js/common.js?v=<%= System.currentTimeMillis() %>"></script>
+<script src="${ctx}/static/js/viz.js?v=<%= System.currentTimeMillis() %>"></script>

@@ -27,15 +27,16 @@
   <div class="card-modern sec">
     <div class="sec-head">
       <h4 class="text-title font-semibold text-ink">변수 및 파라미터 설정</h4>
+      <p class="req-legend"><span class="req-star">*</span> 표시는 필수 선택 항목입니다.</p>
     </div>
     <div class="sec-box space-y-4">
     <div class="space-y-4">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="space-y-4">
           <div id="target-box"></div>
-          <div class="space-y-1.5">
+          <div class="space-y-1.5 req-field" id="feat-box">
             <div class="feat-head flex items-center justify-between text-xs">
-              <label class="font-semibold text-ink-0" id="feat-title">독립변수</label>
+              <span class="flex items-center"><label class="font-semibold text-ink-0" id="feat-title">독립변수</label><span class="req-star" id="feat-req" aria-hidden="true">*</span></span>
               <div class="flex items-center gap-1.5 text-xs">
                 <button type="button" id="feat-all" class="text-blue-700 hover:text-blue-800 hover:underline cursor-pointer font-medium">전체선택</button>
                 <span class="text-rule-3">|</span>
@@ -44,6 +45,7 @@
               </div>
             </div>
             <div class="border border-rule rounded-lg p-2 max-h-52 overflow-y-auto space-y-1 bg-paper-3/40" id="feat-list"></div>
+            <p class="req-msg" role="alert">필수 선택 항목입니다.</p>
           </div>
         </div>
         <div id="extra-params" class="space-y-3"></div>
@@ -84,6 +86,6 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
-<script src="${ctx}/static/js/step4.js"></script>
+<script src="${ctx}/static/js/step4.js?v=<%= System.currentTimeMillis() %>"></script>
 </body>
 </html>

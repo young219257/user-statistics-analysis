@@ -88,11 +88,43 @@
   }
   /** 모든 필드를 동일한 박스(테두리·배경)로 감싸 좌/우 리듬을 맞춘다 */
   var fldSeq = 0;
-  function field(label, body) {
+  var REQ_STAR = '<span class="req-star" aria-hidden="true">*</span><span class="sr-only">(필수)</span>';
+  var REQ_MSG = '<p class="req-msg" role="alert">필수 선택 항목입니다.</p>';
+  var touched = {};   // 사용자가 건드렸거나 실행을 시도한 필수 항목: 비어 있으면 오류 문구를 보여 준다
+  /** reqKey 가 있으면 필수 항목: 라벨 뒤에 빨간 별표(*)를 붙이고, 비어 있으면 오류 문구(.is-error)를 보여 준다 */
+  function field(label, body, reqKey) {
     // 라벨을 입력칸과 for/id 로 연결 (라벨을 눌러도 입력칸에 포커스가 가고, 스크린리더가 이름을 읽는다)
     var m = body.match(/\sid="([^"]+)"/), id = m ? m[1] : 'fld-' + (++fldSeq);
     if (!m) body = body.replace(/<(select|input)\b/, '<$1 id="' + id + '"');
-    return '<div class="space-y-1.5"><label for="' + id + '" class="text-body font-semibold text-ink block">' + label + '</label>' + body + '</div>';
+    return '<div class="space-y-1.5' + (reqKey ? ' req-field' : '') + '"' + (reqKey ? ' data-req="' + reqKey + '"' : '') + '><label for="' + id + '" class="text-body font-semibold text-ink block">' + label + (reqKey ? REQ_STAR : '') + '</label>' + body + (reqKey ? REQ_MSG : '') + '</div>';
+  }
+  /** 필수 항목이 비어 있는지 */
+  function reqEmpty(key) {
+    if (key === 'target') return !cfg.target;
+    if (key === 'features') return !cfg.features.length;
+    var v = cfg.params[key];
+    return Array.isArray(v) ? !v.length : !v;
+  }
+  /** 필수 항목 표시 갱신: 독립변수 영역의 별표 여부, 비어 있는 항목에 오류 문구 */
+  function updateReq() {
+    var m = meta(cfg.method), fb = A.$('#feat-box'), fr = A.$('#feat-req');
+    if (fb) { if (m.featOptional) fb.removeAttribute('data-req'); else fb.setAttribute('data-req', 'features'); }
+    if (fr) fr.classList.toggle('hidden', !!m.featOptional);
+    [].forEach.call(document.querySelectorAll('[data-req]'), function (el) {
+      var k = el.getAttribute('data-req');
+      el.classList.toggle('is-error', reqEmpty(k));   // 비어 있으면 항상 오류 표시 (선택하면 즉시 해제)
+    });
+  }
+  /** 실행 시도 시: 비어 있는 필수 항목을 모두 오류로 표시하고 첫 항목으로 이동 */
+  function flagMissing() {
+    [].forEach.call(document.querySelectorAll('[data-req]'), function (el) {
+      var k = el.getAttribute('data-req');
+      if (reqEmpty(k)) touched[k] = true;
+    });
+    updateReq();
+    var first = document.querySelector('[data-req].is-error');
+    if (first) { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); var f = first.querySelector('select,input'); if (f) f.focus({ preventScroll: true }); }
+    return !!first;
   }
   function colSelect(id, key, from, selected, optional) {
     return selectWrap('<select id="' + id + '" data-key="' + key + '" class="' + SELECT_CLS + '">' +
@@ -132,7 +164,7 @@
     var m = meta(cfg.method);
     var box = A.$('#target-box');
     if (m.target) {
-      box.innerHTML = field(cfg.method === 'psm' ? '결과변수' : '종속변수', colSelect('sel-target', 'target', 'numeric', cfg.target, false)); updatePreWarn();
+      box.innerHTML = field(cfg.method === 'psm' ? '결과변수' : '종속변수', colSelect('sel-target', 'target', 'numeric', cfg.target, false), 'target'); updatePreWarn();
     } else {
       // 오른쪽 파라미터 박스와 같은 크기가 되도록 같은 field 틀(라벨 + 입력 높이)로 안내를 표시
       box.innerHTML = field('종속변수', '<div class="w-full bg-paper-2/70 border border-rule rounded-lg px-3 py-2 text-xs text-ink-3">선택한 <strong class="text-ink-1">' + A.esc(m.name) + '</strong> 기법은 종속변수 지정이 필요하지 않습니다.</div>');
@@ -154,13 +186,14 @@
         return field(f.label, '<input type="text" data-par="' + k + '" value="' + A.esc(cfg.params[k] || '') + '" placeholder="' + A.esc(f.ph || '') + '" class="w-full bg-white border border-rule-3 rounded-lg px-3 py-2 text-xs transition-colors hover:border-ink-4 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600">');
       }
       if (f.t === 'col') {
-        return field(f.label, colSelect('par-' + k, k, f.from, cfg.params[k], !f.required).replace('data-key="' + k + '"', 'data-par="' + k + '"'));
+        return field(f.label, colSelect('par-' + k, k, f.from, cfg.params[k], !f.required).replace('data-key="' + k + '"', 'data-par="' + k + '"'), f.required ? k : null);
       }
       var sel = cfg.params[k] || [];
       return field(f.label, '<div class="border border-rule rounded-lg p-2 max-h-32 overflow-y-auto space-y-0.5 bg-white">' +
-        pool(f.from).map(function (c) { return '<label class="flex items-center gap-2 text-xs text-ink-1 cursor-pointer p-1 rounded hover:bg-paper-3"><input type="checkbox" data-multi="' + k + '" value="' + A.esc(c.name) + '" ' + (sel.indexOf(c.name) >= 0 ? 'checked' : '') + ' class="rounded text-blue-600 border-rule-3"><span class="truncate">' + A.esc(c.name) + '</span></label>'; }).join('') + '</div>');
+        pool(f.from).map(function (c) { return '<label class="flex items-center gap-2 text-xs text-ink-1 cursor-pointer p-1 rounded hover:bg-paper-3"><input type="checkbox" data-multi="' + k + '" value="' + A.esc(c.name) + '" ' + (sel.indexOf(c.name) >= 0 ? 'checked' : '') + ' class="rounded text-blue-600 border-rule-3"><span class="truncate">' + A.esc(c.name) + '</span></label>'; }).join('') + '</div>', cfg.method === 'anova' && k === 'factors' ? k : null);
     }).join('');
     A.$('#btn-run').disabled = running;
+    updateReq();
   }
 
   /* ---------------- 요청 조립 ---------------- */
@@ -244,6 +277,7 @@
   function run() {
     if (running) return;
     var bad = validate();
+    if (bad && flagMissing()) { A.toast(bad, 'error'); return; }
     if (bad) { analysis = { method: cfg.method, status: 'failed', error: bad, created_at: new Date().toISOString() }; renderResult(); A.toast('분석에 실패했습니다.', 'error'); return; }
     running = true;
     jobOk = false;
@@ -283,7 +317,7 @@
     A.$('#method-grid').addEventListener('click', function (e) {
       var b = e.target.closest('[data-method]');
       if (!b) return;
-      cfg.method = b.getAttribute('data-method');
+      cfg.method = b.getAttribute('data-method'); touched = {};
       var m = meta(cfg.method);
       if (m.target && !cfg.target && numericCols().length) cfg.target = numericCols()[0].name;
       cfg.features = cfg.features.filter(function (f) { return f !== cfg.target || !m.target; });
@@ -292,7 +326,7 @@
     });
     A.$('#target-box').addEventListener('change', function (e) {
       if (e.target.id !== 'sel-target') return;
-      cfg.target = e.target.value;
+      cfg.target = e.target.value; touched.target = true;
       cfg.features = cfg.features.filter(function (f) { return f !== cfg.target; });
       renderVars(); renderPipe(); A.icons();
     });
@@ -303,7 +337,7 @@
       if (e.target.checked && i < 0) cfg.features.push(id);
       if (!e.target.checked && i >= 0) cfg.features.splice(i, 1);
       A.$('#feat-count').textContent = cfg.features.length + '개 선택';
-      renderPipe(); A.icons();
+      touched.features = true; updateReq(); renderPipe(); A.icons();
     });
     A.$('#feat-all').addEventListener('click', function () {
       var m = meta(cfg.method);
@@ -311,7 +345,7 @@
       cfg.features = featCols(true).filter(function (c) { return !usedNow[c.name]; }).map(function (c) { return c.name; });
       renderVars(); renderPipe(); A.icons();
     });
-    A.$('#feat-none').addEventListener('click', function () { cfg.features = []; renderVars(); renderPipe(); A.icons(); });
+    A.$('#feat-none').addEventListener('click', function () { cfg.features = []; touched.features = true; renderVars(); renderPipe(); A.icons(); });
     A.$('#extra-params').addEventListener('change', function (e) {
       var t = e.target, k = t.getAttribute('data-par'), mk = t.getAttribute('data-multi');
       if (mk) {
@@ -319,12 +353,14 @@
         var i = arr.indexOf(t.value);
         if (t.checked && i < 0) arr.push(t.value);
         if (!t.checked && i >= 0) arr.splice(i, 1);
-        cfg.params[mk] = arr;
+        cfg.params[mk] = arr; touched[mk] = true;
         if (ROLE_NAME[mk]) renderFeatList();
+        updateReq();
         return;
       }
       if (!k) return;
-      cfg.params[k] = t.type === 'checkbox' ? t.checked : t.value;
+      cfg.params[k] = t.type === 'checkbox' ? t.checked : t.value; touched[k] = true;
+      updateReq();
       if (ROLE_NAME[k]) { renderFeatList(); updatePreWarn(); }
       if (k === 'auto_k') { renderVars(); A.icons(); }
     });

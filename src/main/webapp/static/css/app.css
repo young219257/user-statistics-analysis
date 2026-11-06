@@ -1347,6 +1347,14 @@ div:has(> #main-content) { background-color: #fff; }
 #main-content .card-modern:has(#feat-list) #feat-title:parent { height: 22px; }
 #main-content .feat-head { height: 22px; min-height: 0; }
 
+/* 필수 선택 항목: 라벨 뒤 빨간 별표(*) + 미선택 시 "필수 선택 항목입니다." 오류 문구 */
+.req-star { margin-left: 3px; color: #e03131 !important; font-weight: 700; }
+.req-legend { margin: 4px 0 0; font-size: 12px; line-height: 16px; color: var(--color-ink-3, #6b7684); }
+.req-legend .req-star { margin: 0 2px 0 0; }
+.req-msg { display: none; margin: 4px 0 0; font-size: 13px; line-height: 18px; color: #d63a2f; }
+.req-field.is-error .req-msg { display: block; }
+.req-field.is-error select, .req-field.is-error > .border { border-color: #d63a2f !important; }
+
 /* 선택 색: 청록 / 선택 카드는 더 작게 */
 :root { --sel: #0b7f71; --sel-tint: #f1f9f7; --sel-line: #b9ddd7; --sel-chip: #d6eee9; }
 /* 알고리즘 카드 */

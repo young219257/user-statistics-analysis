@@ -13,6 +13,7 @@
   var JOIN_TYPES = [['inner', '키가 모든 데이터셋에 있는 행만'], ['left', '1번 데이터셋의 행을 모두 유지'], ['right', '마지막 데이터셋의 행을 모두 유지'], ['outer', '어느 한쪽에라도 있는 행 모두']];
   var PAGE = 20;
   var ALLOWED = /\.(csv|xlsx)$/i;
+  var UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;   // 반입(업로드) 시 파일 1건당 최대 용량
   var MERGED_TAB = '__merged__';
 
   var MAX_CARDS = 2;                          // 한 번에 고를 수 있는 데이터관리카드 수
@@ -164,14 +165,24 @@
   }
   function renderDatasets() {
     A.$('#ds-list').innerHTML = datasets.map(function (d) {
-      var on = !!find(d.id), isM = d.source_type === 'merged', big = !isM && (d.size_bytes || 0) > RUN_LIMIT_BYTES, off = mergedLocked() && !on;
+      var on = !!find(d.id), isM = d.source_type === 'merged', big = !isM && (d.size_bytes || 0) > RUN_LIMIT_BYTES, lack = !isM && !on && !big && selectedBytes() + (d.size_bytes || 0) > RUN_LIMIT_BYTES, off = (mergedLocked() && !on) || lack;
       return '<div role="button" tabindex="' + (off ? '-1' : '0') + '"' + (off ? ' aria-disabled="true"' : '') + ' data-ds="' + A.esc(d.id) + '" class="p-3 flex items-center justify-between gap-2 select-none transition-colors ' + (big || off ? 'cursor-not-allowed opacity-50' : 'cursor-pointer ') + (on ? 'bg-blue-50/70' : (big || off ? '' : 'hover:bg-paper-3/80')) + '">' +
         '<div class="flex items-center gap-2.5 min-w-0">' + checkBox(on) + '<div class="min-w-0"><div class="ds-name"><span class="ds-name-text text-xs font-bold text-ink truncate">' + A.esc(d.name) + '</span>' +
         (d.source_type === 'merged' ? '<span class="ds-tag-merged">결합</span>' : '') + '</div>' +
-        '<div class="text-xs text-ink-4 font-mono mt-0.5">' + A.num(d.n_rows) + '행, ' + d.n_cols + '변수' + (d.source_format && d.source_type !== 'merged' ? ', ' + A.esc(d.source_format) : '') + (!isM && d.size_bytes ? ', ' + mb(d.size_bytes) : '') + (big ? ', <span class="ds-over">' + mb(RUN_LIMIT_BYTES) + ' 초과</span>' : '') + '</div></div></div>' +
+        '<div class="text-xs text-ink-4 font-mono mt-0.5">' + A.num(d.n_rows) + '행, ' + d.n_cols + '변수' + (d.source_format && d.source_type !== 'merged' ? ', ' + A.esc(d.source_format) : '') + (!isM && d.size_bytes ? ', ' + mb(d.size_bytes) : '') + (big ? ', <span class="ds-over">' + mb(RUN_LIMIT_BYTES) + ' 초과</span>' : '') + (lack ? ', <span class="ds-over">남은 용량 초과</span>' : '') + '</div></div></div>' +
         '<button type="button" data-del="' + A.esc(d.id) + '" class="p-1 text-rule-3 hover:text-rose-600 cursor-pointer shrink-0" title="삭제">' + A.icon('trash-2', 'w-3.5 h-3.5') + '</button></div>';
     }).join('') || '<div class="p-6 text-body text-muted text-center">반입된 파일이 없습니다.</div>';
+    renderDsLimit();
     A.icons();
+  }
+  /** 용량 안내: 데이터셋을 하나라도 고르면 사용량/남은 용량을 경고로 보여 준다 (고르기 전에는 표시 안 함) */
+  function renderDsLimit() {
+    var el = A.$('#ds-limit');
+    if (!el) return;
+    var used = selectedBytes(), hasDs = sel.some(function (x) { return x.kind === 'dataset' && !isMergedDs(x.id); });
+    el.innerHTML = hasDs
+      ? '<div class="krds-msg krds-warning flex items-start gap-2 py-1.5 mt-2" role="alert"><span>분석·결합에는 선택한 데이터셋 합계 ' + mb(RUN_LIMIT_BYTES) + ' 이하만 사용할 수 있습니다. (선택 ' + mb(used) + ' / 남은 용량 ' + mb(Math.max(0, RUN_LIMIT_BYTES - used)) + ') 남은 용량을 넘는 데이터셋은 선택할 수 없습니다.</span></div>'
+      : '';
   }
 
   /* ---------------- 업로드 ---------------- */
@@ -182,24 +193,41 @@
         (uploadJob ? ' <span class="font-normal text-blue-700/80">(' + A.esc(uploadJob) + ')</span>' : '') + '</div>';
     } else {
       html = '<label id="dropzone" class="block border border-dashed p-8 rounded-lg transition-colors cursor-pointer text-center ' + (dragging ? 'border-brand bg-brand-soft' : 'border-rule-3 hover:border-brand bg-white') + '">' +
-        '<input type="file" accept=".csv,.txt,.xlsx,.xls,.json,.parquet" class="hidden" id="file-input">' +
+        '<input type="file" accept=".csv,.xlsx" multiple class="hidden" id="file-input">' +
         '<div class="dz-body">' + A.icon('upload', 'w-5 h-5') + '<span class="dz-text">클릭하여 파일을 선택하거나, 여기로 끌어다 놓으세요</span><span class="dz-type">CSV, XLSX</span></div>' +
         '</label>' +
-        (uploadError ? '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 mt-2" role="alert">' + A.esc(uploadError) + '</div>' : '');
+        '<p class="text-xs text-ink-3 mt-2">CSV, XLSX 파일만 올릴 수 있으며, 파일 1건당 최대 ' + mb(UPLOAD_LIMIT_BYTES) + '까지 반입할 수 있습니다.</p>' +
+        (uploadError ? '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 mt-2" role="alert"><span>' + A.esc(uploadError).replace(/\n/g, '<br>') + '</span></div>' : '');
     }
     A.$('#upload-area').innerHTML = html;
   }
-  function handleFile(file) {
-    if (!ALLOWED.test(file.name)) { uploadError = '지원하지 않는 파일 형식입니다. (CSV, TXT, XLSX, XLS, JSON, Parquet)'; renderUpload(); return; }
-    uploadError = null; uploading = true; renderUpload();
-    var fd = new FormData();
-    fd.append('file', file);
-    uploadJob = '';
-    A.api('POST', '/api/v1/datasets/upload', fd, { onJob: function (j) { var t = A.jobText(j); if (t !== uploadJob) { uploadJob = t; renderUpload(); } } }).then(function (d) {
+  /** 여러 파일을 순서대로 올린다. 형식이 맞지 않는 파일은 건너뛰고, 실패한 파일은 모아서 한 번에 안내한다 */
+  function handleFiles(fileList) {
+    var files = [].slice.call(fileList), errors = [];
+    var valid = files.filter(function (f) {
+      if (!ALLOWED.test(f.name)) { errors.push(f.name + ': 지원하지 않는 파일 형식입니다. (CSV, XLSX만 가능)'); return false; }
+      if (f.size > UPLOAD_LIMIT_BYTES) { errors.push(f.name + ': 파일 1건당 최대 ' + mb(UPLOAD_LIMIT_BYTES) + '까지 반입할 수 있습니다. (' + mb(f.size) + ')'); return false; }
+      return true;
+    });
+    uploadError = null;
+    if (!valid.length) { uploadError = errors.join('\n'); renderUpload(); return; }
+    uploading = true; uploadJob = ''; renderUpload();
+    var total = valid.length;
+    valid.reduce(function (chain, file, i) {
+      return chain.then(function () {
+        var prefix = total > 1 ? '[' + (i + 1) + '/' + total + '] ' + file.name + ' ' : '';
+        uploadJob = prefix; renderUpload();
+        var fd = new FormData();
+        fd.append('file', file);
+        return A.api('POST', '/api/v1/datasets/upload', fd, { onJob: function (j) { var t = prefix + A.jobText(j); if (t !== uploadJob) { uploadJob = t; renderUpload(); } } })
+          .then(function (d) { return loadDatasets().then(function () { if (!find(d.id)) return toggle('dataset', d.id); }); })
+          .catch(function (e) { errors.push(file.name + ': ' + e.message); });   // 한 파일이 실패해도 나머지는 계속 올린다
+      });
+    }, Promise.resolve()).then(function () {
       uploading = false; uploadJob = '';
+      uploadError = errors.length ? errors.join('\n') : null;
       renderUpload();
-      return loadDatasets().then(function () { if (!find(d.id)) return toggle('dataset', d.id); });
-    }).catch(function (e) { uploading = false; uploadJob = ''; uploadError = e.message; renderUpload(); });
+    });
   }
 
   /* ---------------- 선택 (여러 개) ---------------- */
@@ -570,13 +598,13 @@
 
     // 업로드
     var ua = A.$('#upload-area');
-    ua.addEventListener('change', function (e) { if (e.target.id === 'file-input' && e.target.files.length) handleFile(e.target.files[0]); });
+    ua.addEventListener('change', function (e) { if (e.target.id === 'file-input' && e.target.files.length) handleFiles(e.target.files); });
     ua.addEventListener('dragover', function (e) { if (e.target.closest('#dropzone')) { e.preventDefault(); if (!dragging) { dragging = true; renderUpload(); } } });
     ua.addEventListener('dragleave', function (e) { if (e.target.closest('#dropzone') && dragging) { dragging = false; renderUpload(); } });
     ua.addEventListener('drop', function (e) {
       if (!e.target.closest('#dropzone')) return;
       e.preventDefault(); dragging = false;
-      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
     });
 
     // 데이터 미리보기: 기본은 접어 두고, 머리를 누르면 펼친다 (Enter·Space 도 동작)

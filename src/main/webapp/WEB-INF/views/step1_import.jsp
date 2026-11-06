@@ -47,6 +47,7 @@
         </div>
         <div class="sec-box flex flex-col flex-1">
         <div id="ds-list" class="border border-rule/80 rounded-xl divide-y divide-paper-2 flex-1 min-h-[180px] overflow-y-auto bg-white"></div>
+        <div id="ds-limit"></div>
         </div>
       </div>
     </div>
@@ -120,6 +121,6 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
-<script src="${ctx}/static/js/step1.js"></script>
+<script src="${ctx}/static/js/step1.js?v=<%= System.currentTimeMillis() %>"></script>
 </body>
 </html>

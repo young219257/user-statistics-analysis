@@ -87,6 +87,6 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
-<script src="${ctx}/static/js/step3.js"></script>
+<script src="${ctx}/static/js/step3.js?v=<%= System.currentTimeMillis() %>"></script>
 </body>
 </html>
