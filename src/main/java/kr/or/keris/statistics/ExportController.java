@@ -123,6 +123,8 @@ public class ExportController {
         byte[] body = pdf
                 ? PdfExporter.write(report, FontResolver.resolve(Config.get("PDF_FONT_PATH", null), servletContext))
                 : ExcelExporter.write(report);
+        // 파일명은 화면 표시용과 같이 NFC 로 맞춘다(macOS 에서 온 NFD 한글이 낱자로 보이는 것을 막는다)
+        baseName = java.text.Normalizer.normalize(baseName, java.text.Normalizer.Form.NFC);
         String name = baseName.replaceAll("[\\\\/:*?\"<>|\\r\\n]", "_") + (pdf ? ".pdf" : ".xlsx");
         String encoded = URLEncoder.encode(name, "UTF-8").replace("+", "%20");
         return ResponseEntity.ok()
