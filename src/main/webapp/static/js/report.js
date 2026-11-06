@@ -484,7 +484,9 @@
       if (has(metrics.n_observations)) c.push(kpiCard('표본수 (N)', A.num(metrics.n_observations), droppedCaption(metrics)));
       c.push(kpiCard('모형 R²', Number(metrics.model_r_squared).toFixed(3), '', 'text-blue-600'));
       if (has(metrics.n_significant_terms)) c.push(kpiCard('유의한 효과 수', A.num(metrics.n_significant_terms), ''));
-      if (has(metrics.max_eta_squared)) c.push(kpiCard('최대 효과크기 (η²)', Number(metrics.max_eta_squared).toFixed(3), '', 'text-blue-600'));
+      var me = metrics.max_effect;   // 서버: {term, value, measure: 'partial_eta_sq' | 'eta_sq'} — 효과가 없으면 null
+      if (me && has(me.value)) c.push(kpiCard('최대 효과크기 (' + (me.measure === 'partial_eta_sq' ? '부분 η²' : 'η²') + ')', Number(me.value).toFixed(3), me.term ? A.esc(me.term) : '', 'text-blue-600'));
+      else if (!('max_effect' in metrics) && has(metrics.max_eta_squared)) c.push(kpiCard('최대 효과크기 (η²)', Number(metrics.max_eta_squared).toFixed(3), '', 'text-blue-600'));
       if (has(metrics.levene_p_value)) {
         var lv = result.assumption_checks && result.assumption_checks.levene;   // 색은 서버가 준 판정(equal_variance)을 따른다: 가정 검정 표와 같은 기준
         c.push(kpiCard('Levene 등분산', 'p=' + spssNum(metrics.levene_p_value), '', lv && lv.equal_variance != null ? (lv.equal_variance ? 'text-emerald-700' : 'text-rose-600') : ''));
@@ -643,14 +645,22 @@
   function renderAnovaTable(result, metrics) {
     var rows = result.anova_table;
     if (!rows || !rows.length) return '';
+    var TYPES = { factor: '요인', interaction: '상호작용', covariate: '공변량' };
+    var hasPartial = rows.some(function (r) { return has(r.partial_eta_squared); }), hasType = rows.some(function (r) { return r.effect_type; });
     var body = rows.map(function (r) {
-      var key = String(r.source || r.term || ''), total = /^total$|합계|전체/i.test(key), resid = r.term === 'Residual' || /^residual$/i.test(r.source || '');
+      var key = String(r.source || r.term || ''), total = /^total$|합계|전체/i.test(key);
+      var resid = r.is_effect === false || r.term === 'Residual' || /^residual$/i.test(r.source || '');
       var plain = resid || total || r.f_statistic == null;
-      return [total ? '합계 (Total)' : resid ? '오차 (Residual)' : A.esc(String(r.term || r.source).replace(/^Q\('(.*)'\)$/, '$1')), spssNum(r.sum_sq, 3), n0(r.df), plain ? '' : '<b>' + spssNum(r.f_statistic, 3) + '</b>', plain ? '' : sigFmt(r.p_value), plain ? '' : spssNum(r.eta_squared)];
+      var cells = [total ? '합계 (Total)' : resid ? '오차 (Residual)' : A.esc(String(r.term || r.source).replace(/^Q\('(.*)'\)$/, '$1'))];
+      if (hasType) cells.push(resid || total ? '' : A.esc(TYPES[r.effect_type] || r.effect_type || ''));
+      cells.push(spssNum(r.sum_sq, 3), n0(r.df), plain ? '' : '<b>' + spssNum(r.f_statistic, 3) + '</b>', plain ? '' : sigFmt(r.p_value), plain ? '' : spssNum(r.eta_squared));
+      if (hasPartial) cells.push(plain ? '' : spssNum(r.partial_eta_squared));
+      return cells;
     });
+    var head = ['소스'].concat(hasType ? ['유형'] : [], ['제곱합', '자유도', 'F', '유의확률', 'η²'], hasPartial ? ['부분 η²'] : []);
     var notes = ['a. 종속변수: ' + A.esc(result.target || '-'), 'R 제곱 = ' + spssNum(has(result.model_r_squared) ? result.model_r_squared : metrics.model_r_squared), 'Type II 제곱합, 효과크기 η² = 해당 항 제곱합 / 전체 제곱합', SIG_NOTE];
     if (result.covariates && result.covariates.length) notes.splice(1, 0, '공변량: ' + result.covariates.map(A.esc).join(', '));
-    return statCard('개체-간 효과 검정 (Tests of Between-Subjects Effects) <sup class="text-blue-600">a</sup>', tbl(['소스', '제곱합', '자유도', 'F', '유의확률', 'η²'], body), notes);
+    return statCard('개체-간 효과 검정 (Tests of Between-Subjects Effects) <sup class="text-blue-600">a</sup>', tbl(head, body), notes);
   }
   function renderAssumptions(ac) {
     if (!ac) return '';

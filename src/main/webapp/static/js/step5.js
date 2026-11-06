@@ -81,6 +81,7 @@
     n_observations: ['관측치 수', function () { return '유효 표본'; }, null, 0],
     model_r_squared: ['모형 R²', function (v) { return '설명력 ' + pctCap(v); }, 'blue'],
     n_significant_terms: ['유의한 효과 수', function () { return 'p < 0.05'; }, null, 0],
+    max_partial_eta_squared: ['최대 부분 η²', function () { return '가장 큰 효과 (부분)'; }],
     max_eta_squared: ['최대 효과크기 (η²)', function () { return '가장 큰 효과'; }],
     levene_p_value: ['Levene 등분산 (p)', function (v) { return v >= 0.05 ? '등분산 충족' : '등분산 위배'; }, 'green'],
     n_groups: ['집단 수', function () { return '상위 수준 단위'; }, null, 0],
