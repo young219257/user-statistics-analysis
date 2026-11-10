@@ -86,6 +86,6 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
-<script src="${ctx}/static/js/step2.js?v=<%= System.currentTimeMillis() %>"></script>
+<script src="${ctx}/static/js/ot_dim_dmmbm03_m02.js?v=20261110"></script>
 </body>
 </html>

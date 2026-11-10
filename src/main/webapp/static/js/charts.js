@@ -205,7 +205,8 @@
   }
 
   /** 표와 같은 변수 표기: 보고서가 만든 사전(A.viz.nameMap)이 있으면 계수 이름을 바꿔 쓴다 */
-  function relabel(name) { var m = A.viz && A.viz.nameMap; return m && m[name] != null ? m[name] : name; }
+  var STAT_LABEL = { group_variance: '집단 간 분산 (τ00)', residual_variance: '개인 내 잔차 분산 (σ²)', slope_variance: '기울기 분산', intercept_variance: '절편 분산' };   // 서버 내부 필드명 → 표시 이름
+  function relabel(name) { var m = A.viz && A.viz.nameMap; if (m && m[name] != null) return m[name]; return STAT_LABEL[name] || name; }
   /** 축 이름이 '실제값'·'예측값'·'잔차' 처럼 일반적이면 종속변수 표기(변환 포함)를 앞에 붙인다 */
   function axisLab(l) { var t = A.viz && A.viz.targetLabel; return t && typeof l === 'string' && /^(실제값|예측값|잔차)$/.test(l) ? t + ' ' + l : l; }
   /** 실제값 대 예측값(대각 기준선·회귀선) / 잔차도(기준선 0) */

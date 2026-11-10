@@ -202,7 +202,7 @@
       '<div class="px-4 py-2 text-xs text-ink-3 border-t border-paper-2 bg-paper-3/50">*** p &lt; 0.001, ** p &lt; 0.01, * p &lt; 0.05' + '</div></div>';
   }
 
-  /** 4-2 화면이 쓰는 영역(#rp-*)을 화면 밖에 만든다. 같은 report.js 로 그리기 위한 자리다 */
+  /** 4-2 화면이 쓰는 영역(#rp-*)을 화면 밖에 만든다. 같은 ot_dim_dmmbm03_m05.js 로 그리기 위한 자리다 */
   function offscreen() {
     var box = document.getElementById('rp-offscreen');
     if (box) return box;
@@ -217,7 +217,7 @@
     document.body.appendChild(box);
     return box;
   }
-  /** 분석 하나: API 로 결과를 받아 report.js 로 그리고, 그려진 표·지표·차트를 읽는다 */
+  /** 분석 하나: API 로 결과를 받아 ot_dim_dmmbm03_m05.js 로 그리고, 그려진 표·지표·차트를 읽는다 */
   function collectOne(analysisId) {
     if (!window.ReportPdf || !window.ReportPdf.render) return Promise.reject(new Error('결과 리포트 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.'));
     return A.get('/api/v1/analyses/' + encodeURIComponent(analysisId)).then(function (an) {

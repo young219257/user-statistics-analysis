@@ -28,11 +28,12 @@ src/main/webapp/WEB-INF/
   web.xml, dispatcher-servlet.xml
   views/layout/top.jsp      포털 헤더·위치 표시·페이지 제목·5단계 진행 바 + 디자인 토큰(Tailwind @theme)
   views/layout/bottom.jsp   포털 하단 + 도움말·로그인 안내·삭제 확인 모달 + 토스트
-  views/step1_import.jsp … step5_packaging.jsp, step4_report.jsp
+  views/ot_dim_dmmbm03_m01.jsp … m06.jsp
+      m01 1단계 데이터 반입 · m02 2단계 품질 및 전처리 · m03 3단계 데이터 탐색 · m04 4-1 모형 설정·실행 · m05 4-2 분석 결과 리포트 · m06 5단계 결과 관리
 src/main/webapp/static/
   css/app.css               디자인 토큰(:root) · 공통 규칙(포커스 링·표 숫자·움직임 줄이기)
   js/common.js              세션·API 클라이언트·백그라운드 작업 대기·오류/확인 창·헤더 메뉴
-  js/step1.js … step5.js    단계별 화면 로직,  report.js(4-2)  charts.js(추천 차트)  viz.js(표·트리·지표 공용 렌더러)
+  js/ot_dim_dmmbm03_m01.js … ot_dim_dmmbm03_m06.js    단계별 화면 로직,  ot_dim_dmmbm03_m05.js(4-2)  charts.js(추천 차트)  viz.js(표·트리·지표 공용 렌더러)
   vendor/                   Tailwind·Highcharts·Lucide·포털 아이콘 (폐쇄망용)
 design.md                   디자인 시스템 기준 (색·글자·모서리·알림·접근성 규칙) — 화면 수정 시 이 문서를 따른다
 ```
@@ -122,7 +123,7 @@ JDK 8 이상에서 컴파일만 확인하려면: `mvn -Dmaven.compiler.source=8 
 
 ## 단계별 화면 — API 와 화면 제어
 
-### 1단계 · 데이터 반입 (`step1.js`)
+### 1단계 · 데이터 반입 (`ot_dim_dmmbm03_m01.js`)
 **목적**: 분석할 데이터를 고르고(여러 개), 필요하면 결합합니다. 결과로 "분석 대상 데이터셋" 하나가 정해집니다.
 
 | 영역 | API | 화면 제어 |
@@ -156,7 +157,7 @@ JDK 8 이상에서 컴파일만 확인하려면: `mvn -Dmaven.compiler.source=8 
 | 1개 | 그 데이터셋 | 활성. 일부 열만 쓰면 `POST /datasets/{id}/subset {columns}` (202 작업, "변수 선택 적용 중…")로 **그 열만 담은 새 데이터셋**을 만든 뒤 이동. 전부 쓰면 바로 이동 |
 | 2개 이상 | 유효한 결합 결과 | 결합 전·결과가 무효가 되면 비활성 |
 
-### 2단계 · 데이터 품질 및 전처리 (`step2.js`)
+### 2단계 · 데이터 품질 및 전처리 (`ot_dim_dmmbm03_m02.js`)
 | 동작 | API | 화면 제어 |
 |---|---|---|
 | 진입 | `GET /datasets/{id}` → `GET /datasets/{id}/profile?include_outliers=false` | 이상치 탐지 없이 기본 품질(행·변수, 결측, 중복 행)만 조회. 2단계는 항상 **원본 데이터셋**(`rawDatasetId`)을 기준으로 진단 |
@@ -167,13 +168,13 @@ JDK 8 이상에서 컴파일만 확인하려면: `mvn -Dmaven.compiler.source=8 
 
 > 분석 실행(4-1)에 보내는 `PreprocessingSpec` 은 `{drop_duplicates, outlier_treatment:'keep', scaling:'none', encoding:'onehot'}` 입니다. 결측·이상치·스케일링은 위 `/preprocess` 로 이미 데이터셋에 적용했으므로 다시 적용하지 않고, 중복 행 제거와 범주형 인코딩만 분석 요청에서 지정합니다.
 
-### 3단계 · 데이터 탐색 EDA (`step3.js`)
+### 3단계 · 데이터 탐색 EDA (`ot_dim_dmmbm03_m03.js`)
 | 동작 | API | 화면 제어 |
 |---|---|---|
 | 기초통계 | `GET /datasets/{id}/profile?include_outliers=false` | 전처리된 데이터셋의 수치형 변수별 N·평균·표준편차·사분위·왜도·첨도·결측률. 표 안에서 스크롤(머리행·변수명 열 고정) |
 | 상관분석 | `GET /datasets/{id}/correlation?method=` | 방법 선택(피어슨·스피어만·켄달)을 바꾸면 다시 조회. 매트릭스(강도별 색)와 상위 10쌍(강도·유의확률) |
 
-### 4-1 · 통계 모형 설정·실행 (`step4.js`)
+### 4-1 · 통계 모형 설정·실행 (`ot_dim_dmmbm03_m04.js`)
 | 동작 | API | 화면 제어 |
 |---|---|---|
 | 진입 | `GET /datasets/{id}`, (이전 분석이 있으면) `GET /analyses/{id}`, `GET /methods` | 데이터셋 변수로 선택지를 만들고, 서버가 주는 기법 설명이 있으면 카드 설명을 보강(실패해도 내장 목록으로 동작) |
@@ -191,7 +192,7 @@ JDK 8 이상에서 컴파일만 확인하려면: `mvn -Dmaven.compiler.source=8 
 * **결과 표시**: 분석이 성공하면 "분석이 완료되었습니다." 토스트만 띄우고 결과 상자는 두지 않습니다. 실패·취소는 오류 사유를 빨간 글씨 한 줄(닫기 버튼 포함)로 표시하고 "분석에 실패했습니다." 토스트가 함께 뜹니다. 요청 전에는 안내 상자가 없습니다. **[4-2 분석 결과 보기]는 분석 완료(분석 상태 `succeeded` 또는 작업 `succeeded`)일 때만 활성**이고, 새 분석을 시작하면 다시 비활성이 됩니다. "분석 파이프라인 조건"(선택 모형·종속변수·투입 변수)은 접고 펼 수 있습니다.
 * 설정(`config`)과 마지막 분석 ID 는 `sessionStorage` 에 보관해 4-2·5단계 "재현"에서 복원합니다.
 
-### 4-2 · 분석 결과 리포트 (`report.js`, `charts.js`, `viz.js`)
+### 4-2 · 분석 결과 리포트 (`ot_dim_dmmbm03_m05.js`, `charts.js`, `viz.js`)
 | 동작 | API | 화면 제어 |
 |---|---|---|
 | 진입 | `GET /analyses/{id}` (`?id=` 없으면 마지막 분석) | 요약 카드 + 탭 4개 |
@@ -203,7 +204,7 @@ JDK 8 이상에서 컴파일만 확인하려면: `mvn -Dmaven.compiler.source=8 
 * **추천 차트**: 별도 API 없이 분석 응답의 `chart_recommendations`(종류·제목·사유·순위) + `chart_data` 를 Highcharts 로 그립니다. 데이터가 없는 추천은 "이 차트에 표시할 데이터가 없습니다."로 표시합니다. 카드를 누르면 **상세 보기**(차트 크게 + 이전/다음 + [차트 데이터 조회]로 원시 데이터 표 최대 1,000행).
 * 분석이 실패한 결과는 요약 카드 대신 오류 사유를 표시합니다.
 
-### 5단계 · 결과 관리 (`step5.js`)
+### 5단계 · 결과 관리 (`ot_dim_dmmbm03_m06.js`)
 | 동작 | API | 화면 제어 |
 |---|---|---|
 | 목록 | `GET /packages?limit=100` | 첫 패키지를 자동 선택. 카드: 이름·분석 건수·"공유 중"·생성 일시 |
@@ -212,7 +213,7 @@ JDK 8 이상에서 컴파일만 확인하려면: `mvn -Dmaven.compiler.source=8 
 | 삭제 | `DELETE /packages/{id}` | 확인 모달 후 삭제, 선택 중이면 다음 패키지 선택 |
 | 공유 | `POST /packages/{id}/share` → `GET`, `DELETE /packages/{id}/share` | 공유 아이콘: 미발급이면 링크 발급, 발급됐으면 링크 영역 열고 닫기. 링크 = `<origin><ctx>/api/v1/shared/<token>`, [복사]는 클립보드(버튼이 "복사됨"으로 바뀜), [공유 해제] |
 | 재현 | `GET /datasets/{원본id}` | 원본 데이터셋이 현재 세션에 남아 있으면 선택한 분석의 데이터셋·변수·파라미터·전처리를 `sessionStorage` 에 복원하고 **4-1 로 이동**(실행은 사용자가 직접). 없으면 "원본 데이터셋이 현재 세션에 없어 재현할 수 없습니다" 안내 |
-| 내보내기 | `POST /export/package/{id}/pdf`, `…/excel` | 담긴 분석마다 `GET /analyses/{id}` 로 결과를 받아 **`report.js` 로 4-2 화면을 화면 밖에 그려** 표·지표·(PDF 는) 차트를 읽고 서버로 보내 파일을 만듭니다. [PDF 보고서]·[Excel 통계표] |
+| 내보내기 | `POST /export/package/{id}/pdf`, `…/excel` | 담긴 분석마다 `GET /analyses/{id}` 로 결과를 받아 **`ot_dim_dmmbm03_m05.js` 로 4-2 화면을 화면 밖에 그려** 표·지표·(PDF 는) 차트를 읽고 서버로 보내 파일을 만듭니다. [PDF 보고서]·[Excel 통계표] |
 
 ---
 
@@ -275,11 +276,11 @@ JDK 8 이상에서 컴파일만 확인하려면: `mvn -Dmaven.compiler.source=8 
 ---
 
 ## PDF / Excel 내보내기
-외부 API 에 없는 기능이라 이 서버가 파일을 만듭니다. **4-2 결과 리포트 화면에 보이는 내용을 그대로** 담기 위해, 표·지표 카드·차트의 모양은 화면(`report.js`)이 정하고 서버는 받은 내용을 파일로 그립니다.
+외부 API 에 없는 기능이라 이 서버가 파일을 만듭니다. **4-2 결과 리포트 화면에 보이는 내용을 그대로** 담기 위해, 표·지표 카드·차트의 모양은 화면(`ot_dim_dmmbm03_m05.js`)이 정하고 서버는 받은 내용을 파일로 그립니다.
 
 **흐름 (5단계 [PDF 보고서]·[Excel 통계표])**
 1. 화면이 패키지에 담긴 분석마다 `GET /analyses/{id}` 로 결과를 받습니다.
-2. `report.js`(`ReportPdf.render`)가 4-2 화면과 같은 코드로 **화면 밖의 숨은 영역**(`#rp-offscreen`)에 그립니다.
+2. `ot_dim_dmmbm03_m05.js`(`ReportPdf.render`)가 4-2 화면과 같은 코드로 **화면 밖의 숨은 영역**(`#rp-offscreen`)에 그립니다.
 3. 그려진 지표 카드·통계표(`colspan`·`rowspan` 포함)·각주를 읽고, PDF 는 Highcharts 차트를 PNG 이미지로 바꿉니다.
 4. `POST /export/package/{id}/{pdf|excel}` 본문 `{ "screens": [ { title, method, sections:[{title, kpis, tables, notes}], images:[{rank,title,subtitle,data}] } ] }` 로 서버에 보내고, 서버가 파일을 만들어 내려줍니다 (`App.downloadFile`).
 

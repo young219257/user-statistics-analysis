@@ -29,7 +29,7 @@
     }).join('') || '<tr><td colspan="12" class="py-8 text-center text-ink-4 font-sans">수치형 변수가 없습니다.</td></tr>';
   }
 
-  var METHOD = { pearson: '피어슨 상관계수 행렬', spearman: '스피어만 순위상관 행렬', kendall: '켄달 순위상관 행렬' };
+  var METHOD = { pearson: '피어슨 상관계수 행렬', spearman: '스피어만 순위상관 행렬', kendall: '켄달 순위상관 행렬 (τ-b)' };
 
   function renderCorr(c) {
     A.$('#corr-title').textContent = METHOD[c.method] || '상관계수 매트릭스';

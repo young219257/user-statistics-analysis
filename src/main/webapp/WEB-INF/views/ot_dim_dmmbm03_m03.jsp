@@ -61,7 +61,7 @@
         <select id="corr-method" aria-label="상관계수 방법" class="bg-white border border-rule-3 rounded-lg px-2.5 py-1 text-xs text-ink-0 focus:outline-none focus:border-blue-600 cursor-pointer">
           <option value="pearson">피어슨</option>
           <option value="spearman">스피어만</option>
-          <option value="kendall">켄달</option>
+          <option value="kendall">켄달 (τ-b)</option>
         </select>
         <div class="flex items-center gap-3 text-xs text-ink-2 flex-wrap">
           <div class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block"></span><span>강한 양의 상관 (r ≥ 0.7)</span></div>
@@ -87,6 +87,6 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
-<script src="${ctx}/static/js/step3.js?v=<%= System.currentTimeMillis() %>"></script>
+<script src="${ctx}/static/js/ot_dim_dmmbm03_m03.js?v=20261110"></script>
 </body>
 </html>

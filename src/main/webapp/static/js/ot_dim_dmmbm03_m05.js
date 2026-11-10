@@ -732,7 +732,10 @@
   /** AIC/BIC 가 null 이면 '−' 와 사유 툴팁(추정 방법 때문에 산출하지 않음)을 보여 준다. 값이 있으면 추정 방법을 함께 단다 */
   function aicCell(v, metrics, fit) {
     var em = (metrics && metrics.estimation_method) || (fit && fit.estimation_method);
-    if (has(v)) return spssNum(v, 3) + (em ? ' <span class="text-xs font-sans text-ink-3">(' + A.esc(em) + ')</span>' : '');
+    // AIC/BIC 는 추정법(REML)이 아니라 서버가 알려 주는 정보기준 산출 기준(information_criteria_basis, 예: ML)으로 표기한다
+    var basis = (fit && fit.information_criteria_basis) || (metrics && metrics.information_criteria_basis);
+    var lab = basis ? basis + ' 기준' : em;
+    if (has(v)) return spssNum(v, 3) + (lab ? ' <span class="text-xs font-sans text-ink-3">(' + A.esc(lab) + ')</span>' : '');
     return '<span class="text-rule-3" title="' + A.esc(em ? em + ' 추정이라 산출하지 않음' : '추정 방법상 산출하지 않음') + '">−</span>';
   }
   function renderMultilevelInfo(metrics, result) {
@@ -758,10 +761,17 @@
     var head = ['분산 성분', uv ? '연구모형' : '추정값'].concat(uv ? ['무조건모형'] : []);
     return statCard('분산 성분 (Variance Components)', tbl(head, rows.map(function (r) { return uv ? r : r.slice(0, 2); })), uv ? ['무조건모형: 예측변수 없이 집단만 고려한 기준 모형'] : []);
   }
+  /** 확률효과 표 열 이름: const_se 같은 내부 필드명을 한글로 (const → 확률절편, *_se → 표준오차, *_ci_lower/upper → 95% CI) */
+  function reLabel(k) {
+    if (k === 'const') return '확률절편';
+    var m = /^(.*)_(se|ci_lower|ci_upper)$/.exec(k);
+    if (!m) return A.esc(k);
+    return A.esc(m[1] === 'const' ? '확률절편' : m[1]) + ' ' + { se: '표준오차', ci_lower: '95% CI 하한', ci_upper: '95% CI 상한' }[m[2]];
+  }
   function renderRandomEffects(rows) {
     if (!rows || !rows.length) return '';
     var keys = Object.keys(rows[0]).filter(function (k) { return k !== 'group'; });
-    return statCard('확률효과 (집단별 확률절편' + (keys.length > 1 ? '·기울기' : '') + ')', tbl(['집단'].concat(keys.map(function (k) { return k === 'const' ? '확률절편' : A.esc(k); })), rows.map(function (r) {
+    return statCard('확률효과 (집단별 확률절편' + (keys.length > 1 ? '·기울기' : '') + ')', tbl(['집단'].concat(keys.map(reLabel)), rows.map(function (r) {
       return [A.esc(r.group)].concat(keys.map(function (k) { return spssNum(r[k], 4); }));
     })), ['전체 평균(고정효과) 대비 각 집단의 편차입니다.'], true);
   }

@@ -36,7 +36,7 @@
     eps: { t: 'select', label: '반경 (eps)', def: 0.5, num: true, opts: [[0.3, '0.3'], [0.5, '0.5'], [0.8, '0.8'], [1, '1.0'], [1.5, '1.5']] },
     min_samples: { t: 'select', label: '최소 이웃 수 (min_samples)', def: 5, num: true, opts: [[3, '3'], [5, '5'], [10, '10'], [20, '20']] },
     n_components: { t: 'select', label: '추출 성분 수', def: 2, num: true, opts: [[1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']] },
-    correlation_method: { t: 'select', label: '상관계수 방법', def: 'pearson', opts: [['pearson', 'Pearson'], ['spearman', 'Spearman'], ['kendall', 'Kendall']] },
+    correlation_method: { t: 'select', label: '상관계수 방법', def: 'pearson', opts: [['pearson', 'Pearson'], ['spearman', 'Spearman'], ['kendall', 'Kendall (τ-b)']] },
     factors: { t: 'cols', label: '요인 (범주형 독립변수)', from: 'any' },
     covariates: { t: 'cols', label: '공변량 (ANCOVA, 선택)', from: 'numeric' },
     include_interaction: { t: 'check', label: '상호작용 항 포함', def: true },
@@ -58,7 +58,7 @@
   function anyCols() { return cols().filter(function (c) { return c.role !== 'constant'; }); }
   /** 독립변수 후보: 범주형도 선택할 수 있는 기법(서버가 원-핫 인코딩으로 처리)은 범주형 변수를 함께 보여 준다 */
   var CAT_FEAT = { linear_regression: 1, logistic_regression: 1, decision_tree_regressor: 1, decision_tree_classifier: 1, multilevel: 1,
-    correlation: 1, kmeans: 1, hierarchical: 1, dbscan: 1, pca: 1, anova: 1, growth_curve: 1, psm: 1 };   // 모든 기법에서 범주형 독립변수 허용
+    kmeans: 1, hierarchical: 1, dbscan: 1, pca: 1, anova: 1, growth_curve: 1, psm: 1 };   // 상관분석을 뺀 모든 기법에서 범주형 독립변수 허용
   function featCols(exceptTarget) {
     var m = meta(cfg.method);
     var list = CAT_FEAT[cfg.method] ? cols().filter(function (c) { return c.role === 'numeric' || c.role === 'boolean' || c.role === 'categorical'; }) : numericCols();
@@ -319,7 +319,6 @@
       if (!b) return;
       cfg.method = b.getAttribute('data-method'); touched = {};
       var m = meta(cfg.method);
-      if (m.target && !cfg.target && numericCols().length) cfg.target = numericCols()[0].name;
       cfg.features = cfg.features.filter(function (f) { return f !== cfg.target || !m.target; });
       if (!cfg.features.length && !m.featOptional) cfg.features = defaultFeatures();
       refreshAll();
@@ -377,7 +376,6 @@
       var names = cols().map(function (c) { return c.name; });
       if (cfg.target && names.indexOf(cfg.target) < 0) cfg.target = '';
       cfg.features = cfg.features.filter(function (f) { return names.indexOf(f) >= 0; });
-      if (m.target && !cfg.target && numericCols().length) cfg.target = numericCols()[0].name;
       if (!cfg.features.length && !m.featOptional) cfg.features = defaultFeatures();
       refreshAll();
       renderResult();

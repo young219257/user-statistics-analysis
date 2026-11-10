@@ -321,6 +321,8 @@ main#main-content { padding-top: 20px; padding-bottom: 24px; }
 #step1-root .card-modern.p-5 { padding: 16px 18px; }
 #mgmt-list { min-height: 250px; }
 #ds-list { min-height: 112px; }
+/* 용량 경고: 우측 하단 '의견 보내기' 플로팅 버튼에 문구 끝이 가려지지 않게 오른쪽 여백 확보 */
+#ds-limit .krds-msg { padding-right: 128px; }
 #dropzone { padding: 16px; }
 #step1-root #btn-proceed { min-height: 44px; }
 

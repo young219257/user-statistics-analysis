@@ -19,32 +19,32 @@ public class PageController {
 
     @RequestMapping("/analysis/step1")
     public String step1(HttpServletRequest request, Model model) {
-        return page(request, model, "import", "", "1단계 데이터 반입", "step1_import");
+        return page(request, model, "import", "", "1단계 데이터 반입", "ot_dim_dmmbm03_m01");
     }
 
     @RequestMapping("/analysis/step2")
     public String step2(HttpServletRequest request, Model model) {
-        return page(request, model, "preprocess", "", "2단계 품질 및 전처리", "step2_quality");
+        return page(request, model, "preprocess", "", "2단계 품질 및 전처리", "ot_dim_dmmbm03_m02");
     }
 
     @RequestMapping("/analysis/step3")
     public String step3(HttpServletRequest request, Model model) {
-        return page(request, model, "eda", "", "3단계 데이터 탐색(EDA)", "step3_eda");
+        return page(request, model, "eda", "", "3단계 데이터 탐색(EDA)", "ot_dim_dmmbm03_m03");
     }
 
     @RequestMapping("/analysis/step4")
     public String step4(HttpServletRequest request, Model model) {
-        return page(request, model, "modeling", "run", "4단계 통계 모델링", "step4_modeling");
+        return page(request, model, "modeling", "run", "4단계 통계 모델링", "ot_dim_dmmbm03_m04");
     }
 
     @RequestMapping({"/analysis/step4/report", "/analysis/step4-2"})
     public String step4Report(HttpServletRequest request, Model model) {
-        return page(request, model, "modeling", "report", "4단계 분석 결과 상세 리포트", "step4_report");
+        return page(request, model, "modeling", "report", "4단계 분석 결과 상세 리포트", "ot_dim_dmmbm03_m05");
     }
 
     @RequestMapping("/analysis/step5")
     public String step5(HttpServletRequest request, Model model) {
-        return page(request, model, "packaging", "", "5단계 결과 관리", "step5_packaging");
+        return page(request, model, "packaging", "", "5단계 결과 관리", "ot_dim_dmmbm03_m06");
     }
 
     private String page(HttpServletRequest request, Model model, String step, String sub, String title, String view) {

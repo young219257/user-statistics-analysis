@@ -137,5 +137,5 @@
 </div>
 
 <script>window.__CTX__ = '${ctx}';</script>
-<script src="${ctx}/static/js/common.js?v=<%= System.currentTimeMillis() %>"></script>
-<script src="${ctx}/static/js/viz.js?v=<%= System.currentTimeMillis() %>"></script>
+<script src="${ctx}/static/js/common.js?v=20261110"></script>
+<script src="${ctx}/static/js/viz.js?v=20261110"></script>

@@ -33,8 +33,8 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
-<script src="${ctx}/static/js/charts.js?v=<%= System.currentTimeMillis() %>"></script>
-<script src="${ctx}/static/js/report.js?v=<%= System.currentTimeMillis() %>"></script>
-<script src="${ctx}/static/js/step5.js?v=<%= System.currentTimeMillis() %>"></script>
+<script src="${ctx}/static/js/charts.js?v=20261110"></script>
+<script src="${ctx}/static/js/ot_dim_dmmbm03_m05.js?v=20261110"></script>
+<script src="${ctx}/static/js/ot_dim_dmmbm03_m06.js?v=20261110"></script>
 </body>
 </html>
