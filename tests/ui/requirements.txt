@@ -1,0 +1,9 @@
+# 화면 단위 테스트(UI) 실행에 필요한 패키지
+pytest>=8
+playwright>=1.45          # 시스템에 설치된 Chrome 을 구동 (별도 브라우저 다운로드 불필요: UI_BROWSER_CHANNEL=chrome)
+pandas>=2                 # 기대값 계산 (CSV 원본에서 직접 계산)
+numpy
+scipy
+statsmodels               # 다층모형 기대값
+openpyxl                  # XLSX 반입 파일 생성 / Excel 내보내기 검증
+pypdf                     # PDF 내보내기 검증
