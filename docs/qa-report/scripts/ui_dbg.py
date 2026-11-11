@@ -1,0 +1,25 @@
+from playwright.sync_api import sync_playwright
+import time, re
+BASE="https://testlab-edmgr.kr/apps/app-20261006-160341"; O="/tmp/qa/out/"; S="/tmp/qa/shots/"
+def settle(pg,t=2): pg.wait_for_load_state("networkidle"); time.sleep(t)
+with sync_playwright() as p:
+    b=p.chromium.launch(channel="chrome",headless=True)
+    pg=b.new_context(viewport={"width":1440,"height":1100}).new_page()
+    logs=[]; pg.on("console",lambda m: logs.append((m.type,m.text[:200])))
+    pg.on("response",lambda r: logs.append(("http",r.status,r.url[-70:])) if "/api/v1/analyses" in r.url or "/jobs/" in r.url else None)
+    pg.goto(BASE+"/analysis/step1",wait_until="networkidle")
+    pg.locator("#file-input").set_input_files(O+"qa_clean_reference.csv")
+    pg.wait_for_function("()=>!document.querySelector('#upload-area .spin') && document.querySelector('#ds-list [data-ds]')",timeout=90000); time.sleep(1.5)
+    pg.locator("#btn-proceed").click(); pg.wait_for_url("**/step2",timeout=30000); settle(pg)
+    pg.locator("#algo-grid > *").nth(0).click(); time.sleep(.5); pg.locator("#btn-detect").click(); time.sleep(3)
+    pg.locator("#btn-next").click(); pg.wait_for_url("**/step3",timeout=90000); settle(pg)
+    pg.goto(BASE+"/analysis/step4",wait_until="networkidle"); settle(pg)
+    pg.locator("#sel-target").select_option("score_t4"); time.sleep(.5)
+    pg.locator("#btn-run").click(); time.sleep(8)
+    print("run 후 버튼:",pg.locator("#btn-run").inner_text(),"| disabled:",pg.locator("#btn-run").is_disabled())
+    print("result-panel hidden?:",pg.locator("#result-panel").get_attribute("class"))
+    print("panel text:",re.sub(r"\s+"," ",pg.locator("#result-panel").inner_text())[:300])
+    print("btn-report class:",pg.locator("#btn-report").get_attribute("class"))
+    print("logs:",logs[-8:])
+    pg.screenshot(path=S+"11_step4_lr_dbg.png",full_page=True)
+    b.close()
