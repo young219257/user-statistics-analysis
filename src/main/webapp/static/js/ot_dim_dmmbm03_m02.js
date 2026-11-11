@@ -9,7 +9,7 @@
     { id: 'zscore', name: 'Z-score (표준점수)', tag: '모수적', desc: '정규분포 기준 표준점수 기반 탐지', label: '임계값 (|Z|):', def: 3.0, opts: [[2.5, '2.5 (엄격한 98.8% 기준)'], [3.0, '3.0 (표준 99.7% 기준)'], [3.5, '3.5 (극단값만 탐지)']], formula: '|x − μ| / σ > 임계값' },
     { id: 'modified_zscore', name: '수정된 Z-score (MAD)', tag: '로버스트', desc: '중앙값·중위절대편차 기반 왜곡 방지 탐지', label: '임계값 (|M_i|):', def: 3.5, opts: [[3.0, '3.0 (보수적 탐지)'], [3.5, '3.5 (Iglewicz 표준)'], [4.0, '4.0 (극단치 전용)']], formula: '0.6745·|x − 중앙값| / MAD > 임계값' },
     { id: 'grubbs', name: "Grubbs' 검정", tag: '가설검정', desc: '유의확률 기반 최대 극단치 순차 검정', label: '유의수준 (α):', def: 0.05, opts: [[0.01, 'α = 0.01 (99% 신뢰수준)'], [0.05, 'α = 0.05 (95% 신뢰수준 표준)'], [0.10, 'α = 0.10 (90% 신뢰수준)']], formula: '최대 |x − μ| / σ 가 임계값 초과' },
-    { id: 'mahalanobis', name: '마할라노비스 거리', tag: '다변량 공분산', desc: '변수 간 공분산·상관관계 기반 다변량 탐지', label: '거리 임계치 (D_M):', def: 3.0, opts: [[2.5, '2.5 (민감한 다변량 탐지)'], [3.0, '3.0 (표준 다변량 기준)'], [3.5, '3.5 (극단적 상관 이탈치)']], formula: 'D_M = √((x−μ)ᵀ Σ⁻¹ (x−μ)) > 임계치' },
+    { id: 'mahalanobis', name: '마할라노비스 거리', tag: '다변량 공분산', desc: '변수 간 공분산·상관관계 기반 다변량 탐지', label: '제곱거리(D²) 임계:', def: 1, opts: [[1, 'χ² 97.5% 분위수 (표준, 권장)'], [6.25, 'D² > 6.25 (거리 D > 2.5)'], [9, 'D² > 9 (거리 D > 3.0)'], [12.25, 'D² > 12.25 (거리 D > 3.5)']], formula: 'D² = (x−μ)ᵀ Σ⁻¹ (x−μ) > 임계치 (표준: 자유도=변수 수인 χ² 분포의 97.5% 분위수)' },
     { id: 'isolation_forest', name: 'Isolation Forest', tag: '트리 앙상블', desc: '의사결정나무 분할 기반 고립치 탐지', label: '고립 점수 임계치:', def: 0.60, opts: [[0.55, '0.55 (보수적 탐지)'], [0.60, '0.60 (표준 권장 임계치)'], [0.65, '0.65 (극단 고립치만)']], formula: '고립 점수 > 임계치' },
     { id: 'lof', name: 'LOF (국소 이상치 계수)', tag: '국소 밀도', desc: '이웃 밀도차 기반 국소 고립치 탐지', label: 'LOF 임계치:', def: 1.5, opts: [[1.3, '1.3 (민감 탐지)'], [1.5, '1.5 (표준 권장 기준)'], [1.8, '1.8 (극단 희박 밀도치)']], formula: 'LOF > 임계치' }
   ];
@@ -61,18 +61,33 @@
   }
   function byCol(list) { var m = {}; (list || []).forEach(function (x) { m[x.column] = x; }); return m; }
 
+  /** 이상치 진단·전처리 규칙의 대상 열: 역할이 numeric 인 열 중 식별자로 보이는 열(…_id, …코드, …번호)과 이진 열(role≠numeric)은 제외한다.
+   *  서버는 영문 소문자 '_id' 접미사를 식별자로 추론하지 않으므로 이름 규칙을 화면에서 보완한다. 1단계 '변수 속성'에서 타입을 바꾸면 달라진다. */
+  var ID_NAME = /(^|[_\s-])(id|code|no)$|코드$|번호$/i;
+  function colInfo(name) { return ((dataset && dataset.columns) || []).filter(function (c) { return c.name === name; })[0] || null; }
+  function isRuleTarget(n) {
+    var c = colInfo(n.column);
+    if (c && c.role && c.role !== 'numeric') return false;
+    return !ID_NAME.test(String(n.column));
+  }
+  function ruleTargets() { return (profile && profile.numeric || []).filter(isRuleTarget); }
+  function excludedNums() { return (profile && profile.numeric || []).filter(function (n) { return !isRuleTarget(n); }); }
+
   /** 결측치·이상치·스케일링 → POST /datasets/{id}/preprocess 요청 (전처리된 새 데이터셋 생성) */
   function buildPreprocessRequest() {
     var req = { missing_strategy: pcfg.missing_strategy, outlier_treatment: pcfg.outlier_treatment, scaling: pcfg.scaling };
     // 이상치 판정은 2단계에서 탐지를 실행한 기법·임계값과 맞춘다 (명세 권고). 탐지를 안 했으면 서버 기본값
     if (active) { req.outlier_method = active.method; req.outlier_threshold = Number(active.threshold); }
+    var cols = ruleTargets().map(function (n) { return n.column; });
+    if (cols.length) req.columns = cols;                 // 식별자·이진 열에는 규칙(결측·이상치·스케일링)을 적용하지 않는다
     return req;
   }
   function needsPreprocess() { return pcfg.missing_strategy !== 'none' || pcfg.outlier_treatment !== 'keep' || pcfg.scaling !== 'none'; }
   /** 분석 실행 시 보내는 PreprocessingSpec: 결측치·이상치·스케일링은 이미 데이터셋에 적용됐으므로 다시 하지 않고,
    *  /preprocess 에 없는 중복 행 제거와 범주형 인코딩만 여기서 지정한다. */
   function buildSpec() {
-    return { drop_duplicates: !!pcfg.drop_duplicates, outlier_treatment: 'keep', scaling: 'none', encoding: 'onehot' };
+    // scaling 은 보내지 않는다(null): 서버가 기법별 기본값을 쓴다(군집·PCA 는 표준화, 그 외는 없음). 'none' 을 보내면 군집·PCA 가 원 단위로 계산된다.
+    return { drop_duplicates: !!pcfg.drop_duplicates, outlier_treatment: 'keep', encoding: 'onehot' };
   }
   function persist() {
     A.saveState({ preprocessing: buildSpec(), prepUi: { outlier: active, prep: pcfg } });
@@ -114,7 +129,15 @@
   }
 
   /* ---------------- 진단 결과 ---------------- */
-  function totalOutliers() { return (profile.outliers || []).reduce(function (s, o) { return s + (o.n_outliers || 0); }, 0); }
+  /** 이상치 건수 카드 값. 마할라노비스는 모든 변수가 같은 '이상치 행 수'를 돌려주므로 합하지 않고 그대로 쓰고(행 기준),
+   *  그 외 기법은 대상 변수별 건수의 합이다. */
+  function totalOutliers() {
+    var names = {};
+    ruleTargets().forEach(function (n) { names[n.column] = true; });
+    var list = (profile.outliers || []).filter(function (o) { return names[o.column]; });
+    if (active && active.method === 'mahalanobis') return list.reduce(function (m, o) { return Math.max(m, o.n_outliers || 0); }, 0);
+    return list.reduce(function (s, o) { return s + (o.n_outliers || 0); }, 0);
+  }
 
   function renderQuality() {
     if (!profile) return;
@@ -124,7 +147,7 @@
     var cm = A.$('#card-missing');
     cm.textContent = A.num(profile.total_missing_cells) + '건 (' + (profile.missing_ratio * 100).toFixed(1) + '%)';
     cm.className = 'text-lg font-bold font-mono mt-0.5 block ' + (profile.total_missing_cells > 0 ? 'kpi-bad' : 'kpi-ok');
-    A.$('#card-out-label').textContent = a ? '이상치 검출 (' + a.name + ')' : '이상치 검출';
+    A.$('#card-out-label').textContent = a ? '이상치 검출 (' + a.name + (a.id === 'mahalanobis' ? ' · 행 기준' : ' · 변수별 합계') + ')' : '이상치 검출';
     var co = A.$('#card-outliers');
     co.textContent = a ? A.num(outs) + '건' : '탐지 전';
     co.className = 'text-lg font-bold font-mono mt-0.5 block ' + (!a ? 'kpi-idle' : outs > 0 ? 'kpi-bad' : 'kpi-ok');
@@ -136,7 +159,7 @@
     A.$('#th-out').textContent = a ? '이상치 (' + a.name + ')' : '이상치';
 
     var miss = byCol(profile.missing), outl = byCol(profile.outliers);
-    var nums = profile.numeric || [];
+    var nums = ruleTargets();
     if (!selectedCol && nums.length) selectedCol = nums[0].column;
     var TD = '<td class="py-2.5 px-3 text-right">', DASH = '<span class="text-rule-3">-</span>';
     function missCell(mc) { return TD + (mc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(mc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>'; }
@@ -156,7 +179,8 @@
         TD + DASH + '</td>' + TD + DASH + '</td>' + TD + DASH + '</td>' +
         '<td class="py-2.5 px-3 font-sans text-xs">' + statusHtml(missStatus(mc)) + '</td><td class="py-2.5 px-3 font-sans text-xs">' + DASH + '</td></tr>';
     }).join('') || '<tr><td colspan="7" class="py-6 text-center text-ink-4 font-sans">표시할 변수가 없습니다.</td></tr>';
-    A.$('#judge-note').textContent = '이상치 상태: 이상치 없음 → 양호, 비율 ' + (OUT_LOW_RATIO * 100) + '% 미만 → 확인 권장, 그 외 → 검토 필요. 로그 변환 권장은 서버 권고(recommendation)를 따릅니다. 이상치 상태는 탐지를 실행한 뒤에 표시됩니다.';
+    A.$('#judge-note').textContent = '이상치 상태: 이상치 없음 → 양호, 비율 ' + (OUT_LOW_RATIO * 100) + '% 미만 → 확인 권장, 그 외 → 검토 필요. 로그 변환 권장은 서버 권고(recommendation)를 따릅니다. 이상치 상태는 탐지를 실행한 뒤에 표시됩니다.' +
+      (excludedNums().length ? ' 식별자·이진 열은 진단과 전처리 대상에서 제외했습니다: ' + excludedNums().map(function (n) { return n.column; }).join(', ') + ' (1단계 변수 속성에서 타입을 바꾸면 달라집니다).' : '');
     renderDetail();
     renderAlgos();
   }

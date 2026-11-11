@@ -9,7 +9,7 @@
     var tabs = [
       ['overview', 'layout-grid', '전체 종합 리포트', ''],
       ['result', 'table-2', '표준 통계 결과표', ''],
-      ['charts', 'bar-chart-3', '진단 시각화 차트', String((res.chart_recommendations || []).length)],
+      ['charts', 'bar-chart-3', '진단 시각화 차트', String(A.charts && A.charts.usable ? A.charts.usable(res).length : (res.chart_recommendations || []).length)],
       ['raw', 'file-spreadsheet', '표본별 원시데이터 및 잔차', raw.total ? String(raw.total) : '']
     ];
     return tabs.map(function (t) {
@@ -862,10 +862,22 @@
   }
 
   /** 서버 result.warnings = [{code, message, suggestion}] */
+  /** result.warnings 에 더해, 서버가 진단·결과에 따로 붙이는 경고 문구를 모은다:
+   *  diagnostics.*_warning (예: 회귀의 VIF>10 다중공선성), result.warning (예: DBSCAN 군집 없음) */
+  function collectWarnings(result) {
+    var out = (result.warnings || []).slice(), seen = {};
+    out.forEach(function (w) { seen[typeof w === 'string' ? w : w.message] = 1; });
+    var add = function (m) { if (typeof m === 'string' && m && !seen[m]) { seen[m] = 1; out.push(m); } };
+    var d = result.diagnostics || {};
+    Object.keys(d).forEach(function (k) { if (/_warning$/.test(k)) add(d[k]); });
+    add(result.warning);
+    return out;
+  }
   function renderWarnings(warnings) {
     if (!Array.isArray(warnings) || !warnings.length) return '';
     var W = TD.replace('whitespace-nowrap', 'whitespace-normal text-left align-top');   // 긴 문장은 줄바꿈
     var body = warnings.map(function (w) {
+      if (typeof w === 'string') w = { message: w };   // 서버는 경고를 문자열로도 준다 (군집·PCA 의 표준화 안내 등)
       return '<tr><td class="' + W + ' font-sans text-warn-ink font-semibold">' + A.esc(w.message || w.code || '') + '</td><td class="' + W + ' font-sans">' + A.esc(w.suggestion || '') + '</td></tr>';
     }).join('');
     return statCard('분석 경고', '<table class="w-full text-body border-collapse"><thead><tr><th class="' + TH + ' text-left">내용</th><th class="' + TH + ' text-left">권고</th></tr></thead><tbody>' + body + '</tbody></table>');
@@ -921,7 +933,7 @@
     }
     var html;
     if (cards) {
-      html = renderWarnings(result.warnings) + cards.filter(Boolean).join('');
+      html = renderWarnings(collectWarnings(result)) + cards.filter(Boolean).join('');
     } else {
       // 알 수 없는 기법: 기존 범용 렌더링
       var special = [renderModelSummary(metrics, result.anova, target, features), renderAnova(result.anova, metrics, nObs, target, features), renderCoefficients(result.coefficients, diag.vif, target), renderConfusionMatrix(result.confusion_matrix)].filter(Boolean);

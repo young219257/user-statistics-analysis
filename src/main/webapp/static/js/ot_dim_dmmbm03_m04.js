@@ -12,16 +12,17 @@
     { id: 'logistic_regression', name: '로지스틱 회귀', en: 'Logistic Regression', cat: '예측', icon: 'git-branch', desc: '이진 범주 확률 예측', target: true, feat: '독립변수', fields: ['positive_label', 'weight_column', 'test_size', 'max_iter'] },
     { id: 'decision_tree_regressor', name: '의사결정나무(회귀)', en: 'Decision Tree Regressor', cat: '예측', icon: 'git-branch', desc: '규칙 기반 연속형 예측', target: true, feat: '독립변수', fields: ['max_depth', 'min_samples_leaf', 'ccp_alpha', 'test_size'] },
     { id: 'decision_tree_classifier', name: '의사결정나무(분류)', en: 'Decision Tree Classifier', cat: '예측', icon: 'git-branch', desc: '규칙 기반 범주 분류', target: true, feat: '독립변수', fields: ['positive_label', 'max_depth', 'min_samples_leaf', 'ccp_alpha', 'test_size'] },
-    { id: 'kmeans', name: 'K-평균 군집', en: 'K-Means', cat: '군집', icon: 'pie-chart', desc: '유사 관측치 K개 군집화', target: false, feat: '투입 변수', fields: ['n_clusters', 'auto_k', 'label_columns'] },
-    { id: 'hierarchical', name: '계층적 군집', en: 'Hierarchical', cat: '군집', icon: 'network', desc: '덴드로그램 기반 군집', target: false, feat: '투입 변수', fields: ['n_clusters', 'linkage', 'label_columns'] },
-    { id: 'dbscan', name: 'DBSCAN', en: 'DBSCAN', cat: '군집', icon: 'pie-chart', desc: '밀도 기반 군집·노이즈 탐지', target: false, feat: '투입 변수', fields: ['eps', 'min_samples', 'label_columns'] },
-    { id: 'pca', name: '주성분분석', en: 'PCA', cat: '기초', icon: 'layers', desc: '차원 축소·요인 구조 파악', target: false, feat: '투입 변수', fields: ['n_components'] },
+    { id: 'kmeans', name: 'K-평균 군집', en: 'K-Means', cat: '군집', icon: 'pie-chart', desc: '유사 관측치 K개 군집화', target: false, feat: '투입 변수', fields: ['standardize', 'n_clusters', 'auto_k', 'label_columns'] },
+    { id: 'hierarchical', name: '계층적 군집', en: 'Hierarchical', cat: '군집', icon: 'network', desc: '덴드로그램 기반 군집', target: false, feat: '투입 변수', fields: ['standardize', 'n_clusters', 'linkage', 'label_columns'] },
+    { id: 'dbscan', name: 'DBSCAN', en: 'DBSCAN', cat: '군집', icon: 'pie-chart', desc: '밀도 기반 군집·노이즈 탐지', target: false, feat: '투입 변수', fields: ['standardize', 'eps', 'min_samples', 'label_columns'] },
+    { id: 'pca', name: '주성분분석', en: 'PCA', cat: '기초', icon: 'layers', desc: '차원 축소·요인 구조 파악', target: false, feat: '투입 변수', fields: ['standardize', 'n_components'] },
     { id: 'anova', name: '분산분석 (ANOVA/ANCOVA)', en: 'ANOVA', cat: '고급', icon: 'award', desc: '집단 간 평균 차이 검정', target: true, feat: '추가 독립변수 (선택)', fields: ['factors', 'covariates', 'include_interaction'], featOptional: true },
     { id: 'multilevel', name: '다층모형 (HLM)', en: 'Multilevel', cat: '고급', icon: 'layers', desc: '집단 내 위계 구조 반영 회귀', target: true, feat: '고정효과 변수 (선택)', fields: ['group_column', 'random_slope'], featOptional: true },
     { id: 'growth_curve', name: '성장곡선모형', en: 'Growth Curve', cat: '고급', icon: 'trending-up', desc: '시간에 따른 변화 궤적', target: true, feat: '추가 독립변수 (선택)', fields: ['time_column', 'group_column', 'random_slope'], featOptional: true },
     { id: 'psm', name: '성향점수매칭 (PSM)', en: 'Propensity Score Matching', cat: '고급', icon: 'award', desc: '처치 효과 추정을 위한 매칭', target: true, feat: '공변량 (Covariates / X)', fields: ['treatment_column', 'caliper', 'n_neighbors'] }
   ];
   var FIELDS = {
+    standardize: { t: 'check', label: '표준화 후 분석 (평균 0, 표준편차 1) — 해제하면 원 단위로 분석', def: true },   // 화면 옵션: 분석 파라미터가 아니라 전처리 scaling 으로 보낸다
     test_size: { t: 'select', label: '검증(홀드아웃) 비율', def: 0, num: true, opts: [[0, '사용 안 함 (전체 적합)'], [0.2, '20%'], [0.3, '30%']] },
     fit_intercept: { t: 'check', label: '절편 포함', def: true },
     positive_label: { t: 'text', label: '양성(1) 클래스 값 (선택)', ph: '예: 1 / Y / 합격' },
@@ -197,11 +198,21 @@
   }
 
   /* ---------------- 요청 조립 ---------------- */
+  var STD_METHODS = { kmeans: 1, hierarchical: 1, dbscan: 1, pca: 1 };
+  /** 분석 요청의 전처리(PreprocessingSpec). 군집·PCA 는 '표준화 후 분석'이 켜져 있으면 scaling 을 보내지 않아 서버 기본(표준화)을 따르고,
+   *  꺼져 있으면 'none'(원 단위)으로 보낸다. */
+  function buildPreprocessing() {
+    var pp = Object.assign({}, A.state.preprocessing || {});
+    delete pp.scaling;
+    if (STD_METHODS[cfg.method] && !pv('standardize')) pp.scaling = 'none';
+    return pp;
+  }
   function buildParams() {
     var m = meta(cfg.method), p = { features: cfg.features.slice() };
     if (m.target) p.target = cfg.target;
     m.fields.forEach(function (k) {
       var f = FIELDS[k], v = pv(k);
+      if (k === 'standardize') return;   // 화면 전용 옵션 (분석 파라미터 아님)
       if (k === 'auto_k') { if (v) p.auto_k_range = [2, 8]; return; }
       if (k === 'n_clusters' && pv('auto_k')) return;
       if (f.t === 'cols') { if (v && v.length) p[k] = v; return; }
@@ -288,7 +299,7 @@
     b.innerHTML = '<span>분석 연산 수행 중...</span>';
     var m = meta(cfg.method);
     A.saveState({ config: cfg });
-    A.post('/api/v1/analyses', { dataset_id: dsId, method: cfg.method, name: m.name + ' - ' + (A.state.datasetName || dsId), params: buildParams(), preprocessing: A.state.preprocessing || {} }, { onJob: function (j) { if (j && j.status === 'succeeded') jobOk = true; } }).then(function (r) {
+    A.post('/api/v1/analyses', { dataset_id: dsId, method: cfg.method, name: m.name + ' - ' + (A.state.datasetName || dsId), params: buildParams(), preprocessing: buildPreprocessing() }, { onJob: function (j) { if (j && j.status === 'succeeded') jobOk = true; } }).then(function (r) {
       analysis = r;
       A.saveState({ analysisId: r.id });
       renderResult();

@@ -733,11 +733,21 @@
   }
 
   A.charts = {
+    /** 그릴 수 있는 추천 차트만 우선순위 순으로 돌려준다. 서버가 추천만 하고 데이터를 주지 않은 차트(예: 고정효과가 절편뿐인 모형의 '고정효과 계수')는
+     *  빈 카드로 1순위에 올라오지 않도록 뺀다. 안내 문구가 따로 있는 경우(다중 분류의 ROC)는 설명이 되므로 남긴다. */
+    usable: function (analysis) {
+      var cd = analysis.chart_data || {}, result = analysis.result || {};
+      return (analysis.chart_recommendations || []).slice().sort(function (a, b) { return a.priority - b.priority; }).filter(function (r) {
+        var d = recData(r, cd);
+        var empty = d === undefined || d === null || (Array.isArray(d) && !d.length);
+        return !empty || (r.kind === 'roc_curve' && result.binary === false);
+      });
+    },
     gallery: function (root, analysis) {
       var cd = analysis.chart_data || {};
       var st = root._chartState = {
         root: root, cd: cd, idx: 0, showData: false,
-        recs: (analysis.chart_recommendations || []).slice().sort(function (a, b) { return a.priority - b.priority; }),
+        recs: A.charts.usable(analysis),
         ctx: { result: analysis.result || {}, metrics: analysis.metrics || {}, chartData: cd, params: analysis.params || {} }
       };
       if (!root._chartBound) {

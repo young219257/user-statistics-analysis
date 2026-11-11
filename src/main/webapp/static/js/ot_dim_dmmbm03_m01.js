@@ -35,6 +35,8 @@
   var activeId = null;       // 열·미리보기에 보여줄 데이터셋 id (결합 결과는 MERGED_TAB)
   var datasets = [], cards = [];
   var uploadError = null, dragging = false, uploading = false;
+  var naValues = '';          // '결측으로 처리할 값' 입력(쉼표 구분). 업로드 때 na_values(JSON 배열)로 보낸다
+  var importNotes = [];       // 서버가 반입·결합 결과에 붙인 주의 문구(warnings)
   var preview = { dsId: null, rows: [], cols: [], total: 0, loading: false };
   // 결합 설정 (join 고정). keys: [{ 데이터셋id: 열이름 }] — 1번 데이터셋의 열 이름이 공통 키 이름이 된다
   var mcfg = { how: 'inner', keys: [{}], name: '', nameTouched: false };
@@ -196,12 +198,41 @@
         '<input type="file" accept=".csv,.xlsx" multiple class="hidden" id="file-input">' +
         '<div class="dz-body">' + A.icon('upload', 'w-5 h-5') + '<span class="dz-text">클릭하여 파일을 선택하거나, 여기로 끌어다 놓으세요</span><span class="dz-type">CSV, XLSX</span></div>' +
         '</label>' +
-        '<p class="text-xs text-ink-3 mt-2">CSV, XLSX 파일만 올릴 수 있으며, 파일 1건당 최대 ' + mb(UPLOAD_LIMIT_BYTES) + '까지 반입할 수 있습니다.</p>' +
+        '<p class="text-xs text-ink-3 mt-2">CSV, XLSX 파일만 올릴 수 있으며, XLSX 는 <b>시트가 하나인 파일만</b> 반입할 수 있습니다(시트가 여러 개면 올릴 수 없습니다). 파일 1건당 최대 ' + mb(UPLOAD_LIMIT_BYTES) + '까지 반입할 수 있습니다.</p>' +
+        '<div class="mt-2 flex items-center gap-2 text-xs text-ink-3"><label for="na-values" class="shrink-0 font-semibold">결측으로 처리할 값</label>' +
+          '<input type="text" id="na-values" value="' + A.esc(naValues) + '" placeholder="예: -, 999, N/A (쉼표로 구분, 선택)" class="min-w-0 flex-1 bg-white border border-rule-3 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"></div>' +
+        (importNotes.length ? '<div class="krds-msg krds-warning flex items-start gap-2 py-1.5 mt-2" role="status"><span>' + importNotes.map(A.esc).join('<br>') + '</span></div>' : '') +
         (uploadError ? '<div class="krds-msg krds-danger flex items-start gap-2 py-1.5 mt-2" role="alert"><span>' + A.esc(uploadError).replace(/\n/g, '<br>') + '</span></div>' : '');
     }
     A.$('#upload-area').innerHTML = html;
   }
-  /** 여러 파일을 순서대로 올린다. 형식이 맞지 않는 파일은 건너뛰고, 실패한 파일은 모아서 한 번에 안내한다 */
+  /** XLSX(zip) 안의 xl/workbook.xml 에서 시트(<sheet>) 개수를 센다. 읽을 수 없으면 null(검사를 건너뛰고 서버에 맡긴다). */
+  function xlsxSheetCount(file) {
+    if (typeof DecompressionStream === 'undefined' || !file.arrayBuffer) return Promise.resolve(null);
+    return file.arrayBuffer().then(function (buf) {
+      var dv = new DataView(buf), u8 = new Uint8Array(buf), n = buf.byteLength, i, eocd = -1, dec = new TextDecoder();
+      for (i = n - 22; i >= Math.max(0, n - 65557); i--) { if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }   // 중앙 디렉터리 끝
+      if (eocd < 0) return null;
+      var total = dv.getUint16(eocd + 10, true), p = dv.getUint32(eocd + 16, true);
+      for (var k = 0; k < total && p + 46 <= n; k++) {
+        if (dv.getUint32(p, true) !== 0x02014b50) break;
+        var method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nlen = dv.getUint16(p + 28, true),
+            elen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+        if (dec.decode(u8.subarray(p + 46, p + 46 + nlen)) === 'xl/workbook.xml') {
+          var start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true), data = u8.subarray(start, start + csize);
+          var text = method === 0 ? Promise.resolve(dec.decode(data))
+            : method === 8 ? new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text() : Promise.resolve(null);
+          return text.then(function (xml) { return xml ? (xml.match(/<sheet[\s>]/g) || []).length : null; });
+        }
+        p += 46 + nlen + elen + clen;
+      }
+      return null;
+    });
+  }
+  function naList() { return naValues.split(',').map(function (v) { return v.trim(); }).filter(Boolean); }
+  function warnText(w) { return typeof w === 'string' ? w : (w && (w.message || w.msg)) || JSON.stringify(w); }
+
+  /** 여러 파일을 순서대로 올린다. 형식·용량·시트 수가 맞지 않는 파일은 건너뛰고, 실패한 파일은 모아서 한 번에 안내한다 */
   function handleFiles(fileList) {
     var files = [].slice.call(fileList), errors = [];
     var valid = files.filter(function (f) {
@@ -209,24 +240,36 @@
       if (f.size > UPLOAD_LIMIT_BYTES) { errors.push(f.name + ': 파일 1건당 최대 ' + mb(UPLOAD_LIMIT_BYTES) + '까지 반입할 수 있습니다. (' + mb(f.size) + ')'); return false; }
       return true;
     });
-    uploadError = null;
-    if (!valid.length) { uploadError = errors.join('\n'); renderUpload(); return; }
-    uploading = true; uploadJob = ''; renderUpload();
-    var total = valid.length;
-    valid.reduce(function (chain, file, i) {
-      return chain.then(function () {
-        var prefix = total > 1 ? '[' + (i + 1) + '/' + total + '] ' + file.name + ' ' : '';
-        uploadJob = prefix; renderUpload();
-        var fd = new FormData();
-        fd.append('file', file);
-        return A.api('POST', '/api/v1/datasets/upload', fd, { onJob: function (j) { var t = prefix + A.jobText(j); if (t !== uploadJob) { uploadJob = t; renderUpload(); } } })
-          .then(function (d) { return loadDatasets().then(function () { if (!find(d.id)) return toggle('dataset', d.id); }); })
-          .catch(function (e) { errors.push(file.name + ': ' + e.message); });   // 한 파일이 실패해도 나머지는 계속 올린다
+    uploadError = null; importNotes = [];
+    var na = naList();
+    // XLSX 는 시트가 하나인 파일만 받는다: 서버로 보내기 전에 시트 수를 확인해 2개 이상이면 올리지 않는다
+    Promise.all(valid.map(function (f) { return /\.xlsx$/i.test(f.name) ? xlsxSheetCount(f).catch(function () { return null; }) : Promise.resolve(1); })).then(function (counts) {
+      valid = valid.filter(function (f, i) {
+        if (counts[i] && counts[i] > 1) { errors.push(f.name + ': 시트가 ' + counts[i] + '개입니다. XLSX 는 시트가 하나인 파일만 반입할 수 있습니다. 시트를 하나만 남기고 저장한 뒤 다시 올려 주세요.'); return false; }
+        return true;
       });
-    }, Promise.resolve()).then(function () {
-      uploading = false; uploadJob = '';
-      uploadError = errors.length ? errors.join('\n') : null;
-      renderUpload();
+      if (!valid.length) { uploadError = errors.join('\n'); renderUpload(); return; }
+      uploading = true; uploadJob = ''; renderUpload();
+      var total = valid.length;
+      return valid.reduce(function (chain, file, i) {
+        return chain.then(function () {
+          var prefix = total > 1 ? '[' + (i + 1) + '/' + total + '] ' + file.name + ' ' : '';
+          uploadJob = prefix; renderUpload();
+          var fd = new FormData();
+          fd.append('file', file);
+          if (na.length) fd.append('na_values', JSON.stringify(na));
+          return A.api('POST', '/api/v1/datasets/upload', fd, { onJob: function (j) { var t = prefix + A.jobText(j); if (t !== uploadJob) { uploadJob = t; renderUpload(); } } })
+            .then(function (d) {
+              (d && d.warnings || []).forEach(function (w) { importNotes.push(file.name + ': ' + warnText(w)); });
+              return loadDatasets().then(function () { if (!find(d.id)) return toggle('dataset', d.id); });
+            })
+            .catch(function (e) { errors.push(file.name + ': ' + e.message); });   // 한 파일이 실패해도 나머지는 계속 올린다
+        });
+      }, Promise.resolve()).then(function () {
+        uploading = false; uploadJob = '';
+        uploadError = errors.length ? errors.join('\n') : null;
+        renderUpload();
+      });
     });
   }
 
@@ -387,6 +430,7 @@
       if (el) el.textContent = mergeJob ? '(' + mergeJob + ')' : '';
     } }).then(function (d) {
       merged = d; mergedSig = sig; merging = false; mergeJob = '';
+      importNotes = ((d && d.warnings) || []).map(function (w) { return '결합: ' + warnText(w); }); renderUpload();   // 서버가 알려 준 결합 주의 문구 표시
       activeId = MERGED_TAB;
       changed();
       A.toast('결합이 완료되었습니다.');
@@ -556,6 +600,7 @@
       A.patch('/api/v1/datasets/' + encodeURIComponent(s.id) + '/columns/types', { columns: [{ name: tsel.getAttribute('data-col'), role: tsel.value }] }).then(function (d) {
         s.d = d;
         renderColumns();
+        if (d && d.warnings && d.warnings.length) A.toast('주의: ' + d.warnings.map(warnText).join(' '), 'error');   // 변환할 수 없는 값은 결측으로 처리됨 등
       }).catch(function (err) { A.fail(err.message, '#col-card'); renderColumns(); });
     });
     A.$('#col-all').addEventListener('change', function () {
@@ -599,6 +644,7 @@
     // 업로드
     var ua = A.$('#upload-area');
     ua.addEventListener('change', function (e) { if (e.target.id === 'file-input' && e.target.files.length) handleFiles(e.target.files); });
+    ua.addEventListener('input', function (e) { if (e.target.id === 'na-values') naValues = e.target.value; });
     ua.addEventListener('dragover', function (e) { if (e.target.closest('#dropzone')) { e.preventDefault(); if (!dragging) { dragging = true; renderUpload(); } } });
     ua.addEventListener('dragleave', function (e) { if (e.target.closest('#dropzone') && dragging) { dragging = false; renderUpload(); } });
     ua.addEventListener('drop', function (e) {
