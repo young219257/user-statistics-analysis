@@ -1573,3 +1573,51 @@ body { font-size: 13px; }
 
 /* 토스트: 화면 오른쪽 하단 */
 #toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f):not(#_g):not(#_h):not(#_i) { top: auto; bottom: 32px; left: auto; right: 32px; transform: none; }
+
+/* 맥락적 도움말: ⓘ 아이콘 버튼 → 둥근 네모 팝오버(말풍선 꼬리·색 띠 없음). 구조·동작은 KRDS 맥락적 도움말(버튼 aria-expanded/Esc/바깥 클릭/초점 복귀)을 따른다
+ * 마크업: .krds-contextual-help[.top|.bottom][.left|.center|.right] > .tooltip-txt + .tooltip-action > button.tooltip-btn + .tooltip-popover(.tooltip-title, .tooltip-contents, button.tooltip-close) */
+.krds-contextual-help { --kch-offset-x: 0px; display: flex; align-items: center; justify-content: flex-start; flex-direction: row; gap: 10px; }
+.krds-contextual-help .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.krds-contextual-help .tooltip-txt { font-size: 15px; }
+.krds-contextual-help .tooltip-action { position: relative; display: flex; align-items: center; }
+.krds-contextual-help .tooltip-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--color-brand); cursor: pointer; transition: background-color .15s; }
+.krds-contextual-help .tooltip-btn::after { content: ""; position: absolute; inset: -8px; }
+.krds-contextual-help .tooltip-btn:hover { background: var(--color-brand-soft); }
+.krds-contextual-help .tooltip-btn[aria-expanded="true"] { background: var(--color-brand-soft); }
+.krds-contextual-help .tooltip-btn:focus-visible, .krds-contextual-help .tooltip-close:focus-visible { outline: 3px solid var(--color-link); outline-offset: 2px; }
+.krds-contextual-help .svg-icon { display: inline-block; width: 22px; height: 22px; flex: none; background-color: currentColor;
+  -webkit-mask: no-repeat center / contain; mask: no-repeat center / contain; }
+.krds-contextual-help .ico-tooltip { -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5229 22 12C22 6.47719 17.5228 2 12 2C6.47715 2 2 6.4772 2 12ZM12 20.4C7.36081 20.4 3.6 16.6392 3.6 12C3.6 7.36085 7.36081 3.6 12 3.6C16.6391 3.6 20.4 7.36085 20.4 12C20.4 16.6392 16.6392 20.4 12 20.4ZM13.0992 8.24101C13.0992 8.90376 12.562 9.44101 11.8992 9.44101C11.2365 9.44101 10.6992 8.90376 10.6992 8.24101C10.6992 7.57827 11.2365 7.04101 11.8992 7.04101C12.562 7.04101 13.0992 7.57827 13.0992 8.24101ZM10.1992 10.6312C10.1992 10.5207 10.2888 10.4312 10.3992 10.4312H12.9008C13.0112 10.4312 13.1008 10.5207 13.1008 10.6312V15.5937H13.8C13.9105 15.5937 14 15.6833 14 15.7937V16.5937C14 16.7042 13.9105 16.7937 13.8 16.7937H10.2C10.0895 16.7937 10 16.7042 10 16.5937V15.7937C10 15.6833 10.0895 15.5937 10.2 15.5937H11.3008V11.8312C11.3008 11.7207 11.2112 11.6312 11.1008 11.6312H10.3992C10.2888 11.6312 10.1992 11.5416 10.1992 11.4312V10.6312Z' fill='%2333363D'/%3E %3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5229 22 12C22 6.47719 17.5228 2 12 2C6.47715 2 2 6.4772 2 12ZM12 20.4C7.36081 20.4 3.6 16.6392 3.6 12C3.6 7.36085 7.36081 3.6 12 3.6C16.6391 3.6 20.4 7.36085 20.4 12C20.4 16.6392 16.6392 20.4 12 20.4ZM13.0992 8.24101C13.0992 8.90376 12.562 9.44101 11.8992 9.44101C11.2365 9.44101 10.6992 8.90376 10.6992 8.24101C10.6992 7.57827 11.2365 7.04101 11.8992 7.04101C12.562 7.04101 13.0992 7.57827 13.0992 8.24101ZM10.1992 10.6312C10.1992 10.5207 10.2888 10.4312 10.3992 10.4312H12.9008C13.0112 10.4312 13.1008 10.5207 13.1008 10.6312V15.5937H13.8C13.9105 15.5937 14 15.6833 14 15.7937V16.5937C14 16.7042 13.9105 16.7937 13.8 16.7937H10.2C10.0895 16.7937 10 16.7042 10 16.5937V15.7937C10 15.6833 10.0895 15.5937 10.2 15.5937H11.3008V11.8312C11.3008 11.7207 11.2112 11.6312 11.1008 11.6312H10.3992C10.2888 11.6312 10.1992 11.5416 10.1992 11.4312V10.6312Z' fill='%2333363D'/%3E %3C/svg%3E"); }
+.krds-contextual-help .ico-modal-close { -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M20.4822 4.64622C20.7946 4.3338 20.7946 3.82727 20.4822 3.51485C20.1698 3.20243 19.6633 3.20243 19.3509 3.51485L11.9983 10.8674L4.6455 3.5145C4.33308 3.20208 3.82655 3.20208 3.51413 3.5145C3.20171 3.82692 3.20171 4.33345 3.51413 4.64587L10.867 11.9987L3.51166 19.354C3.19924 19.6665 3.19924 20.173 3.51166 20.4854C3.82408 20.7978 4.33061 20.7978 4.64303 20.4854L11.9983 13.1301L19.3533 20.4851C19.6657 20.7975 20.1723 20.7975 20.4847 20.4851C20.7971 20.1726 20.7971 19.6661 20.4847 19.3537L13.1297 11.9987L20.4822 4.64622Z' fill='%232D2D2D'/%3E %3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M20.4822 4.64622C20.7946 4.3338 20.7946 3.82727 20.4822 3.51485C20.1698 3.20243 19.6633 3.20243 19.3509 3.51485L11.9983 10.8674L4.6455 3.5145C4.33308 3.20208 3.82655 3.20208 3.51413 3.5145C3.20171 3.82692 3.20171 4.33345 3.51413 4.64587L10.867 11.9987L3.51166 19.354C3.19924 19.6665 3.19924 20.173 3.51166 20.4854C3.82408 20.7978 4.33061 20.7978 4.64303 20.4854L11.9983 13.1301L19.3533 20.4851C19.6657 20.7975 20.1723 20.7975 20.4847 20.4851C20.7971 20.1726 20.7971 19.6661 20.4847 19.3537L13.1297 11.9987L20.4822 4.64622Z' fill='%232D2D2D'/%3E %3C/svg%3E"); }
+.krds-contextual-help .tooltip-popover { display: block; position: absolute; z-index: 40; width: 380px; max-width: calc(100vw - 16px); box-sizing: border-box; overflow: visible;
+  padding: 0; border-radius: 14px; background: #fff; border: 1px solid var(--color-rule-3); text-align: left; font-weight: 400; word-break: keep-all;
+  box-shadow: 0 12px 32px rgba(22, 34, 79, .18), 0 2px 6px rgba(22, 34, 79, .08); }
+.krds-contextual-help .tooltip-popover[hidden] { display: none; }
+.krds-contextual-help .tooltip-title { display: block; margin: 0; padding: 20px 52px 0 22px; color: var(--color-ink); font-size: 16px; font-weight: 800; line-height: 1.4; }
+.krds-contextual-help .tooltip-contents { display: block; margin: 0; padding: 12px 22px 20px; font-size: 13.5px; line-height: 1.6; color: var(--color-ink-1); }
+.krds-contextual-help .tooltip-contents p { margin: 0 0 10px; color: var(--color-ink-2); }
+.krds-contextual-help .tooltip-contents dl { margin: 0; }
+.krds-contextual-help .tooltip-contents dt { margin: 0; padding-top: 10px; border-top: 1px solid var(--color-rule-2); font-size: 12.5px; font-weight: 800; color: var(--color-brand); }
+.krds-contextual-help .tooltip-contents dt:first-child { border-top: 0; padding-top: 0; }
+.krds-contextual-help .tooltip-contents dd { margin: 2px 0 10px; }
+.krds-contextual-help .tooltip-contents dd:last-child { margin-bottom: 0; }
+.krds-contextual-help .tooltip-close { position: absolute; top: 14px; right: 14px; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--color-ink-3); cursor: pointer; }
+.krds-contextual-help .tooltip-close:hover { background: var(--color-rule-2); color: var(--color-ink); }
+.krds-contextual-help .tooltip-close .svg-icon { width: 18px; height: 18px; }
+.krds-contextual-help.left .tooltip-popover { left: 0; margin-left: var(--kch-offset-x); }
+.krds-contextual-help.center .tooltip-popover { left: 50%; transform: translateX(-50%); }
+.krds-contextual-help.right .tooltip-popover { right: 0; margin-right: var(--kch-offset-x); }
+.krds-contextual-help.top .tooltip-popover { bottom: 100%; margin-bottom: 10px; }
+.krds-contextual-help.bottom .tooltip-popover { top: 100%; margin-top: 10px; }
+
+
+/* 선택한 데이터 탭: 선택 여부와 관계없이 크기를 같게(작은 쪽 기준), 선택은 색으로만 구분한다 */
+#main-content #s1-tabs > div, #main-content #s1-tabs > div.bg-brand,
+#main-content #s1-tabs > button, #main-content #s1-tabs > button.bg-brand { height: 26px; box-sizing: border-box; }
+#main-content #s1-tabs > div > button > span:nth-child(3), #main-content #s1-tabs > div.bg-brand > button > span:nth-child(3) { font-weight: 500; }
+#main-content #s1-tabs > button, #main-content #s1-tabs > button.bg-brand { font-weight: 500; }
+
+/* 이상치 탐지 알고리즘 카드: 선택하면 임계값이 드롭다운(36px)으로 바뀌어 카드가 커지고 구분선이 어긋나므로, 모든 카드의 파라미터 행 높이를 같게 고정한다 */
+#algo-grid [data-algo] > div:last-child { box-sizing: border-box; min-height: 45px; align-items: center; }

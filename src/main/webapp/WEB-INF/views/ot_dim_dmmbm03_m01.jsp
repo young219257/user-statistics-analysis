@@ -34,9 +34,41 @@
     <div class="lg:col-span-7 flex flex-col gap-4">
       <div class="card-modern sec">
         <div class="sec-head">
-          <h3 class="text-title font-semibold text-ink">데이터 업로드</h3>
+          <%-- KRDS 맥락적 도움말: 아이콘 버튼 → 팝오버 (동작은 common.js 가 공통 처리) --%>
+          <div class="krds-contextual-help bottom left">
+            <h3 class="tooltip-txt text-title font-semibold text-ink">데이터 업로드</h3>
+            <div class="tooltip-action">
+              <button type="button" id="btn-upload-help" class="tooltip-btn" aria-expanded="false" aria-controls="upload-help">
+                <span class="sr-only">데이터 업로드 도움말</span>
+                <i class="svg-icon ico-tooltip" aria-hidden="true"></i>
+              </button>
+              <div id="upload-help" class="tooltip-popover" role="tooltip" hidden>
+                <h4 class="tooltip-title">데이터 반입 안내</h4>
+                <div class="tooltip-contents">
+                  <dl>
+                  <dt>파일 형식·크기</dt>
+                  <dd>CSV, XLSX. 한글 CSV는 UTF-8·CP949 모두 가능합니다. 파일 1건당 최대 10MB이며, 여러 파일을 한 번에 선택해도 됩니다.</dd>
+                  <dt>분석·결합 용량</dt>
+                  <dd>선택한 데이터셋의 합계가 30MB 이하여야 합니다. 남은 용량을 넘는 데이터셋은 선택할 수 없습니다.</dd>
+                  <dt>XLSX 시트</dt>
+                  <dd>첫 번째 시트만 반입됩니다. 시트가 하나인 파일을 권장합니다.</dd>
+                  <dt>열 작성</dt>
+                  <dd>한 열에 숫자와 문자가 섞여 있으면 문자 열로 반입됩니다. 숫자로 분석하려면 타입을 수치형으로 바꾸세요.</dd>
+                  <dt>보관</dt>
+                  <dd>반입한 데이터는 세션이 끝나면 삭제됩니다.</dd>
+                </dl>
+                </div>
+                <button type="button" class="tooltip-close">
+                  <span class="sr-only">닫기</span>
+                  <i class="svg-icon ico-modal-close" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="sec-box"><div id="upload-area"></div></div>
+        <div class="sec-box">
+          <div id="upload-area"></div>
+        </div>
       </div>
       <div class="card-modern sec flex flex-col flex-1">
         <div class="sec-head flex items-center justify-between">
@@ -84,7 +116,7 @@
         <tbody class="divide-y divide-paper-2 text-body" id="col-body"></tbody>
       </table>
     </div>
-    </div>
+        </div>
   </div>
 
   <%-- 4. 데이터 결합 설정 (2개 이상 선택 시) --%>
@@ -121,6 +153,6 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
-<script src="${ctx}/static/js/ot_dim_dmmbm03_m01.js?v=20261111"></script>
+<script src="${ctx}/static/js/ot_dim_dmmbm03_m01.js?v=20261136"></script>
 </body>
 </html>

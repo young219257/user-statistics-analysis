@@ -193,32 +193,57 @@ def test_UT_M01_14_xlsx_mixed_type_column(page, tmp_path):
     assert "5행" in _list_text(page)
 
 
-def test_UT_M01_15_multi_sheet_xlsx_blocked(page, tmp_path):
-    """시트가 2개 이상인 XLSX → 서버로 보내지 않고 '시트가 하나인 파일만' 안내, 반입 0건. 안내 문구에도 조건이 적혀 있다"""
+def _focused_id(page):
+    return page.evaluate("()=>document.activeElement && document.activeElement.id")
+
+
+def test_UT_M01_15_krds_contextual_help(page):
+    """KRDS 맥락적 도움말: 아이콘 버튼으로 열고 닫기, 팝오버 안 × 닫기, 닫으면 포커스가 버튼으로 복귀, Esc·바깥 클릭으로 닫기, 레이아웃을 밀지 않음"""
+    open_m01(page)
+    btn, pop = page.locator("#btn-upload-help"), page.locator("#upload-help")
+    assert btn.get_attribute("aria-controls") == "upload-help"
+    assert "tooltip-btn" in btn.get_attribute("class") and btn.locator(".ico-tooltip").count() == 1   # 아이콘만 있는 버튼
+    assert pop.is_hidden() and btn.get_attribute("aria-expanded") == "false"      # 자동으로 열리지 않음
+    before = page.locator("#upload-area").bounding_box()["y"]
+    btn.click()
+    assert pop.is_visible() and btn.get_attribute("aria-expanded") == "true"
+    cls = page.locator(".krds-contextual-help").first.get_attribute("class")      # 위치 클래스는 바깥 래퍼에 붙는다
+    assert ("bottom" in cls or "top" in cls) and any(c in cls for c in ("left", "center", "right"))
+    css = pop.evaluate("e => { const s = getComputedStyle(e); return [s.width, s.paddingTop, s.borderTopLeftRadius, s.borderTopColor] }")
+    assert css[0] == "380px" and css[2] == "14px", css                           # 서비스 디자인 값(폭 380, 모서리 14)
+    assert pop.locator(".tooltip-title").inner_text() == "데이터 반입 안내" and pop.locator(".tooltip-contents").count() == 1
+    text = pop.inner_text()
+    for word in ("데이터 반입 안내", "CSV, XLSX", "10MB", "30MB", "첫 번째 시트", "문자 열로 반입"):
+        assert word in text, word
+    assert page.locator("#upload-area").bounding_box()["y"] == before            # 위에 떠 있고 아래 내용을 밀지 않음
+    pop.locator(".tooltip-close").click()
+    assert pop.is_hidden() and _focused_id(page) == "btn-upload-help"             # × 로 닫으면 포커스가 버튼으로 복귀
+    btn.click()
+    btn.click()
+    assert pop.is_hidden()                                                        # 버튼을 다시 누르면 닫힘
+    btn.click()
+    page.keyboard.press("Escape")
+    assert pop.is_hidden() and _focused_id(page) == "btn-upload-help"             # Esc, 포커스 복귀
+    btn.click()
+    page.mouse.click(10, 10)
+    assert pop.is_hidden()                                                        # 바깥 클릭
+
+
+def test_UT_M01_15_help_stays_inside_narrow_screen(page):
+    """좁은 화면에서도 도움말 팝오버가 화면 밖으로 잘리지 않는다 (KRDS: 화면 이탈 방지)"""
+    page.set_viewport_size({"width": 420, "height": 900})
+    open_m01(page)
+    page.locator("#btn-upload-help").click()
+    box = page.locator("#upload-help").bounding_box()
+    assert box["x"] >= 0 and box["x"] + box["width"] <= 420 + 1, box
+
+
+def test_UT_M01_17_multi_sheet_xlsx_first_sheet_only(page, tmp_path):
+    """시트가 2개인 XLSX → 막지 않고 반입되며 첫 번째 시트(main)만 읽힌다"""
     x = tmp_path / "multi.xlsx"
     with pd.ExcelWriter(x) as xw:
         pd.DataFrame({"id": [1, 2, 3], "v": [10, 20, 30]}).to_excel(xw, sheet_name="main", index=False)
         pd.DataFrame({"note": ["두 번째 시트"]}).to_excel(xw, sheet_name="memo", index=False)
-    open_m01(page)
-    assert "시트가 하나인 파일만" in page.locator("#upload-area").inner_text()
-    page.locator("#file-input").set_input_files(str(x))
-    time.sleep(2)
-    msg = upload_error(page)
-    assert "시트가 2개" in msg and "하나인 파일만" in msg, msg
-    assert page.locator("#ds-total").inner_text().strip() == "0건"
-
-
-def test_UT_M01_16_na_values_input(page):
-    """'결측으로 처리할 값' 입력(예: -, 999) → 업로드 때 서버로 전달되어 결측 건수가 그만큼 늘어난다"""
-    raw = pd.read_csv(MAIN, dtype=str, keep_default_na=False)
-    extra = int(((raw == "-") | (raw == "999")).sum().sum())
-    assert extra > 0
-    open_m01(page)
-    page.locator("#na-values").fill("-, 999")
-    upload(page, MAIN)
-    page.locator("#btn-proceed").click()
-    page.wait_for_url("**/step2")
-    page.wait_for_load_state("networkidle")
-    time.sleep(1.5)
-    assert f"{65 + extra}건" in page.locator("#card-missing").inner_text()
-
+    start_with(page, x)
+    assert page.locator("#ds-total").inner_text().strip() == "1건", upload_error(page)
+    assert "3행, 2변수" in _list_text(page)

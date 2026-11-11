@@ -454,6 +454,56 @@
     return false;
   };
 
+  /* ------------------------------------------------------------ KRDS 맥락적 도움말 (아이콘 버튼 → 팝오버)
+   * 마크업: .krds-contextual-help[위치 클래스] > .tooltip-action > button.tooltip-btn[aria-controls] + .tooltip-popover[hidden] (안에 button.tooltip-close)
+   * 동작(KRDS 기준): 버튼으로 열고/닫기 · 한 번에 하나만 · Esc(초점 위치와 무관)·바깥 클릭·닫기 버튼으로 닫기 · 닫으면 초점을 버튼으로 복귀
+   *                  · 자동으로 열리지 않음 · 화면 밖으로 나가면 위치(top/bottom, left/right/center)를 바꿈. 이벤트 위임이라 화면 로딩 순서와 무관하다. */
+  (function () {
+    var BTN = '.krds-contextual-help .tooltip-btn';
+    function popOf(btn) { return document.getElementById(btn.getAttribute('aria-controls')); }
+    function place(btn, p) {
+      var wrap = btn.closest('.krds-contextual-help'), act = btn.closest('.tooltip-action');
+      ['top', 'bottom', 'left', 'center', 'right'].forEach(function (c) { wrap.classList.remove(c); });
+      p.style.left = p.style.marginLeft = '';   // 이전 보정값 초기화
+      wrap.classList.add('bottom', 'left');                                                // 측정용 기본 배치
+      var a = act.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
+      var vw = document.documentElement.clientWidth, vh = window.innerHeight, M = 8, OFF = 0;
+      // 아래에 다 들어가면 아래, 아니면 위에 다 들어갈 때만 위. 둘 다 안 들어가면 스크롤할 수 있는 아래를 쓴다(위쪽은 잘리면 볼 수 없음)
+      var v = (a.bottom + 10 + h <= vh) ? 'bottom' : (a.top - 10 >= h ? 'top' : 'bottom');
+      var lx = a.left - OFF, rx = a.right + OFF - w, cx = a.left + a.width / 2 - w / 2, hz = null;
+      if (lx >= M && lx + w <= vw - M) hz = 'left'; else if (rx >= M && rx + w <= vw - M) hz = 'right'; else if (cx >= M && cx + w <= vw - M) hz = 'center';
+      wrap.classList.remove('bottom', 'left'); wrap.classList.add(v);
+      if (hz) { wrap.classList.add(hz); return; }
+      // 어느 정렬도 맞지 않으면(좁은 화면) 화면 안쪽으로 끌어당기고 말풍선 꼬리는 버튼 위치에 맞춘다
+      var x = Math.max(M, Math.min(lx, vw - M - w));
+      wrap.classList.add('left');
+      p.style.marginLeft = '0'; p.style.left = (x - a.left) + 'px';
+    }
+    function open(btn) {
+      closeAll(false);                                                     // 여러 팝오버를 동시에 띄우지 않는다
+      var p = popOf(btn); if (!p) return;
+      p.hidden = false; btn.setAttribute('aria-expanded', 'true'); place(btn, p);
+    }
+    function close(btn, focusBack) {
+      var p = popOf(btn); if (p) p.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+      if (focusBack) btn.focus();
+    }
+    function opened() { return document.querySelectorAll(BTN + '[aria-expanded="true"]'); }
+    function closeAll(focusBack) { [].forEach.call(opened(), function (b) { close(b, focusBack); }); }
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest(BTN);
+      if (btn) { if (btn.getAttribute('aria-expanded') === 'true') close(btn, false); else open(btn); return; }
+      var x = e.target.closest('.krds-contextual-help .tooltip-close');
+      if (x) { var owner = x.closest('.tooltip-action').querySelector('.tooltip-btn'); if (owner) close(owner, true); return; }
+      [].forEach.call(opened(), function (b) {   // 바깥 클릭
+        var p = popOf(b); if (!p || !p.contains(e.target)) close(b, false);
+      });
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(true); });
+    window.addEventListener('resize', function () { [].forEach.call(opened(), function (b) { var p = popOf(b); if (p) place(b, p); }); });
+  })();
+
   /* ------------------------------------------------------------ 헤더 메뉴 */
   // 교육데이터플랫폼(www.edmgr.kr) 주 메뉴와 동일. 이 서비스는 '분석지원 > 이용자 통계분석' 메뉴를 고도화한 것이다.
   var PORTAL = window.__PORTAL__ || 'https://www.edmgr.kr';

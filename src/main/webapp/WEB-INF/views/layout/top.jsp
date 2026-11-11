@@ -6,12 +6,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><c:out value="${pageTitle}"/> | 교육데이터플랫폼 이용자통계분석 서비스</title>
+  <title><c:out value="${pageTitle}"/> | 이용자통계분석</title>
   <meta name="description" content="공공기관 및 연구자를 위한 데이터 반입, 탐색적 데이터 분석(EDA), 다변량 고급 통계 분석 및 결과 리포트 생성 웹 서비스">
-  <link rel="icon" type="image/svg+xml" href="${ctx}/static/vendor/edmgr-header-logo.svg">
+  <link rel="icon" type="image/svg+xml" href="${ctx}/static/vendor/edmgr-header-emblem.svg">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-  <link rel="stylesheet" href="${ctx}/static/css/app.css?v=20261111">
+  <link rel="stylesheet" href="${ctx}/static/css/app.css?v=20261136">
   <!-- 폐쇄망 배포를 위해 라이브러리를 /static/vendor 에 포함 (Tailwind v4 browser build, Highcharts, Lucide) -->
   <script src="${ctx}/static/vendor/tailwind-browser.js"></script>
   <%-- design.md 토큰: 화면 코드는 brand/link/ink/rule 등 이름만 쓴다. 파랑 계열(blue/indigo/violet/purple/teal)은 하나의 남색-파랑 축, 중립색(slate/gray)은 ink·rule·paper 단계로 통일 --%>
@@ -145,8 +145,7 @@
 </head>
 <body class="min-h-screen bg-white flex flex-col font-sans text-ink antialiased">
 
-<%-- ============================ 1. 상단 헤더 (교육데이터플랫폼 www.edmgr.kr 공통 헤더와 동일한 구성) ============================ --%>
-<c:set var="portal" value="https://www.edmgr.kr" />
+<%-- ============================ 1. 상단 헤더 (행정안전부 공식 누리집 띠 + 서비스 이름만 둔다) ============================ --%>
 <div id="edd_gov_top" class="bg-gov">
   <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 h-8 flex items-center gap-1 text-[13px] text-ink-2">
     <img src="${ctx}/static/vendor/portal/ico-korea-flag.svg" alt="태극기" class="w-6 h-4 object-contain">
@@ -154,76 +153,19 @@
   </div>
 </div>
 <a href="#main-content" class="skip-link">본문 바로가기</a>
-<header class="w-full bg-white relative z-50" id="site-header">
-  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 h-[79px] flex items-center justify-between gap-4">
+<header class="w-full bg-white relative z-50 border-b border-rule" id="site-header">
+  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 h-[72px] flex items-center justify-between gap-4">
     <h1 class="m-0">
-      <a href="${portal}/" class="flex items-center" title="교육데이터플랫폼 메인으로 가기">
-        <img src="${ctx}/static/vendor/edmgr-header-logo.svg" alt="교육부 교육데이터플랫폼" class="h-9 w-auto">
+      <a href="${ctx}/analysis/step1" class="flex items-center gap-3.5" title="이용자통계분석 처음으로">
+        <img src="${ctx}/static/vendor/edmgr-header-emblem.svg" alt="" class="h-9 w-auto" aria-hidden="true">
+        <span class="text-[22px] font-bold tracking-tight text-[#575756]">이용자통계분석</span>
       </a>
     </h1>
-    <div class="flex items-center gap-1 text-[17px] font-bold text-ink">
-      <button type="button" id="btn-search" class="flex items-center gap-1.5 px-3 h-10 rounded-md hover:bg-paper-2 transition-colors cursor-pointer">
-        <img src="${ctx}/static/vendor/portal/icon_search2.svg" alt="" class="w-5 h-5"><span class="hidden md:inline">통합검색</span>
+    <button type="button" id="btn-help" class="inline-flex items-center gap-1.5 px-4 h-10 bg-white border border-brand rounded-md text-[15px] font-semibold text-brand hover:bg-brand-soft transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" title="도움말 및 이용 가이드">
+        <i data-lucide="circle-help" class="w-4 h-4"></i><span>도움말</span>
       </button>
-      <button type="button" id="btn-login" class="hidden md:flex items-center gap-1.5 px-3 h-10 rounded-md hover:bg-paper-2 transition-colors cursor-pointer">
-        <img src="${ctx}/static/vendor/portal/icon_login.svg" alt="" class="w-5 h-5"><span>로그인</span>
-      </button>
-      <a href="${portal}/new/memberAgre" class="hidden md:flex items-center gap-1.5 px-3 h-10 rounded-md hover:bg-paper-2 transition-colors">
-        <img src="${ctx}/static/vendor/portal/icon_join.svg" alt="" class="w-5 h-5"><span>회원가입</span>
-      </a>
-    </div>
-  </div>
-  <%-- 주 메뉴: 메뉴 데이터는 common.js(PORTAL_MENUS) — 포털과 같은 5개 대메뉴·하위메뉴 --%>
-  <div class="border-y border-rule">
-    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 h-14 flex items-center justify-between">
-      <nav class="hidden lg:flex items-center h-full" id="gnb" aria-label="주 메뉴"></nav>
-      <button type="button" id="btn-sitemap" class="flex items-center gap-2 h-10 px-2 text-[17px] font-bold text-ink rounded-md hover:bg-paper-2 transition-colors cursor-pointer ml-auto">
-        <span>전체 메뉴</span><img src="${ctx}/static/vendor/portal/icon_menu2.svg" alt="" class="w-6 h-6">
-      </button>
-    </div>
-  </div>
-
-  <%-- 통합검색: 포털과 같이 /dtSearchResult 로 검색어(queryNav)를 POST --%>
-  <div id="search-bar" class="hidden bg-white p-3 border-b border-rule shadow-lg anim-in">
-    <form id="search-form" action="${portal}/dtSearchResult" method="post" class="max-w-3xl mx-auto flex items-center gap-3">
-      <i data-lucide="search" class="w-4 h-4 text-ink-3 shrink-0"></i>
-      <input type="text" id="search-input" name="queryNav" title="데이터 검색" placeholder="궁금하신 데이터를 검색해 보세요" class="flex-1 min-w-0 bg-transparent border-b border-rule-3 focus:border-link px-2 py-1.5 text-[15px] text-ink placeholder-ink-4 focus:outline-none">
-      <button type="submit" id="search-go" class="px-3.5 py-1.5 bg-brand hover:bg-brand-dark text-white font-semibold text-[13.5px] rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0">검색</button>
-      <button type="button" id="search-close" aria-label="검색 닫기" class="p-1 text-ink-3 hover:text-ink rounded-md cursor-pointer"><i data-lucide="x" class="w-4 h-4"></i></button>
-    </form>
-  </div>
-
-  <div id="sitemap-modal" role="dialog" aria-modal="true" aria-labelledby="sitemap-title" class="hidden fixed inset-0 bg-ink-deep/40 z-50 items-start justify-center pt-16 px-4">
-    <div class="bg-white rounded-lg w-full max-w-4xl shadow-lg border border-rule overflow-hidden anim-in">
-      <div class="p-4 bg-paper-3 border-b border-rule/80 flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <img src="${ctx}/static/vendor/edmgr-header-logo.svg" alt="교육데이터플랫폼" class="h-7 w-auto object-contain">
-          <span class="text-rule-3">|</span>
-          <h2 id="sitemap-title" class="text-sm font-bold text-ink">전체 메뉴</h2>
-        </div>
-        <button type="button" data-close="sitemap-modal" aria-label="전체 메뉴 닫기" class="p-1.5 text-ink-2 hover:text-ink-0 rounded-lg hover:bg-rule transition-colors cursor-pointer"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-      <div class="p-6 grid grid-cols-2 md:grid-cols-5 gap-6" id="sitemap-body"></div>
-    </div>
   </div>
 </header>
-
-<%-- ============================ 1-1. 위치 표시 · 도움말 · 페이지 제목 (포털 화면과 동일) ============================ --%>
-<div class="bg-white">
-  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 page-wrap">
-    <div class="flex items-start justify-between pt-5">
-      <ol class="flex items-center gap-1.5 text-[14px] text-ink" aria-label="현재 위치">
-        <li><a href="${portal}/" class="flex items-center gap-1"><svg viewBox="0 0 24 24" class="w-4 h-4" aria-hidden="true"><path fill="#1e2124" d="M12 3.2 2.5 11h2.7v9.3h5.3v-5.8h3v5.8h5.3V11h2.7z"/></svg><span class="underline underline-offset-4">홈</span></a></li>
-        <li aria-hidden="true"><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-ink-3"></i></li>
-        <li><span>분석지원</span></li>
-      </ol>
-      <button type="button" id="btn-help" class="mt-5 flex items-center gap-1.5 px-4 h-10 bg-paper-3 border border-rule-3 rounded-md text-[16px] text-ink hover:bg-paper-2 transition-colors cursor-pointer" title="도움말 및 이용 가이드">
-        <i data-lucide="arrow-left-to-line" class="w-4 h-4"></i><span>도움말</span>
-      </button>
-    </div>
-    <h2 class="text-[40px] leading-tight font-bold text-ink tracking-tight pt-6 pb-7">이용자통계분석</h2>
-  </div>
-</div>
 
 <%-- ============================ 2. 5단계 진행 바 ============================ --%>
 <c:set var="stepIdx" value="${activeStep == 'import' ? 0 : activeStep == 'preprocess' ? 1 : activeStep == 'eda' ? 2 : activeStep == 'modeling' ? 3 : 4}" />

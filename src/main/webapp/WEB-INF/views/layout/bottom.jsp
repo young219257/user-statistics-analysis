@@ -103,23 +103,6 @@
   </div>
 </div>
 
-<%-- ============================ 로그인 안내 (계정 인증은 교육데이터플랫폼 포털에서) ============================ --%>
-<div id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-title" class="hidden fixed inset-0 bg-ink/50 items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-xl shadow-xl max-w-md w-full border border-rule overflow-hidden">
-    <div class="px-6 py-4 border-b border-rule flex items-center justify-between">
-      <h2 id="login-title" class="text-[17px] font-bold text-ink">로그인</h2>
-      <button type="button" data-close="login-modal" class="p-1.5 text-ink-3 hover:text-ink rounded-md hover:bg-paper-2 cursor-pointer" aria-label="닫기"><i data-lucide="x" class="w-5 h-5"></i></button>
-    </div>
-    <div class="px-6 py-5 text-[13px] text-ink-2 leading-relaxed">
-      로그인은 교육데이터플랫폼 계정으로 합니다. 이용자통계분석은 로그인하지 않아도 이용할 수 있으며, 반입한 데이터는 현재 브라우저 세션에만 보관됩니다.
-    </div>
-    <div class="px-6 py-3 border-t border-rule flex justify-end gap-2">
-      <button type="button" data-close="login-modal" class="px-4 py-2 bg-white border border-rule-3 hover:bg-paper-2 text-ink font-semibold rounded-xl text-[13px] transition-colors cursor-pointer">닫기</button>
-      <a href="https://www.edmgr.kr/" class="px-4 py-2 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl text-[13px] transition-colors whitespace-nowrap">교육데이터플랫폼으로 이동</a>
-    </div>
-  </div>
-</div>
-
 <%-- 확인 창 (되돌릴 수 없는 삭제에만 사용 · App.confirm) --%>
 <div id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg" class="hidden fixed inset-0 bg-ink/50 items-center justify-center z-50 p-4">
   <div class="bg-white rounded-xl shadow-xl max-w-sm w-full border border-rule overflow-hidden">
@@ -137,5 +120,5 @@
 </div>
 
 <script>window.__CTX__ = '${ctx}';</script>
-<script src="${ctx}/static/js/common.js?v=20261111"></script>
-<script src="${ctx}/static/js/viz.js?v=20261111"></script>
+<script src="${ctx}/static/js/common.js?v=20261136"></script>
+<script src="${ctx}/static/js/viz.js?v=20261136"></script>
