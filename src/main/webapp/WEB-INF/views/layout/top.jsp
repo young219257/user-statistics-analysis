@@ -11,7 +11,7 @@
   <link rel="icon" type="image/svg+xml" href="${ctx}/static/vendor/edmgr-header-emblem.svg">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-  <link rel="stylesheet" href="${ctx}/static/css/app.css?v=20261136">
+  <link rel="stylesheet" href="${ctx}/static/css/app.css?v=20261158">
   <!-- 폐쇄망 배포를 위해 라이브러리를 /static/vendor 에 포함 (Tailwind v4 browser build, Highcharts, Lucide) -->
   <script src="${ctx}/static/vendor/tailwind-browser.js"></script>
   <%-- design.md 토큰: 화면 코드는 brand/link/ink/rule 등 이름만 쓴다. 파랑 계열(blue/indigo/violet/purple/teal)은 하나의 남색-파랑 축, 중립색(slate/gray)은 ink·rule·paper 단계로 통일 --%>
@@ -153,7 +153,7 @@
   </div>
 </div>
 <a href="#main-content" class="skip-link">본문 바로가기</a>
-<header class="w-full bg-white relative z-50 border-b border-rule" id="site-header">
+<header class="w-full bg-white relative z-50" id="site-header">
   <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-9 h-[72px] flex items-center justify-between gap-4">
     <h1 class="m-0">
       <a href="${ctx}/analysis/step1" class="flex items-center gap-3.5" title="이용자통계분석 처음으로">

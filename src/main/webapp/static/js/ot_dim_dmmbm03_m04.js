@@ -12,17 +12,16 @@
     { id: 'logistic_regression', name: '로지스틱 회귀', en: 'Logistic Regression', cat: '예측', icon: 'git-branch', desc: '이진 범주 확률 예측', target: true, feat: '독립변수', fields: ['positive_label', 'weight_column', 'test_size', 'max_iter'] },
     { id: 'decision_tree_regressor', name: '의사결정나무(회귀)', en: 'Decision Tree Regressor', cat: '예측', icon: 'git-branch', desc: '규칙 기반 연속형 예측', target: true, feat: '독립변수', fields: ['max_depth', 'min_samples_leaf', 'ccp_alpha', 'test_size'] },
     { id: 'decision_tree_classifier', name: '의사결정나무(분류)', en: 'Decision Tree Classifier', cat: '예측', icon: 'git-branch', desc: '규칙 기반 범주 분류', target: true, feat: '독립변수', fields: ['positive_label', 'max_depth', 'min_samples_leaf', 'ccp_alpha', 'test_size'] },
-    { id: 'kmeans', name: 'K-평균 군집', en: 'K-Means', cat: '군집', icon: 'pie-chart', desc: '유사 관측치 K개 군집화', target: false, feat: '투입 변수', fields: ['standardize', 'n_clusters', 'auto_k', 'label_columns'] },
-    { id: 'hierarchical', name: '계층적 군집', en: 'Hierarchical', cat: '군집', icon: 'network', desc: '덴드로그램 기반 군집', target: false, feat: '투입 변수', fields: ['standardize', 'n_clusters', 'linkage', 'label_columns'] },
-    { id: 'dbscan', name: 'DBSCAN', en: 'DBSCAN', cat: '군집', icon: 'pie-chart', desc: '밀도 기반 군집·노이즈 탐지', target: false, feat: '투입 변수', fields: ['standardize', 'eps', 'min_samples', 'label_columns'] },
-    { id: 'pca', name: '주성분분석', en: 'PCA', cat: '기초', icon: 'layers', desc: '차원 축소·요인 구조 파악', target: false, feat: '투입 변수', fields: ['standardize', 'n_components'] },
+    { id: 'kmeans', name: 'K-평균 군집', en: 'K-Means', cat: '군집', icon: 'pie-chart', desc: '유사 관측치 K개 군집화', target: false, feat: '투입 변수', fields: ['n_clusters', 'auto_k', 'label_columns'] },
+    { id: 'hierarchical', name: '계층적 군집', en: 'Hierarchical', cat: '군집', icon: 'network', desc: '덴드로그램 기반 군집', target: false, feat: '투입 변수', fields: ['n_clusters', 'linkage', 'label_columns'] },
+    { id: 'dbscan', name: 'DBSCAN', en: 'DBSCAN', cat: '군집', icon: 'pie-chart', desc: '밀도 기반 군집·노이즈 탐지', target: false, feat: '투입 변수', fields: ['eps', 'min_samples', 'label_columns'] },
+    { id: 'pca', name: '주성분분석', en: 'PCA', cat: '기초', icon: 'layers', desc: '차원 축소·요인 구조 파악', target: false, feat: '투입 변수', fields: ['n_components'] },
     { id: 'anova', name: '분산분석 (ANOVA/ANCOVA)', en: 'ANOVA', cat: '고급', icon: 'award', desc: '집단 간 평균 차이 검정', target: true, feat: '추가 독립변수 (선택)', fields: ['factors', 'covariates', 'include_interaction'], featOptional: true },
     { id: 'multilevel', name: '다층모형 (HLM)', en: 'Multilevel', cat: '고급', icon: 'layers', desc: '집단 내 위계 구조 반영 회귀', target: true, feat: '고정효과 변수 (선택)', fields: ['group_column', 'random_slope'], featOptional: true },
     { id: 'growth_curve', name: '성장곡선모형', en: 'Growth Curve', cat: '고급', icon: 'trending-up', desc: '시간에 따른 변화 궤적', target: true, feat: '추가 독립변수 (선택)', fields: ['time_column', 'group_column', 'random_slope'], featOptional: true },
     { id: 'psm', name: '성향점수매칭 (PSM)', en: 'Propensity Score Matching', cat: '고급', icon: 'award', desc: '처치 효과 추정을 위한 매칭', target: true, feat: '공변량 (Covariates / X)', fields: ['treatment_column', 'caliper', 'n_neighbors'] }
   ];
   var FIELDS = {
-    standardize: { t: 'check', label: '표준화 후 분석 (평균 0, 표준편차 1) — 해제하면 원 단위로 분석', def: true },   // 화면 옵션: 분석 파라미터가 아니라 전처리 scaling 으로 보낸다
     test_size: { t: 'select', label: '검증(홀드아웃) 비율', def: 0, num: true, opts: [[0, '사용 안 함 (전체 적합)'], [0.2, '20%'], [0.3, '30%']] },
     fit_intercept: { t: 'check', label: '절편 포함', def: true },
     positive_label: { t: 'text', label: '양성(1) 클래스 값 (선택)', ph: '예: 1 / Y / 합격' },
@@ -133,12 +132,25 @@
       pool(from).filter(function (c) { return !(key === 'treatment_column' || key === 'group_column' || key === 'time_column') || c.name !== cfg.target; }).map(function (c) { return '<option value="' + A.esc(c.name) + '"' + (selected === c.name ? ' selected' : '') + '>' + A.esc(c.name) + '</option>'; }).join('') + '</select>');
   }
 
-  /** 선형회귀·의사결정나무(회귀)인데 종속변수의 고유값이 2개면 실행 버튼 위에 안내한다 (고유값 수는 열 정보 n_unique) */
+  var SCALE_NAME = { standard: '표준화(Standard)', minmax: '정규화(MinMax)', robust: '로버스트(Robust)' };
+  /** 군집·PCA 는 변수 값의 크기로 거리·분산을 계산한다. 스케일링은 2단계에서만 정하므로, 하지 않았다면 2단계로 안내하고 했다면 적용 사실을 알려준다. */
+  function scaleGuideHtml() {
+    if (!STD_METHODS[cfg.method]) return '';
+    var sc = A.state.prepUi && A.state.prepUi.prep && A.state.prepUi.prep.scaling;
+    if (SCALE_NAME[sc]) {
+      return '<div class="krds-msg krds-info flex items-start gap-2.5 py-1.5 mb-3" role="note"><div class="jn-text"><div class="jn-title">2단계에서 ' + SCALE_NAME[sc] + '를 적용한 데이터입니다</div>' +
+        '<p class="jn-desc">스케일링이 적용된 값으로 분석합니다.</p></div></div>';
+    }
+    return '<div class="krds-msg krds-warning flex items-start gap-2.5 py-1.5 mb-3" role="note"><div class="jn-text"><div class="jn-title">단위가 다른 변수는 먼저 스케일링하세요</div>' +
+      '<p class="jn-desc">이 기법은 값의 크기로 거리·분산을 계산해서, 값의 범위가 큰 변수(예: 소득)가 결과를 좌우합니다. 2단계에서 표준화 등 스케일링을 지정한 뒤 분석하는 것을 권장합니다.</p>' +
+      '<a class="jn-link" href="' + A.ctx + '/analysis/step2">2단계에서 스케일링 지정하기</a></div></div>';
+  }
+  /** 실행 버튼 위 안내: 이분형 종속변수 권고(선형회귀·의사결정나무 회귀) + 군집·PCA 스케일링 안내 */
   function updatePreWarn() {
     var el = A.$('#pre-warn');
     if (!el) return;
     var c = (cfg.method === 'linear_regression' || cfg.method === 'decision_tree_regressor') && cfg.target ? cols().filter(function (x) { return x.name === cfg.target; })[0] : null;
-    el.innerHTML = c && c.n_unique === 2 ? '<div class="krds-msg krds-warning flex items-start gap-2 py-1.5 mb-3" role="alert"><span class="flex-1 min-w-0">이분형 종속변수입니다. 로지스틱 회귀를 권장합니다.</span></div>' : '';
+    el.innerHTML = (c && c.n_unique === 2 ? '<div class="krds-msg krds-warning flex items-start gap-2 py-1.5 mb-3" role="alert"><span class="flex-1 min-w-0">이분형 종속변수입니다. 로지스틱 회귀를 권장합니다.</span></div>' : '') + scaleGuideHtml();
   }
   /** 다른 역할(종속·처치·집단·시간·가중치·요인·공변량)로 이미 쓴 열은 독립변수 목록에서 선택할 수 없게 한다 */
   var ROLE_NAME = { target: '종속변수', treatment_column: '처치 변수', group_column: '집단 변수', time_column: '시간 변수', weight_column: '가중치 변수', factors: '요인', covariates: '공변량' };
@@ -194,17 +206,17 @@
         pool(f.from).map(function (c) { return '<label class="flex items-center gap-2 text-xs text-ink-1 cursor-pointer p-1 rounded hover:bg-paper-3"><input type="checkbox" data-multi="' + k + '" value="' + A.esc(c.name) + '" ' + (sel.indexOf(c.name) >= 0 ? 'checked' : '') + ' class="rounded text-blue-600 border-rule-3"><span class="truncate">' + A.esc(c.name) + '</span></label>'; }).join('') + '</div>', cfg.method === 'anova' && k === 'factors' ? k : null);
     }).join('');
     A.$('#btn-run').disabled = running;
+    updatePreWarn();
     updateReq();
   }
 
   /* ---------------- 요청 조립 ---------------- */
   var STD_METHODS = { kmeans: 1, hierarchical: 1, dbscan: 1, pca: 1 };
-  /** 분석 요청의 전처리(PreprocessingSpec). 군집·PCA 는 '표준화 후 분석'이 켜져 있으면 scaling 을 보내지 않아 서버 기본(표준화)을 따르고,
-   *  꺼져 있으면 'none'(원 단위)으로 보낸다. */
+  /** 분석 요청의 전처리(PreprocessingSpec). 스케일링은 2단계에서만 정한다 — 4단계에서는 scaling 을 보내지 않는다.
+   *  (군집·PCA 는 4단계에서 고르는 옵션이 없고, 2단계에서 스케일링하지 않았다면 안내를 보여준다: updateScaleGuide) */
   function buildPreprocessing() {
     var pp = Object.assign({}, A.state.preprocessing || {});
     delete pp.scaling;
-    if (STD_METHODS[cfg.method] && !pv('standardize')) pp.scaling = 'none';
     return pp;
   }
   function buildParams() {
@@ -212,7 +224,6 @@
     if (m.target) p.target = cfg.target;
     m.fields.forEach(function (k) {
       var f = FIELDS[k], v = pv(k);
-      if (k === 'standardize') return;   // 화면 전용 옵션 (분석 파라미터 아님)
       if (k === 'auto_k') { if (v) p.auto_k_range = [2, 8]; return; }
       if (k === 'n_clusters' && pv('auto_k')) return;
       if (f.t === 'cols') { if (v && v.length) p[k] = v; return; }

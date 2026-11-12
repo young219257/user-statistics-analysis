@@ -80,21 +80,34 @@ def _card_total(page):
     return int(re.match(r"[\d,]+", page.locator("#card-outliers").inner_text().strip()).group().replace(",", ""))
 
 
-def test_UT_M02_03_mahalanobis_squared_distance_option(page):
-    """마할라노비스: 선택지 'D² > 9 (거리 D > 3.0)' → 거리 D 가 3 을 넘는 행 수와 일치 (서버는 제곱거리 D² 를 임계값과 비교)"""
+def _targets(page):
+    """진단 표의 수치형 대상 변수(식별자·이진·범주형 제외) — 서버로 보내는 columns 와 같다"""
+    return page.evaluate("()=>[...document.querySelectorAll('#var-body tr')].filter(tr=>!tr.firstElementChild.textContent.includes('범주형')).map(tr=>tr.dataset.col)")
+
+
+def test_UT_M02_03_mahalanobis_chi_square_option(page):
+    """마할라노비스: 선택지가 변수 수(자유도)에 맞는 χ² 분위수이고, 'χ² 99%'를 고르면 D² 가 그 값을 넘는 행 수와 일치한다"""
+    from scipy.stats import chi2
     _m02(page)
+    cols = _targets(page)
+    df = len(cols)
     pick_algo(page, 4)
     sel = page.locator("#algo-grid > *").nth(4).locator("select")
-    sel.select_option(label=[o for o in sel.locator("option").all_inner_texts() if "D² > 9" in o][0])
+    labels = sel.locator("option").all_inner_texts()
+    assert any(f"{chi2.ppf(0.975, df):.2f}" in t for t in labels), labels          # 97.5% = 서버 기본
+    assert len(labels) == 3 and not any("95%" in o for o in labels), labels         # 97.5% · 99% · 99.9% (이슈 #4)
+    target = [o for o in labels if "χ² 99% " in o][0]
+    sel.select_option(label=target)
     page.locator("#btn-detect").click()
     page.wait_for_function("()=>document.querySelector('#card-outliers').textContent.trim()!=='탐지 전'", timeout=120000)
     page.wait_for_function("()=>!document.querySelector('#btn-detect').disabled")
-    cols = ["school_id", "treatment", "grade", "score_t1", "score_t2", "score_t3", "score_t4", "study_hours", "satisfaction", "passed"]
     x = RAW[cols].dropna().values
     d = x - x.mean(0)
-    dist = np.sqrt(np.einsum("ij,jk,ik->i", d, np.linalg.pinv(np.cov(x, rowvar=False)), d))
-    assert _outliers_of(page, "study_hours") == int((dist > 3.0).sum())
-    assert _card_total(page) == int((dist > 3.0).sum())        # 카드는 변수별 합(×10)이 아니라 이상치 '행 수'
+    d2 = np.einsum("ij,jk,ik->i", d, np.linalg.pinv(np.cov(x, rowvar=False)), d)
+    n = int((d2 > chi2.ppf(0.99, df)).sum())
+    note = page.locator("#judge-note").inner_text()                     # 마할라노비스는 변수별이 아니라 변수 조합(행) 기준으로 한 번만 표시
+    assert abs(int(re.search(r"이상치는 ([\d,]+)행", note).group(1).replace(",", "")) - n) <= 1, (note, n)
+    assert abs(_card_total(page) - n) <= 1                              # 카드는 변수별 합이 아니라 이상치 '행 수'
 
 
 def test_UT_M02_03_mahalanobis_default_is_chi_square(page):
@@ -104,6 +117,8 @@ def test_UT_M02_03_mahalanobis_default_is_chi_square(page):
     _m02(page)
     detect(page, 4)
     assert any("method=mahalanobis" in u and re.search(r"threshold=1(\.0)?(&|$)", u) for u in urls), urls
+    u = [u for u in urls if "method=mahalanobis" in u][0]
+    assert "columns=" in u and "school_id" not in u, u                   # 식별자·이진 열을 뺀 대상 변수만 보낸다(자유도 = 대상 변수 수)
     assert "χ²" in page.locator("#applied-formula").inner_text()
 
 
@@ -234,3 +249,58 @@ def test_UT_M02_11_preprocess_request_excludes_id_and_binary(page):
     assert "study_hours" in cols and "score_t1" in cols
     assert not set(cols) & {"school_id", "treatment", "passed", "student_id"}, cols
 
+
+def test_UT_M02_12_algo_card_copy_matches_api(page):
+    """카드 문구가 API 동작과 맞다: IF·LOF 는 변수별(단변량), Grubbs 는 순차 검정, IF 0.60 에 '표준 권장' 표기 없음, 라벨 |M| (이슈 #4)"""
+    _m02(page)
+    grid = page.locator("#algo-grid").inner_text()
+    assert grid.count("변수별로 따로 탐지") == 2
+    assert "순차 Grubbs 검정" in grid and "|M|" in grid and "|M_i|" not in grid
+    assert "표준 권장 임계치" not in grid and "0.60" in grid
+    assert grid.count("다변량") == 2          # 마할라노비스 배지('다변량 공분산')와 설명 한 곳뿐
+
+
+@pytest.mark.parametrize("idx", [5, 6])
+def test_UT_M02_12_no_boundary_for_if_and_lof(page, idx):
+    """Isolation Forest·LOF 는 하한·상한 경계가 없으므로 '경계 없음'으로 표시한다 (이슈 #4)"""
+    _m02(page)
+    detect(page, idx)
+    assert "경계 없음" in page.locator("#detail-card .sec-head").inner_text()
+
+
+def test_UT_M02_12_mahalanobis_is_combination_result(page):
+    """마할라노비스는 변수별 칸을 비우고 '변수 조합 기준 결과'(행 수·D² 임계)를 한 번만 보여 준다 (이슈 #4)"""
+    _m02(page)
+    detect(page, 4)
+    cells = var_rows(page)["study_hours"]
+    assert cells[2] == "-" and cells[3] == "-"                     # 변수별 이상치·비율 칸 비움
+    assert "변수 조합 기준 결과" in page.locator("#detail-card .sec-head").inner_text()
+    note = page.locator("#judge-note").inner_text()
+    assert "행 전체를 한 번에 판정" in note and "D² " in note
+
+
+def test_UT_M02_13_mahalanobis_allows_only_drop_treatment(page):
+    """마할라노비스는 서버가 이상치 행 제거(Drop)만 허용 → 윈저라이징·로그 변환은 비활성이고, 미리 골랐다면 '원본값 보존'으로 되돌린다"""
+    _m02(page)
+    choose_rules(page, "윈저라이징 (클리핑)")                           # 먼저 윈저라이징을 고른 뒤
+    detect(page, 4)                                                    # 마할라노비스를 실행
+    assert page.locator('input[name="outlier_treatment"][value="winsorize"]').is_disabled()
+    assert page.locator('input[name="outlier_treatment"][value="log"]').is_disabled()
+    assert page.locator('input[name="outlier_treatment"][value="drop"]').is_enabled()
+    assert page.locator('input[name="outlier_treatment"][value="keep"]').is_checked()
+
+
+def test_UT_M02_13_winsorize_still_allowed_for_other_methods(page):
+    """마할라노비스가 아닌 기법에서는 윈저라이징·로그 변환을 그대로 고를 수 있다"""
+    _m02(page)
+    detect(page, 0)
+    assert page.locator('input[name="outlier_treatment"][value="winsorize"]').is_enabled()
+    assert page.locator('input[name="outlier_treatment"][value="log"]').is_enabled()
+
+
+def test_UT_M02_13_discrete_column_note_for_if_and_lof(page):
+    """Isolation Forest·LOF: 고유값이 적은 이산형 열(예: 5점 척도)은 판정이 불안정하다는 안내를 보인다"""
+    _m02(page)
+    detect(page, 5)
+    note = page.locator("#judge-note").inner_text()
+    assert "이산형" in note and "Isolation Forest" in note

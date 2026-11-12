@@ -109,6 +109,115 @@ def test_UT_M05_06_no_internal_field_names(ready_page):
         assert token not in text, token
 
 
+def test_UT_M05_08_table_headers_centered(ready_page):
+    """결과 리포트의 모든 표 열 제목(thead th)이 가운데 정렬이다 (이슈 #3)"""
+    pg = ready_page
+    for tab in ("전체 종합", "표본별 원시데이터"):
+        _tab(pg, tab)
+        bad = pg.evaluate("""()=>[...document.querySelectorAll('#report-root table thead th')].filter(t=>t.getBoundingClientRect().width>0)
+            .map(t=>[t.textContent.trim().slice(0,12), getComputedStyle(t).textAlign]).filter(x=>x[1]!=='center')""")
+        assert not bad, (tab, bad[:5])
+
+
+def test_UT_M05_09_scroll_table_header_has_no_gap(ready_page):
+    """스크롤되는 원시 데이터 표: 스크롤해도 머리가 맨 위에 붙어 있고(틈 없음), 머리 폭 = 표 폭, 선은 border-collapse 가 아니다 (이슈 #3)"""
+    pg = ready_page
+    _tab(pg, "표본별 원시데이터")
+    pg.evaluate("()=>{const w=document.querySelector('#rp-rawdata .scroll-tbl'); w.scrollTop = 150}")
+    r = pg.evaluate("""()=>{const w=document.querySelector('#rp-rawdata .scroll-tbl'), th=w.querySelector('thead th'), t=w.querySelector('table');
+        const wr=w.getBoundingClientRect(), hr=th.getBoundingClientRect(), cs=getComputedStyle(th);
+        return {scrolled:w.scrollTop>0, gap:Math.round(hr.top-wr.top)-1, pos:cs.position, collapse:getComputedStyle(t).borderCollapse,
+                same:Math.round(t.getBoundingClientRect().width)===Math.round([...w.querySelectorAll('thead th')].reduce((s,x)=>s+x.getBoundingClientRect().width,0))}}""")
+    assert r["scrolled"] and r["gap"] == 0 and r["pos"] == "sticky" and r["collapse"] == "separate" and r["same"], r
+
+def _gallery(pg):
+    """진단 시각화 탭의 차트 목록 상태로 맞춘다 (앞선 테스트가 상세 화면을 열어 둔 채 끝났을 수 있다)"""
+    _tab(pg, "진단 시각화")
+    back = pg.locator("#rp-charts [data-cback]")
+    if back.count():
+        back.first.click()
+        time.sleep(1.5)
+
+
+def _img_ok(path, kind):
+    data = open(path, "rb").read()
+    sig = data[:8] == b"\x89PNG\r\n\x1a\n" if kind == "png" else data[:3] == b"\xff\xd8\xff"
+    return sig and len(data) > 4000
+
+
+def _open_menu(pg, scope="#rp-charts"):
+    btn = pg.locator(f"{scope} [data-cexp-btn]").first
+    btn.click()
+    return btn, pg.locator(f"{scope} .cexp-menu:not([hidden])").first
+
+
+def test_UT_M05_10_export_menu_card(ready_page):
+    """차트 카드: 다운로드 아이콘 버튼 하나 → 메뉴(PNG 이미지 저장 / JPEG 이미지 저장 / 차트 인쇄). 기본 Highcharts 메뉴는 없다"""
+    pg = ready_page
+    _gallery(pg)
+    assert pg.locator("#rp-charts .highcharts-contextbutton, #rp-charts .highcharts-exporting-group").count() == 0
+    btn, menu = _open_menu(pg)
+    assert btn.get_attribute("aria-haspopup") == "menu" and btn.get_attribute("aria-expanded") == "true"
+    assert btn.get_attribute("aria-label") and menu.get_attribute("role") == "menu"
+    assert [t.strip() for t in menu.locator("[role=menuitem]").all_inner_texts()] == ["PNG 이미지 저장", "JPEG 이미지 저장", "차트 인쇄"]
+    assert pg.locator("#rp-charts [data-cback]").count() == 0          # 메뉴를 열어도 상세 화면으로 넘어가지 않는다
+    with pg.expect_download() as dl:
+        menu.locator("[data-cfmt=png]").click()
+    assert dl.value.suggested_filename.endswith(".png") and dl.value.suggested_filename.startswith("Figure_1")
+    assert _img_ok(dl.value.path(), "png")
+    assert btn.get_attribute("aria-expanded") == "false" and pg.evaluate("()=>document.activeElement.hasAttribute('data-cexp-btn')")   # 닫히고 초점이 버튼으로 복귀
+
+
+def test_UT_M05_10_export_jpeg_and_print(ready_page):
+    """JPEG 이미지 저장, 차트 인쇄(브라우저 인쇄 창 호출)"""
+    pg = ready_page
+    _gallery(pg)
+    _, menu = _open_menu(pg)
+    with pg.expect_download() as dl:
+        menu.locator("[data-cfmt=jpeg]").click()
+    assert dl.value.suggested_filename.endswith(".jpg") and _img_ok(dl.value.path(), "jpeg")
+    pg.evaluate("()=>{window.__printed=0; window.print=()=>{window.__printed++}}")   # 실제 인쇄 창은 띄우지 않는다
+    _, menu = _open_menu(pg)
+    menu.locator("[data-cfmt=print]").click()
+    time.sleep(1)
+    assert pg.evaluate("()=>window.__printed") >= 1
+
+
+def test_UT_M05_10_export_menu_keyboard(ready_page):
+    """접근성: 키보드로 열고(ArrowDown) 이동(↑↓·Home·End)하고 닫는다(Esc). 닫으면 초점이 버튼으로 돌아온다"""
+    pg = ready_page
+    _gallery(pg)
+    btn = pg.locator("#rp-charts [data-cexp-btn]").first
+    btn.focus()
+    pg.keyboard.press("ArrowDown")
+    assert btn.get_attribute("aria-expanded") == "true"
+    names = lambda: pg.evaluate("()=>document.activeElement.textContent.trim()")
+    assert names() == "PNG 이미지 저장"
+    pg.keyboard.press("ArrowDown"); assert names() == "JPEG 이미지 저장"
+    pg.keyboard.press("End"); assert names() == "차트 인쇄"
+    pg.keyboard.press("ArrowDown"); assert names() == "PNG 이미지 저장"          # 끝에서 처음으로 순환
+    pg.keyboard.press("Home"); assert names() == "PNG 이미지 저장"
+    pg.keyboard.press("Escape")
+    assert btn.get_attribute("aria-expanded") == "false"
+    assert pg.evaluate("()=>document.activeElement.hasAttribute('data-cexp-btn')")
+    btn.click(); pg.mouse.click(5, 5)                                           # 바깥 클릭으로도 닫힌다
+    assert btn.get_attribute("aria-expanded") == "false"
+
+
+def test_UT_M05_11_export_menu_detail(ready_page):
+    """차트 자세히 보기에도 같은 내보내기 메뉴가 있고 PNG 를 내려받을 수 있다"""
+    pg = ready_page
+    _gallery(pg)
+    pg.locator("#rp-charts [data-cidx]").first.click()
+    time.sleep(2)
+    btn, menu = _open_menu(pg)
+    assert menu.locator("[role=menuitem]").count() == 3
+    with pg.expect_download() as dl:
+        menu.locator("[data-cfmt=png]").click()
+    assert _img_ok(dl.value.path(), "png")
+    pg.locator("#rp-charts [data-cback]").click()                       # 이후 07번 테스트가 목록 상태를 기대하지 않도록 정리
+
+
 def test_UT_M05_07_save_result(ready_page):
     """[결과 저장] → 5단계 목록에 저장한 분석이 나타난다"""
     pg = ready_page

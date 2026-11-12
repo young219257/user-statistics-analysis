@@ -20,6 +20,7 @@
       colors: PALETTE,
       chart: { style: { fontFamily: 'inherit' }, spacing: [8, 8, 8, 8] },
       credits: { enabled: false },
+      exporting: { enabled: false },   // 기본 내보내기 메뉴는 외부 서버(export.highcharts.com)를 호출해 폐쇄망에서 동작하지 않는다. 이미지 저장·인쇄는 아래 내보내기 메뉴(saveImage)가 브라우저에서 처리한다.
       title: { text: undefined },
       legend: { itemStyle: { fontSize: '12px' } },
       xAxis: { gridLineColor: C.paper2, lineColor: C.rule, labels: { style: { fontSize: '12px' } } },
@@ -593,6 +594,102 @@
     return '이 차트에 표시할 데이터가 없습니다.';
   }
 
+
+  /* ---------------- PNG 저장 (브라우저에서 직접: SVG → canvas → PNG) ---------------- */
+  var PNG_FONT = 'Pretendard, "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+  function fileSafe(t) { return String(t || '차트').replace(/[\\/:*?"<>|\s]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || '차트'; }
+  var FMT = { png: { mime: 'image/png', ext: 'png', label: 'PNG' }, jpeg: { mime: 'image/jpeg', ext: 'jpg', label: 'JPEG' } };
+  /** 차트 → 이미지 파일(PNG·JPEG). 2배 해상도, 흰 배경. 폰트는 이미지 안에서 웹폰트를 못 쓰므로 시스템 글꼴 목록을 명시한다. 차트 제목은 넣지 않는다. */
+  function saveImage(chart, name, fmt) {
+    var f = FMT[fmt] || FMT.png;
+    return new Promise(function (resolve, reject) {
+      if (!chart || !chart.getSVG) { reject(new Error('저장할 수 있는 차트가 아닙니다.')); return; }
+      var svg = chart.getSVG({ chart: { backgroundColor: '#ffffff', style: { fontFamily: PNG_FONT } } });
+      var root = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;
+      var w = parseFloat(root.getAttribute('width')) || chart.chartWidth, h = parseFloat(root.getAttribute('height')) || chart.chartHeight, k = 2;
+      var img = new Image();
+      img.onload = function () {
+        var cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+        var cx = cv.getContext('2d'); cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height);
+        cv.toBlob(function (blob) {
+          if (!blob) { reject(new Error('이미지를 만들지 못했습니다.')); return; }
+          var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileSafe(name) + '.' + f.ext;
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+          resolve();
+        }, f.mime, 0.92);
+      };
+      img.onerror = function () { reject(new Error('이미지를 만들지 못했습니다.')); };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    });
+  }
+  function download(blob, filename) {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  /** 차트 → SVG 파일 (글꼴 명시, 흰 배경) */
+  function saveSvg(chart, name) {
+    var svg = chart.getSVG({ chart: { backgroundColor: '#ffffff', style: { fontFamily: PNG_FONT } } });
+    download(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), fileSafe(name) + '.svg');
+  }
+  /** 차트 → 데이터 CSV (엑셀에서 한글이 깨지지 않도록 BOM 포함). 카테고리 축이면 첫 열이 카테고리, 아니면 x 값 */
+  function saveCsv(chart, name) {
+    var q = function (v) { v = v === null || v === undefined ? '' : String(v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var series = (chart.series || []).filter(function (s) { return s.options.includeInDataExport !== false && s.points && s.points.length; });
+    if (!series.length) throw new Error('내보낼 데이터가 없습니다.');
+    var cats = chart.xAxis && chart.xAxis[0] && chart.xAxis[0].categories;
+    var rows = [['series', cats ? 'category' : 'x', 'y'].map(q).join(',')];
+    series.forEach(function (s) {
+      s.points.forEach(function (p) {
+        var x = cats ? (cats[p.x] !== undefined ? cats[p.x] : p.name || p.x) : (p.name || p.x);
+        var y = p.y !== undefined && p.y !== null ? p.y : (p.value !== undefined ? p.value : '');
+        rows.push([s.name, x, y].map(q).join(','));
+      });
+    });
+    download(new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }), fileSafe(name) + '.csv');
+  }
+  function savePng(chart, name) { return saveImage(chart, name, 'png'); }
+  /** 화면에 그려진 차트(요소 id 기준) 찾기 */
+  function chartOf(uid) {
+    var list = window.Highcharts && Highcharts.charts || [];
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].renderTo && list[i].renderTo.id === uid) return list[i];
+    return null;
+  }
+  /** 내보내기 메뉴: 아이콘 버튼 하나 → PNG·JPEG 이미지 저장, 차트 인쇄 (Highcharts 기본 메뉴와 같은 구성, 외부 서버 없이 브라우저에서 처리).
+   *  접근성: 버튼 aria-haspopup/expanded/controls, 메뉴 role=menu·menuitem, 방향키·Home·End·Esc, 닫으면 버튼으로 초점 복귀. */
+  function exportMenu(uid, title) {
+    var id = 'cexp-' + uid;
+    var item = function (fmt, text) { return '<li role="none"><button type="button" role="menuitem" tabindex="-1" data-cfmt="' + fmt + '">' + text + '</button></li>'; };
+    return '<div class="cexp" data-cexp>' +
+      '<button type="button" class="cexp-btn" data-cexp-btn aria-haspopup="menu" aria-expanded="false" aria-controls="' + id + '" aria-label="' + A.esc(title) + ' 내보내기" title="내보내기">' + A.icon('download', 'cexp-ico') + '</button>' +
+      '<ul id="' + id + '" class="cexp-menu" role="menu" aria-label="내보내기 형식" hidden data-cuid="' + uid + '" data-cname="' + A.esc(title) + '">' +
+        item('png', 'PNG 이미지 저장') + item('jpeg', 'JPEG 이미지 저장') + item('svg', 'SVG 벡터 저장') + item('csv', '차트 데이터 CSV 저장') + '<li role="separator" class="cexp-sep"></li>' + item('print', '차트 인쇄') +
+      '</ul></div>';
+  }
+  function menuItems(menu) { return [].slice.call(menu.querySelectorAll('[role=menuitem]')); }
+  function closeMenus(except, focusBtn) {
+    [].forEach.call(document.querySelectorAll('.cexp-menu:not([hidden])'), function (m) {
+      if (m === except) return;
+      m.hidden = true;
+      var b = m.parentNode.querySelector('[data-cexp-btn]');
+      if (b) { b.setAttribute('aria-expanded', 'false'); if (focusBtn) b.focus(); }
+    });
+  }
+  function openMenu(btn, focus) {
+    var menu = document.getElementById(btn.getAttribute('aria-controls'));
+    closeMenus(menu, false);
+    menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    var items = menuItems(menu);
+    if (focus === 'last') items[items.length - 1].focus(); else if (focus) items[0].focus();
+  }
+  function runExport(menu, fmt) {
+    var ch = chartOf(menu.getAttribute('data-cuid')), name = menu.getAttribute('data-cname');
+    if (!ch) { A.toast('저장할 수 있는 차트가 아닙니다.', 'error'); return; }
+    if (fmt === 'svg') { try { saveSvg(ch, name); A.toast('차트를 SVG로 저장했습니다.'); } catch (e) { A.toast('SVG 저장에 실패했습니다.', 'error'); } return; }
+    if (fmt === 'csv') { try { saveCsv(ch, name); A.toast('차트 데이터를 CSV로 저장했습니다.'); } catch (e) { A.toast('CSV 저장에 실패했습니다: ' + e.message, 'error'); } return; }
+    if (fmt === 'print') { try { ch.update({ chart: { style: { fontFamily: PNG_FONT } } }, true, false, false); ch.print(); } catch (e) { A.toast('인쇄를 시작하지 못했습니다.', 'error'); } return; }
+    saveImage(ch, name, fmt).then(function () { A.toast('차트를 ' + FMT[fmt].label + ' 이미지로 저장했습니다.'); })
+      .catch(function (err) { A.toast(FMT[fmt].label + ' 저장에 실패했습니다: ' + err.message, 'error'); });
+  }
   function card(rec, idx, data, ctx) {
     var uid = 'ch-' + idx, p = null, body, raw = '';
     try { p = plan(rec, data, uid, ctx); } catch (e) { p = null; }
@@ -600,7 +697,7 @@
     else if (data === undefined || data === null || (Array.isArray(data) && !data.length)) body = '<div class="py-8 text-center text-xs text-ink-4 leading-relaxed">' + noDataMsg(rec, ctx) + '</div>';
     else body = '<div class="text-xs text-ink-3 mb-1.5">차트로 자동 변환할 수 없는 형식이어서 원본 데이터를 표시합니다.</div>' + A.viz.tree(data, 0);
     var badge = '<span class="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">' + (idx + 1) + '순위</span>';
-    return { uid: uid, plan: p, html: '<div class="bg-white rounded-xl border border-rule/90 p-4"><div class="flex items-start justify-between gap-2 mb-2"><div class="min-w-0"><div class="flex items-center gap-1.5">' + badge + '<h5 class="text-title font-semibold text-ink truncate">Figure ' + (idx + 1) + '. ' + A.esc(recTitle(rec)) + '</h5></div><p class="text-xs text-ink-3 mt-0.5">' + A.esc(rec.reason) + '</p></div><span class="text-xs font-mono px-2 py-0.5 rounded bg-paper-2 text-ink-2 shrink-0">' + A.esc(KIND_LABEL[rec.kind] || rec.kind) + '</span></div>' + body + raw + '</div>' };
+    return { uid: uid, plan: p, html: '<div class="bg-white rounded-xl border border-rule/90 p-4"><div class="flex items-start justify-between gap-2 mb-2"><div class="min-w-0"><div class="flex items-center gap-1.5">' + badge + '<h5 class="text-title font-semibold text-ink truncate">Figure ' + (idx + 1) + '. ' + A.esc(recTitle(rec)) + '</h5></div><p class="text-xs text-ink-3 mt-0.5">' + A.esc(rec.reason) + '</p></div><div class="cexp-bar flex items-center gap-1.5 shrink-0">' + (p && p.draw ? exportMenu(uid, 'Figure ' + (idx + 1) + '. ' + recTitle(rec)) : '') + '<span class="cexp-badge text-xs font-mono px-2 rounded bg-paper-2 text-ink-2">' + A.esc(KIND_LABEL[rec.kind] || rec.kind) + '</span></div></div>' + body + raw + '</div>' };
   }
 
   function recData(r, cd) {
@@ -661,9 +758,9 @@
       rows.slice(0, 50).forEach(function (r) { Object.keys(r).forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
       var shown = rows.slice(0, 1000);
       title = '차트 원시 데이터 (' + A.num(rows.length) + '개 행)';
-      body = '<div class="rounded-xl border border-rule max-h-[340px] overflow-auto"><table class="w-full text-left text-body border-collapse"><thead class="sticky top-0 z-10"><tr class="bg-paper-3 border-b border-rule">' +
-        cols.map(function (c) { return '<th class="py-3 px-4 font-semibold text-ink-1 whitespace-nowrap bg-paper-3">' + A.esc(c) + '</th>'; }).join('') + '</tr></thead><tbody class="font-mono text-ink-1">' +
-        shown.map(function (r) { return '<tr class="border-b border-paper-2 last:border-0 hover:bg-paper-3/60">' + cols.map(function (c) { return '<td class="py-2.5 px-4 whitespace-nowrap">' + A.esc(cellText(r[c])) + '</td>'; }).join('') + '</tr>'; }).join('') +
+      body = '<div class="scroll-tbl rounded-xl border border-rule max-h-[340px] overflow-auto"><table class="w-full text-left text-body"><thead><tr>' +
+        cols.map(function (c) { return '<th class="py-3 px-4 font-semibold text-ink-1 whitespace-nowrap">' + A.esc(c) + '</th>'; }).join('') + '</tr></thead><tbody class="font-mono text-ink-1">' +
+        shown.map(function (r) { return '<tr class="hover:bg-paper-3/60">' + cols.map(function (c) { return '<td class="py-2.5 px-4 whitespace-nowrap">' + A.esc(cellText(r[c])) + '</td>'; }).join('') + '</tr>'; }).join('') +
         '</tbody></table></div>' + (rows.length > shown.length ? '<div class="text-xs text-ink-4 pt-1.5">상위 ' + A.num(shown.length) + '행만 표시</div>' : '');
     } else {
       title = '차트 원시 데이터';
@@ -692,7 +789,8 @@
           '<span class="text-xs font-bold px-2 py-1 rounded-md bg-blue-50 text-blue-800 border border-blue-200 shrink-0">추천 ' + (st.idx + 1) + '순위</span>' +
           '<h4 class="text-title font-semibold text-ink truncate">' + A.esc(recTitle(r)) + '</h4>' +
         '</div>' +
-        '<div class="flex items-center gap-2 shrink-0">' +
+        '<div class="cexp-bar cexp-bar-lg flex items-center gap-2 shrink-0">' +
+          (p && p.draw ? exportMenu(uid, 'Figure ' + (st.idx + 1) + '. ' + recTitle(r)) : '') +
           (hasData ? '<button type="button" data-cdata="1" class="px-3.5 py-2 rounded-xl border text-sm font-semibold flex items-center gap-1.5 cursor-pointer ' + (st.showData ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-white border-rule text-ink-1 hover:bg-paper-3') + '">' + A.icon(st.showData ? 'x' : 'table', 'w-4 h-4') + '<span>' + (st.showData ? '차트 데이터 닫기' : '차트 데이터 조회') + '</span></button>' : '') +
           '<div class="flex items-center gap-1 px-1.5 py-1 bg-paper-2 rounded-xl border border-rule">' + navBtn(-1, 'chevron-left', st.idx === 0) + '<span class="px-2 text-sm font-mono font-bold text-ink-0">' + (st.idx + 1) + ' / ' + n + '</span>' + navBtn(1, 'chevron-right', st.idx === n - 1) + '</div>' +
         '</div>' +
@@ -730,9 +828,11 @@
       var el = document.getElementById(c.uid);
       if (el && window.Highcharts) instances.push(c.plan.draw(el));
     });
+    A.icons && A.icons();   // PNG 저장 버튼 아이콘
   }
 
   A.charts = {
+    savePng: savePng, saveImage: saveImage,
     /** 그릴 수 있는 추천 차트만 우선순위 순으로 돌려준다. 서버가 추천만 하고 데이터를 주지 않은 차트(예: 고정효과가 절편뿐인 모형의 '고정효과 계수')는
      *  빈 카드로 1순위에 올라오지 않도록 뺀다. 안내 문구가 따로 있는 경우(다중 분류의 ROC)는 설명이 되므로 남긴다. */
     usable: function (analysis) {
@@ -750,11 +850,38 @@
         recs: A.charts.usable(analysis),
         ctx: { result: analysis.result || {}, metrics: analysis.metrics || {}, chartData: cd, params: analysis.params || {} }
       };
+      if (!A.charts._docBound) {
+        A.charts._docBound = true;
+        document.addEventListener('click', function (e) { if (!e.target.closest('[data-cexp]')) closeMenus(null, false); });
+        document.addEventListener('keydown', function (e) {
+          var btn = e.target.closest && e.target.closest('[data-cexp-btn]'), menu = e.target.closest && e.target.closest('.cexp-menu');
+          if (btn) {   // 버튼에서 방향키로 열기
+            if (e.key === 'ArrowDown') { e.preventDefault(); openMenu(btn, true); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); openMenu(btn, 'last'); }
+            else if (e.key === 'Escape') closeMenus(null, true);
+            return;
+          }
+          if (!menu) { if (e.key === 'Escape') closeMenus(null, true); return; }
+          var items = menuItems(menu), i = items.indexOf(document.activeElement);
+          if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+          else if (e.key === 'Home') { e.preventDefault(); items[0].focus(); }
+          else if (e.key === 'End') { e.preventDefault(); items[items.length - 1].focus(); }
+          else if (e.key === 'Escape') { e.preventDefault(); closeMenus(null, true); }
+          else if (e.key === 'Tab') closeMenus(null, false);
+        });
+      }
       if (!root._chartBound) {
         root._chartBound = true;
         root.addEventListener('click', function (e) {
           var s = root._chartState;
           if (!s) return;
+          // 내보내기 메뉴: 열기/닫기, 항목 실행 (카드를 눌러 상세로 넘어가는 동작보다 먼저 처리)
+          var xb = e.target.closest('[data-cexp-btn]');
+          if (xb) { if (xb.getAttribute('aria-expanded') === 'true') closeMenus(null, true); else openMenu(xb, false); return; }
+          var xi = e.target.closest('[data-cfmt]');
+          if (xi) { var mn = xi.closest('.cexp-menu'); closeMenus(null, true); runExport(mn, xi.getAttribute('data-cfmt')); return; }
+          if (e.target.closest('[data-cexp]')) return;
           if (e.target.closest('[data-cback]')) { renderGallery(s); return; }
           if (e.target.closest('[data-cdata]')) { s.showData = !s.showData; renderDetail(s); return; }
           var nav = e.target.closest('[data-cnav]');

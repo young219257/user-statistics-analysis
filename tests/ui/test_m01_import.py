@@ -210,7 +210,7 @@ def test_UT_M01_15_krds_contextual_help(page):
     cls = page.locator(".krds-contextual-help").first.get_attribute("class")      # 위치 클래스는 바깥 래퍼에 붙는다
     assert ("bottom" in cls or "top" in cls) and any(c in cls for c in ("left", "center", "right"))
     css = pop.evaluate("e => { const s = getComputedStyle(e); return [s.width, s.paddingTop, s.borderTopLeftRadius, s.borderTopColor] }")
-    assert css[0] == "380px" and css[2] == "14px", css                           # 서비스 디자인 값(폭 380, 모서리 14)
+    assert css == ["360px", "24px", "12px", "rgb(177, 184, 190)"], css           # KRDS 표준 값(폭 36rem, 패딩 2.4rem, 모서리 1.2rem, gray-30)
     assert pop.locator(".tooltip-title").inner_text() == "데이터 반입 안내" and pop.locator(".tooltip-contents").count() == 1
     text = pop.inner_text()
     for word in ("데이터 반입 안내", "CSV, XLSX", "10MB", "30MB", "첫 번째 시트", "문자 열로 반입"):

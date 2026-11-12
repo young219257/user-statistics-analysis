@@ -5,13 +5,13 @@
 
   // 이상치 탐지 기법 = API OutlierMethod. threshold 는 profile/outliers 의 outlier_threshold / threshold 로 전달
   var ALGOS = [
-    { id: 'iqr', name: 'IQR (사분위수 범위)', tag: '단변량', desc: '사분위수 범위 기반 비모수 탐지', label: 'IQR 배수 (k):', def: 1.5, opts: [[1.5, '1.5배 (표준 이상치)'], [2.0, '2.0배 (중간 이상치)'], [3.0, '3.0배 (극단 이상치)']], formula: 'x < Q1 − k·IQR  또는  x > Q3 + k·IQR' },
-    { id: 'zscore', name: 'Z-score (표준점수)', tag: '모수적', desc: '정규분포 기준 표준점수 기반 탐지', label: '임계값 (|Z|):', def: 3.0, opts: [[2.5, '2.5 (엄격한 98.8% 기준)'], [3.0, '3.0 (표준 99.7% 기준)'], [3.5, '3.5 (극단값만 탐지)']], formula: '|x − μ| / σ > 임계값' },
-    { id: 'modified_zscore', name: '수정된 Z-score (MAD)', tag: '로버스트', desc: '중앙값·중위절대편차 기반 왜곡 방지 탐지', label: '임계값 (|M_i|):', def: 3.5, opts: [[3.0, '3.0 (보수적 탐지)'], [3.5, '3.5 (Iglewicz 표준)'], [4.0, '4.0 (극단치 전용)']], formula: '0.6745·|x − 중앙값| / MAD > 임계값' },
-    { id: 'grubbs', name: "Grubbs' 검정", tag: '가설검정', desc: '유의확률 기반 최대 극단치 순차 검정', label: '유의수준 (α):', def: 0.05, opts: [[0.01, 'α = 0.01 (99% 신뢰수준)'], [0.05, 'α = 0.05 (95% 신뢰수준 표준)'], [0.10, 'α = 0.10 (90% 신뢰수준)']], formula: '최대 |x − μ| / σ 가 임계값 초과' },
-    { id: 'mahalanobis', name: '마할라노비스 거리', tag: '다변량 공분산', desc: '변수 간 공분산·상관관계 기반 다변량 탐지', label: '제곱거리(D²) 임계:', def: 1, opts: [[1, 'χ² 97.5% 분위수 (표준, 권장)'], [6.25, 'D² > 6.25 (거리 D > 2.5)'], [9, 'D² > 9 (거리 D > 3.0)'], [12.25, 'D² > 12.25 (거리 D > 3.5)']], formula: 'D² = (x−μ)ᵀ Σ⁻¹ (x−μ) > 임계치 (표준: 자유도=변수 수인 χ² 분포의 97.5% 분위수)' },
-    { id: 'isolation_forest', name: 'Isolation Forest', tag: '트리 앙상블', desc: '의사결정나무 분할 기반 고립치 탐지', label: '고립 점수 임계치:', def: 0.60, opts: [[0.55, '0.55 (보수적 탐지)'], [0.60, '0.60 (표준 권장 임계치)'], [0.65, '0.65 (극단 고립치만)']], formula: '고립 점수 > 임계치' },
-    { id: 'lof', name: 'LOF (국소 이상치 계수)', tag: '국소 밀도', desc: '이웃 밀도차 기반 국소 고립치 탐지', label: 'LOF 임계치:', def: 1.5, opts: [[1.3, '1.3 (민감 탐지)'], [1.5, '1.5 (표준 권장 기준)'], [1.8, '1.8 (극단 희박 밀도치)']], formula: 'LOF > 임계치' }
+    { id: 'iqr', name: 'IQR (사분위수 범위)', tag: '단변량', desc: '사분위수 범위 기반 비모수 탐지', label: 'IQR 배수 (k):', def: 1.5, opts: [[1.5, '1.5배 (표준)'], [2.0, '2.0배 (완화 · 적게 탐지)'], [3.0, '3.0배 (극단값만)']], formula: 'x < Q1 − k·IQR  또는  x > Q3 + k·IQR' },
+    { id: 'zscore', name: 'Z-score (표준점수)', tag: '모수적', desc: '정규분포 기준 표준점수 기반 탐지', label: '임계값 (|Z|):', def: 3.0, opts: [[2.5, '2.5 (민감 · 정상 범위 약 98.8%)'], [3.0, '3.0 (표준 · 정상 범위 약 99.7%)'], [3.5, '3.5 (극단값만)']], formula: '|x − μ| / σ > 임계값' },
+    { id: 'modified_zscore', name: '수정된 Z-score (MAD)', tag: '로버스트', desc: '중앙값·중위절대편차 기반 왜곡 방지 탐지', label: '임계값 (|M|):', def: 3.5, opts: [[3.0, '3.0 (민감)'], [3.5, '3.5 (표준 · Iglewicz·Hoaglin)'], [4.0, '4.0 (극단값만)']], formula: '0.6745·|x − 중앙값| / MAD > 임계값' },
+    { id: 'grubbs', name: "Grubbs' 검정", tag: '가설검정', desc: '순차 Grubbs 검정: 가장 극단적인 값부터 하나씩 유의성 검정', label: '유의수준 (α):', def: 0.05, opts: [[0.01, 'α = 0.01 (엄격 · 적게 탐지)'], [0.05, 'α = 0.05 (표준)'], [0.10, 'α = 0.10 (완화 · 많이 탐지)']], formula: '가장 극단적인 값부터 하나씩 Grubbs 검정(유의수준 α)으로 순차 판정 · 하한·상한 경계 없음' },
+    { id: 'mahalanobis', name: '마할라노비스 거리', tag: '다변량 공분산', desc: '변수 간 공분산·상관관계 기반 다변량 탐지', label: '제곱거리(D²) 임계:', def: 1, opts: null, formula: 'D² = (x−μ)ᵀ Σ⁻¹ (x−μ) > 임계치 (임계치는 자유도 = 탐지에 쓴 변수 수인 χ² 분포의 분위수)' },
+    { id: 'isolation_forest', name: 'Isolation Forest', tag: '트리 앙상블', desc: '의사결정나무 분할 기반 고립치를 변수별로 따로 탐지 (단변량)', label: '고립 점수 임계치:', def: 0.60, opts: [[0.55, '0.55 (민감)'], [0.60, '0.60 (기본 선택)'], [0.65, '0.65 (극단값만)']], formula: '고립 점수 > 임계치 · 변수별 탐지, 하한·상한 경계 없음' },
+    { id: 'lof', name: 'LOF (국소 이상치 계수)', tag: '국소 밀도', desc: '이웃 밀도차 기반 국소 고립치를 변수별로 따로 탐지 (단변량)', label: 'LOF 임계치:', def: 1.5, opts: [[1.3, '1.3 (민감)'], [1.5, '1.5 (표준)'], [1.8, '1.8 (극단값만)']], formula: 'LOF > 임계치 · 변수별 탐지, 하한·상한 경계 없음' }
   ];
   // PreprocessingSpec 값(API) ↔ 화면 표시
   // 처음 들어오면 API 기본값과 같게: 아무것도 바꾸지 않는다 (사용자가 직접 고른 것만 적용)
@@ -38,6 +38,30 @@
     pcfg[k] = valid ? saved : DEFAULTS[k];
   });
   var profile = null, dataset = null, selectedCol = null;
+
+
+  /* ---- 마할라노비스 임계값: 변수 개수(자유도)에 맞는 χ² 분위수 ----
+   * D² 는 변수 수만큼 커지므로 '거리 3.0 (D² > 9)' 같은 고정값은 변수가 많으면 정상 행도 대부분 이상치로 판정한다
+   * (변수 11개: D² > 9 → 64%). 서버도 기본값을 χ² 분위수로 쓰므로 선택지도 같은 기준(97.5·99·99.9%)으로 계산한다. */
+  var CHI2 = {"2":[5.99,7.38,9.21,13.82],"3":[7.81,9.35,11.34,16.27],"4":[9.49,11.14,13.28,18.47],"5":[11.07,12.83,15.09,20.52],"6":[12.59,14.45,16.81,22.46],"7":[14.07,16.01,18.48,24.32],"8":[15.51,17.53,20.09,26.12],"9":[16.92,19.02,21.67,27.88],"10":[18.31,20.48,23.21,29.59],"11":[19.68,21.92,24.72,31.26],"12":[21.03,23.34,26.22,32.91],"13":[22.36,24.74,27.69,34.53],"14":[23.68,26.12,29.14,36.12],"15":[25.0,27.49,30.58,37.7],"16":[26.3,28.85,32.0,39.25],"17":[27.59,30.19,33.41,40.79],"18":[28.87,31.53,34.81,42.31],"19":[30.14,32.85,36.19,43.82],"20":[31.41,34.17,37.57,45.31],"21":[32.67,35.48,38.93,46.8],"22":[33.92,36.78,40.29,48.27],"23":[35.17,38.08,41.64,49.73],"24":[36.42,39.36,42.98,51.18],"25":[37.65,40.65,44.31,52.62],"26":[38.89,41.92,45.64,54.05],"27":[40.11,43.19,46.96,55.48],"28":[41.34,44.46,48.28,56.89],"29":[42.56,45.72,49.59,58.3],"30":[43.77,46.98,50.89,59.7]};   // [자유도] = [95%, 97.5%, 99%, 99.9%] 분위수 (자유도 2~30, scipy.stats.chi2.ppf)
+  var Z4 = [1.6449, 1.96, 2.3263, 3.0902];
+  function chi2q(df, i) {
+    if (CHI2[df]) return CHI2[df][i];
+    var k = 2 / (9 * df); return Math.round(df * Math.pow(1 - k + Z4[i] * Math.sqrt(k), 3) * 100) / 100;   // 자유도 31 이상: Wilson–Hilferty 근사
+  }
+  function mahalDf() { return profile ? ruleTargets().length : 0; }
+  /** 카드의 임계값 선택지. 마할라노비스만 자유도(진단 대상 변수 수)에 따라 달라진다 */
+  function optsOf(a) {
+    if (a.opts) return a.opts;
+    var df = mahalDf();
+    if (df < 2) return [[1, 'χ² 97.5% 분위수 (표준)']];
+    return [[1, 'χ² 97.5% · D² > ' + chi2q(df, 1).toFixed(2) + ' (표준)'], [chi2q(df, 2), 'χ² 99% · D² > ' + chi2q(df, 2).toFixed(2)], [chi2q(df, 3), 'χ² 99.9% · D² > ' + chi2q(df, 3).toFixed(2) + ' (극단값만)']];
+  }
+  /** 선택할 수 없는 기법이면 이유를 돌려준다 */
+  function unavailable(a) {
+    if (a.id === 'mahalanobis' && profile && mahalDf() < 2) return '수치형 변수 2개 이상 필요';
+    return null;
+  }
 
   function algo(id) { return ALGOS.filter(function (a) { return a.id === id; })[0] || null; }
   /* 변수별 상태: 결측과 이상치를 따로 표시한다. 이상치 상태는 서버 recommendation 을 우선하고, 비율 기준은 상수로 둔다 */
@@ -102,16 +126,18 @@
   /** 이상치 탐지 기법: 같은 모양 카드 격자 대신 선택 목록. 임계값은 고른 기법에서만 보인다 */
   function renderAlgos() {
     A.$('#algo-grid').innerHTML = ALGOS.map(function (a) {
-      var on = sel.method === a.id;
-      return '<div data-algo="' + a.id + '" role="button" tabindex="0" aria-pressed="' + on + '" class="p-3.5 rounded-xl border text-left transition-colors cursor-pointer relative flex flex-col justify-between ' + (on ? 'border-brand bg-brand-soft' : 'border-rule hover:border-rule-3 hover:bg-paper-3 bg-white') + '">' +
+      var on = sel.method === a.id, off = !!unavailable(a), opts = optsOf(a);
+      return '<div data-algo="' + a.id + '" role="button" tabindex="' + (off ? '-1' : '0') + '"' + (off ? ' aria-disabled="true"' : '') + ' aria-pressed="' + on + '" class="p-3.5 rounded-xl border text-left transition-colors relative flex flex-col justify-between ' +
+        (off ? 'cursor-not-allowed opacity-60 border-rule bg-paper-3' : 'cursor-pointer ' + (on ? 'border-brand bg-brand-soft' : 'border-rule hover:border-rule-3 hover:bg-paper-3 bg-white')) + '">' +
         '<div><div class="flex items-center justify-between gap-1"><span class="text-body font-bold text-ink">' + A.esc(a.name) + '</span><span class="text-xs text-muted whitespace-nowrap">' + a.tag + '</span></div>' +
         '<p class="text-xs text-ink-3 mt-1.5 leading-relaxed">' + a.desc + '</p></div>' +
         '<div class="mt-3 pt-2 border-t flex items-center justify-between gap-2 text-xs ' + (on ? 'border-brand/20' : 'border-rule') + '"><span class="font-semibold ' + (on ? 'text-ink-2' : 'text-ink-3') + '">' + a.label + '</span>' +
-          (on
+          (off ? '<span class="text-xs text-ink-3 py-0.5">' + unavailable(a) + '</span>'
+          : on
             ? '<select data-thr="1" aria-label="' + A.esc(a.name) + ' ' + A.esc(a.label.replace(/:$/, '')) + '" class="bg-white border border-rule-3 rounded px-1.5 py-0.5 text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-link/30 focus:border-link">' +
-              a.opts.map(function (o) { return '<option value="' + o[0] + '"' + (Number(sel.threshold) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>'
+              opts.map(function (o) { return '<option value="' + o[0] + '"' + (Number(sel.threshold) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>'
             // 선택하지 않은 카드: 누를 수 없는 선택창 대신 기본값을 글자로만 보여준다 (카드를 고르면 선택창으로 바뀜)
-            : '<span class="text-xs text-ink-3 py-0.5">' + (a.opts.filter(function (o) { return o[0] === a.def; })[0] || a.opts[0])[1] + '</span>') + '</div></div>';
+            : '<span class="text-xs text-ink-3 py-0.5">' + (opts.filter(function (o) { return o[0] === a.def; })[0] || opts[0])[1] + '</span>') + '</div></div>';
     }).join('');
     var a = algo(sel.method);
     A.$('#algo-sel-name').textContent = a ? a.name : '-';
@@ -162,25 +188,50 @@
     var nums = ruleTargets();
     if (!selectedCol && nums.length) selectedCol = nums[0].column;
     var TD = '<td class="py-2.5 px-3 text-right">', DASH = '<span class="text-rule-3">-</span>';
+    var combo = !!a && a.id === 'mahalanobis';   // 마할라노비스는 변수 조합(행) 기준 결과라 변수별 칸에는 값을 두지 않는다
     function missCell(mc) { return TD + (mc > 0 ? '<span class="text-warn-ink font-bold">' + A.num(mc) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>'; }
     function rowOpen(col) { return '<tr data-col="' + A.esc(col) + '" class="cursor-pointer transition-colors ' + (col === selectedCol ? 'bg-brand-soft font-semibold' : 'hover:bg-paper-3') + '">'; }
     var NAME = '<td class="py-2.5 px-3 font-sans font-medium text-ink whitespace-nowrap">';
     A.$('#var-body').innerHTML = nums.map(function (n) {
       var mc = (miss[n.column] || {}).n_missing || n.missing || 0, o = outl[n.column];
       return rowOpen(n.column) + NAME + A.esc(n.column) + '</td>' + missCell(mc) +
-        TD + (!a || !o ? DASH : o.n_outliers > 0 ? '<span class="text-warn-ink font-bold">' + outCount(o) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
-        TD + (!a || !o ? DASH : '<span class="text-ink-2">' + A.fix((o.ratio || 0) * 100, 2) + '%</span>') + '</td>' +
+        TD + (!a || !o || combo ? DASH : o.n_outliers > 0 ? '<span class="text-warn-ink font-bold">' + outCount(o) + '</span>' : '<span class="text-ink-4">0</span>') + '</td>' +
+        TD + (!a || !o || combo ? DASH : '<span class="text-ink-2">' + A.fix((o.ratio || 0) * 100, 2) + '%</span>') + '</td>' +
         TD + (n.skewness == null ? DASH : '<span class="text-ink-2">' + A.fix(n.skewness, 2) + '</span>') + '</td>' +
         '<td class="py-2.5 px-3 font-sans text-xs">' + statusHtml(missStatus(mc)) + '</td>' +
-        '<td class="py-2.5 px-3 font-sans text-xs">' + statusHtml(outStatus(n, o, !!a)) + '</td></tr>';
+        '<td class="py-2.5 px-3 font-sans text-xs">' + statusHtml(outStatus(n, o, !!a && !combo)) + '</td></tr>';
     }).join('') + (profile.categorical || []).map(function (c) {
       var mc = (miss[c.column] || {}).n_missing != null ? miss[c.column].n_missing : c.missing || 0;
       return rowOpen(c.column) + NAME + A.esc(c.column) + '<span class="ml-1.5 text-xs font-normal text-ink-3">범주형</span></td>' + missCell(mc) +
         TD + DASH + '</td>' + TD + DASH + '</td>' + TD + DASH + '</td>' +
         '<td class="py-2.5 px-3 font-sans text-xs">' + statusHtml(missStatus(mc)) + '</td><td class="py-2.5 px-3 font-sans text-xs">' + DASH + '</td></tr>';
     }).join('') || '<tr><td colspan="7" class="py-6 text-center text-ink-4 font-sans">표시할 변수가 없습니다.</td></tr>';
-    A.$('#judge-note').textContent = '이상치 상태: 이상치 없음 → 양호, 비율 ' + (OUT_LOW_RATIO * 100) + '% 미만 → 확인 권장, 그 외 → 검토 필요. 로그 변환 권장은 서버 권고(recommendation)를 따릅니다. 이상치 상태는 탐지를 실행한 뒤에 표시됩니다.' +
-      (excludedNums().length ? ' 식별자·이진 열은 진단과 전처리 대상에서 제외했습니다: ' + excludedNums().map(function (n) { return n.column; }).join(', ') + ' (1단계 변수 속성에서 타입을 바꾸면 달라집니다).' : '');
+    /* 표 아래 안내는 역할이 다른 두 묶음이다: ① 이번 결과에 대한 메시지(주황 주의 · 남색 참고 · 회색 제외) ② 표 읽는 법(범례). 묶음 사이는 머리선으로 나눈다. */
+    var KIND = { warn: 'krds-warning', info: 'krds-info', mute: 'krds-note' };   // 기존 경고 메시지와 같은 틀(상자 없음, 색 글자 + 아이콘)
+    function note(kind, title, body) {
+      return '<div class="krds-msg ' + KIND[kind] + '" role="note"><div class="jn-text"><div class="jn-title">' + title + '</div>' + (body ? '<p class="jn-desc">' + body + '</p>' : '') + '</div></div>';
+    }
+    var notes = [];
+    if (combo) {
+      var c0 = (profile.outliers || []).filter(function (x) { return x && x.n_outliers != null; })[0];
+      if (c0) notes.push(note('info', '이 기법은 행 전체를 한 번에 판정합니다',
+        '변수별로 나누지 않고 한 행(관측치)의 모든 변수를 함께 봅니다. 이상치는 <b>' + A.num(c0.n_outliers) + '행</b>(' + A.fix((c0.ratio || 0) * 100, 2) + '%)이고' + (c0.upper_bound != null ? ', 판정 기준은 <b>D² ' + A.fix(c0.upper_bound, 2) + '</b>입니다' : '') + '. 그래서 표의 변수별 이상치 칸은 비어 있습니다.'));
+    }
+    if (a && (a.id === 'isolation_forest' || a.id === 'lof')) {
+      var disc = ruleTargets().filter(function (n) { var c = colInfo(n.column); return c && c.n_unique != null && c.n_unique <= 10; }).map(function (n) { return n.column; });
+      if (disc.length) notes.push(note('warn', '이산형 열은 판정이 불안정할 수 있습니다 (' + A.esc(disc.join(', ')) + ')',
+        '고유값이 10개 이하인 열은 ' + A.esc(a.name) + ' 결과를 값 분포로 직접 확인해 주세요.'));
+    }
+    if (excludedNums().length) notes.push(note('mute', '진단에서 제외한 열 (' + A.esc(excludedNums().map(function (n) { return n.column; }).join(', ')) + ')',
+      '식별자·이진 열입니다. 타입을 바꾸려면 1단계의 변수 속성에서 수정하세요.'));
+    var pct = OUT_LOW_RATIO * 100;
+    var msgs = notes.length ? '<div class="jn-group">' + notes.join('') + '</div>' : '';
+    var legend = '<div class="jn-legend"><span class="jn-lg-title">상태 판정 기준</span>' +
+      '<span><b>양호</b> 이상치 없음</span><span><b>확인 권장</b> 비율 ' + pct + '% 미만</span><span><b class="text-warn-ink">검토 필요</b> 그 외</span>' +
+      '<p class="jn-foot">로그 변환 권장은 값이 한쪽으로 크게 치우친 변수에 표시됩니다. 이상치 상태는 탐지를 실행하면 나타납니다.</p></div>';
+    notes = [legend + msgs];   // 표 읽는 법(범례)을 표 바로 아래에, 이번 결과에 대한 메시지는 그 아래에
+    A.$('#judge-note').innerHTML = notes.join('');
+    A.icons();
     renderDetail();
     renderAlgos();
   }
@@ -203,12 +254,16 @@
     var o = byCol(profile.outliers)[selectedCol];
     var a = active && algo(active.method);
     function box(label, v, hi) { return '<div class="p-3 rounded-xl border text-left ' + (hi ? 'bg-brand-soft border-brand/40' : 'bg-paper-3 border-rule') + '"><span class="' + (hi ? 'text-brand font-semibold' : 'text-ink-3') + ' text-xs block font-sans whitespace-nowrap">' + label + '</span><strong class="text-ink text-[15px]">' + A.fix(v, 2) + '</strong></div>'; }
-    var bounds = a && o && (o.lower_bound !== null && o.lower_bound !== undefined || o.upper_bound !== null && o.upper_bound !== undefined) ? '하한: ' + A.fix(o.lower_bound, 2) + ' | 상한: ' + A.fix(o.upper_bound, 2) : '평균: ' + A.fix(n.mean, 2) + ' | 표준편차: ±' + A.fix(n.std, 2);
+    var bounds;
+    if (a && o && a.id === 'mahalanobis') bounds = '변수 조합 기준 결과' + (o.upper_bound != null ? ' · D² 임계 ' + A.fix(o.upper_bound, 2) : '');   // upper_bound 는 변수 값이 아니라 D² 임계값이다
+    else if (a && o && o.lower_bound == null && o.upper_bound == null) bounds = '경계 없음';
+    else if (a && o) bounds = '하한: ' + (o.lower_bound == null ? '없음' : A.fix(o.lower_bound, 2)) + ' | 상한: ' + (o.upper_bound == null ? '없음' : A.fix(o.upper_bound, 2));
+    else bounds = '평균: ' + A.fix(n.mean, 2) + ' | 표준편차: ±' + A.fix(n.std, 2);
     var samples = '';
     if (a && o && o.n_outliers > 0) {
       var idx = o.sample_indices || [], vals = o.sample_values || [];
-      samples = '<div class="pt-2 border-t border-paper-2"><div class="text-xs font-bold text-ink-0 mb-1.5 flex items-center justify-between"><span>검출된 이상치 표본 (' + A.num(o.n_outliers) + '건, ' + (o.ratio * 100).toFixed(1) + '%' + (o.n_outliers > idx.length ? ', 상위 ' + idx.length + '건 표시' : '') + ')</span><span class="text-xs font-normal text-ink-4">탐지 기준: ' + A.esc(a.name) + '</span></div><div class="max-h-36 overflow-y-auto space-y-1">' +
-        idx.slice(0, 20).map(function (ri, i) { return '<div class="flex items-center justify-between text-xs px-1 py-1.5 border-b border-paper-2 gap-2"><span class="text-ink-2 font-bold shrink-0">#' + ri + '행</span><span class="text-ink-0 font-bold">관측값: ' + A.esc(vals[i]) + '</span></div>'; }).join('') + '</div></div>';
+      samples = '<div class="pt-2 border-t border-paper-2"><div class="text-xs font-bold text-ink-0 mb-1.5 flex items-center justify-between"><span>' + (a.id === 'mahalanobis' ? '검출된 이상치 행 · 변수 조합 기준 (' : '검출된 이상치 표본 (') + A.num(o.n_outliers) + '건, ' + (o.ratio * 100).toFixed(1) + '%' + (o.n_outliers > idx.length ? ', 상위 ' + idx.length + '건 표시' : '') + ')</span><span class="text-xs font-normal text-ink-4">탐지 기준: ' + A.esc(a.name) + '</span></div><div class="max-h-36 overflow-y-auto space-y-1">' +
+        idx.slice(0, 20).map(function (ri, i) { return '<div class="flex items-center justify-between text-xs px-1 py-1.5 border-b border-paper-2 gap-2"><span class="text-ink-2 font-bold shrink-0">#' + ri + '행</span>' + (a.id === 'mahalanobis' ? '' : '<span class="text-ink-0 font-bold">관측값: ' + A.esc(vals[i]) + '</span>') + '</div>'; }).join('') + '</div></div>';
     }
     if (!a) samples = '<div class="pt-2 border-t border-paper-2 text-xs text-ink-4">이상치 분포는 위에서 탐지 기법을 선택하고 탐지를 실행하면 표시됩니다.</div>';
     card.innerHTML = '<div class="sec-head flex items-center justify-between flex-wrap gap-2"><h4 class="text-title font-semibold text-ink">[' + A.esc(n.column) + '] 통계 지표' + (a ? ' 및 이상치 분포' : '') + '</h4><span class="text-xs text-ink-3 font-mono">' + bounds + '</span></div>' +
@@ -216,14 +271,18 @@
   }
 
   /* ---------------- 전처리 전략 ---------------- */
+  /** 서버는 마할라노비스(변수 조합 지표)에 이상치 행 제거(drop)만 허용한다. 윈저라이징·로그 변환은 3단계 진행 때 거절된다. */
+  function optLocked(k, v) { return k === 'outlier_treatment' && !!active && active.method === 'mahalanobis' && (v === 'winsorize' || v === 'log'); }
+  /** 경계가 없는 기법(LOF·Isolation Forest·Grubbs)의 윈저라이징은 정상으로 판정된 값의 최소·최대로 보정한다 */
+  function optDesc(k, o) { return k === 'outlier_treatment' && o[0] === 'winsorize' && active && /^(lof|isolation_forest|grubbs)$/.test(active.method) ? '정상값의 최소·최대로 보정' : o[2]; }
   function renderStrategies() {
     A.$('#strategy-grid').innerHTML = Object.keys(STRATS).map(function (k) {
       var g = STRATS[k];
       return '<div class="p-4 rounded-xl border border-rule bg-paper-3 space-y-2.5"><span class="text-body font-bold text-ink block pb-2 border-b border-rule">' + g.title + '</span><div class="space-y-1">' +
         g.opts.map(function (o) {
-          var on = pcfg[k] === o[0];
-          return '<label class="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg border text-body cursor-pointer transition-colors ' + (on ? 'bg-white border-brand font-semibold text-brand' : 'border-transparent text-ink-2 hover:bg-white') + '">' +
-            '<div class="flex items-center gap-2 min-w-0"><input type="radio" name="' + k + '" value="' + o[0] + '" ' + (on ? 'checked' : '') + ' class="text-blue-600 focus:ring-blue-600"><span class="whitespace-nowrap">' + o[1] + '</span></div><span class="text-xs text-ink-3 font-normal text-right">' + o[2] + '</span></label>';
+          var on = pcfg[k] === o[0], lock = optLocked(k, o[0]);
+          return '<label' + (lock ? ' title="마할라노비스는 이상치 행 제거(Drop)만 지원합니다."' : '') + ' class="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg border text-body transition-colors ' + (lock ? 'cursor-not-allowed opacity-50 border-transparent text-ink-3' : 'cursor-pointer ' + (on ? 'bg-white border-brand font-semibold text-brand' : 'border-transparent text-ink-2 hover:bg-white')) + '">' +
+            '<div class="flex items-center gap-2 min-w-0"><input type="radio" name="' + k + '" value="' + o[0] + '" ' + (on ? 'checked' : '') + (lock ? ' disabled' : '') + ' class="text-blue-600 focus:ring-blue-600"><span class="whitespace-nowrap">' + o[1] + '</span></div><span class="text-xs text-ink-3 font-normal text-right">' + (lock ? 'Drop만 가능' : optDesc(k, o)) + '</span></label>';
         }).join('') + '</div></div>';
     }).join('');
   }
@@ -239,9 +298,16 @@
   /** '탐지 실행' 버튼: 선택한 기법·임계값으로 이상치 탐지 */
   function runDetect() {
     var req = { method: sel.method, threshold: sel.threshold };
-    return A.get('/api/v1/datasets/' + encodeURIComponent(dsId) + '/outliers' + A.qs(req)).then(function (list) {
+    // 화면 표·전처리와 같은 변수 집합(식별자·이진 열 제외)으로 탐지한다. 마할라노비스는 변수 전체의 조합이라 열 집합이 결과와 자유도를 좌우한다.
+    var cols = ruleTargets().map(function (n) { return n.column; });
+    return A.get('/api/v1/datasets/' + encodeURIComponent(dsId) + '/outliers' + A.qs({ method: req.method, threshold: req.threshold, columns: cols.length ? cols : null })).then(function (list) {
       profile.outliers = list || [];
       active = req;
+      if (optLocked('outlier_treatment', pcfg.outlier_treatment)) {
+        pcfg.outlier_treatment = 'keep';
+        A.toast('마할라노비스는 이상치 행 제거(Drop)만 지원해 이상치 정제를 "원본값 보존"으로 되돌렸습니다.', 'error');
+      }
+      renderStrategies();
       renderQuality();
       persist();
       syncNextBtn();
@@ -273,6 +339,7 @@
       var c = e.target.closest('[data-algo]');
       if (!c) return;
       var a = algo(c.getAttribute('data-algo'));
+      if (unavailable(a)) return;
       if (sel.method !== a.id) { sel.method = a.id; sel.threshold = a.def; }
       renderAlgos();
       A.icons();

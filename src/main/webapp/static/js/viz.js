@@ -71,7 +71,7 @@
     var cols = [];
     rows.slice(0, 30).forEach(function (r) { Object.keys(r || {}).forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
     var shown = rows.slice(0, maxRows || 200);
-    return '<div class="overflow-x-auto max-h-96 overflow-y-auto border border-rule rounded-lg"><table class="w-full text-body text-left border-collapse"><thead class="sticky top-0"><tr>' +
+    return '<div class="scroll-tbl overflow-x-auto max-h-96 overflow-y-auto border border-rule rounded-lg"><table class="w-full text-body text-left"><thead><tr>' +
       cols.map(function (c) { return '<th class="' + TH_CLS + '">' + A.esc(V.label(c)) + '</th>'; }).join('') + '</tr></thead><tbody class="font-mono">' +
       shown.map(function (r) {
         return '<tr class="hover:bg-blue-50/40 transition-colors">' + cols.map(function (c) {

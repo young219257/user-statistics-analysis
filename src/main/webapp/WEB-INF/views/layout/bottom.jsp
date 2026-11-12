@@ -97,9 +97,6 @@
       </ol>
       <p class="mt-2 pt-3 border-t border-rule text-xs text-ink-3">반입한 데이터와 분석 결과는 마지막 사용 후 1시간이 지나면 삭제됩니다. 공유 링크를 만든 분석 패키지만 7일간 보관됩니다.</p>
     </div>
-    <div class="px-6 py-3 border-t border-rule flex justify-end">
-      <button type="button" data-close="help-modal" class="px-4 py-2 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl text-[13px] transition-colors cursor-pointer">닫기</button>
-    </div>
   </div>
 </div>
 
@@ -120,5 +117,5 @@
 </div>
 
 <script>window.__CTX__ = '${ctx}';</script>
-<script src="${ctx}/static/js/common.js?v=20261136"></script>
-<script src="${ctx}/static/js/viz.js?v=20261136"></script>
+<script src="${ctx}/static/js/common.js?v=20261158"></script>
+<script src="${ctx}/static/js/viz.js?v=20261158"></script>

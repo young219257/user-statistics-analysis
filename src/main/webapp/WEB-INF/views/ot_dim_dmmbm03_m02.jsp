@@ -55,7 +55,7 @@
           <tbody class="divide-y divide-paper-2 font-mono text-body" id="var-body"></tbody>
         </table>
       </div>
-      <p class="text-xs text-ink-4 mt-2.5 leading-relaxed" id="judge-note"></p>
+      <div id="judge-note" class="mt-3"></div>
       </div>
     </div>
 
@@ -86,6 +86,6 @@
 </div>
 
 <%@ include file="layout/bottom.jsp" %>
-<script src="${ctx}/static/js/ot_dim_dmmbm03_m02.js?v=20261136"></script>
+<script src="${ctx}/static/js/ot_dim_dmmbm03_m02.js?v=20261158"></script>
 </body>
 </html>

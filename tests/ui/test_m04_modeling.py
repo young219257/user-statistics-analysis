@@ -143,23 +143,30 @@ def _post_analysis_body(pg, action):
     return json.loads(bodies[-1])
 
 
-def test_UT_M04_09_cluster_standardize_on_by_default(ready_page):
-    """군집·PCA: '표준화 후 분석'이 기본으로 켜져 있고, 켜져 있으면 scaling 을 보내지 않아 서버 기본(표준화)을 따른다"""
+def test_UT_M04_09_cluster_pca_guide_to_step2_scaling(ready_page):
+    """군집·PCA: 4단계에는 표준화 선택이 없고, 2단계에서 스케일링하지 않았으면 2단계로 유도하는 안내가 나온다. 요청에는 scaling 을 보내지 않는다"""
     pg = ready_page
     open_m04(pg)
+    for method in ("kmeans", "pca"):
+        pick_method(pg, method)
+        assert pg.locator("[data-par=standardize]").count() == 0                  # 4단계 표준화 선택 없음
+        warn = pg.locator("#pre-warn .krds-warning")
+        assert warn.is_visible() and "스케일링" in warn.inner_text()
+        assert warn.locator("a.jn-link").get_attribute("href").endswith("/analysis/step2")
+    pick_method(pg, "linear_regression")
+    assert pg.locator("#pre-warn .krds-msg").filter(has_text="스케일링").count() == 0   # 다른 기법에는 안내 없음
     pick_method(pg, "kmeans")
-    assert pg.locator("[data-par=standardize]").is_checked()
     body = _post_analysis_body(pg, lambda: run_and_wait(pg))
-    assert "scaling" not in body["preprocessing"]            # 'none' 을 강제하지 않음
-    assert "standardize" not in body["params"]               # 화면 전용 옵션은 분석 파라미터로 보내지 않음
+    assert "scaling" not in body["preprocessing"]            # 스케일링은 2단계에서만 정한다
+    assert "standardize" not in body["params"]
 
 
-def test_UT_M04_10_cluster_raw_scale_when_unchecked(ready_page):
-    """'표준화 후 분석'을 해제하면 원 단위(scaling='none')로 보낸다"""
-    pg = ready_page
-    open_m04(pg)
-    pick_method(pg, "pca")
-    pg.locator("[data-par=standardize]").uncheck()
-    body = _post_analysis_body(pg, lambda: run_and_wait(pg))
-    assert body["preprocessing"].get("scaling") == "none"
+def test_UT_M04_10_guide_when_step2_scaling_applied(page):
+    """2단계에서 표준화를 적용했으면 경고 대신 '2단계에서 표준화를 적용한 데이터' 안내가 나온다"""
+    prepare_to_m03(page, CLEAN, "표준화 (Standard)")
+    open_m04(page)
+    pick_method(page, "kmeans")
+    info = page.locator("#pre-warn .krds-info")
+    assert info.is_visible() and "표준화(Standard)" in info.inner_text()
+    assert page.locator("#pre-warn .krds-warning").count() == 0
 

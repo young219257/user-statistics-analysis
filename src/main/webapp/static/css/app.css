@@ -1500,7 +1500,7 @@ body { font-size: 13px; }
 .pair-bar > i.pos { background: #256ef4; } .pair-bar > i.neg { background: #e11d48; }
 .pair-r { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 .pair-r.pos { color: #256ef4; } .pair-r.neg { color: #e11d48; }
-.pair-chip { justify-self: start; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; line-height: 1.2; background: #f2f4f6; color: var(--color-ink-3); }
+.pair-chip { justify-self: start; white-space: nowrap; word-break: keep-all; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; line-height: 1.2; background: #f2f4f6; color: var(--color-ink-3); }
 .pair-chip.strong { background: #e6ecf9; color: var(--color-brand); }
 .pair-chip.mid { background: #eef0f2; color: var(--color-ink-2); }
 .pair-p { color: var(--color-ink-4); font-variant-numeric: tabular-nums; text-align: right; }
@@ -1519,7 +1519,7 @@ body { font-size: 13px; }
 #main-content input[type="radio"]:checked:not(#_a):not(#_b), #strategy-grid label.border-brand input[type="radio"]:checked:not(#_a):not(#_b) { background: radial-gradient(circle at center, var(--sel, var(--color-brand)) 0 3px, #fff 4px); }
 .pair-row { grid-template-columns: 22px minmax(0, 1fr) 52px 44px 78px; }
 .pair-r.pos, .pair-r.neg { color: var(--color-brand); }
-.pair-row { grid-template-columns: minmax(0, 1fr) 52px 44px 78px; }
+.pair-row { grid-template-columns: minmax(0, 1fr) 52px max-content 78px; }
 
 /* 분석 실패 안내: 작게 */
 #result-panel { padding: 10px 14px; border-radius: 12px; }
@@ -1574,43 +1574,40 @@ body { font-size: 13px; }
 /* 토스트: 화면 오른쪽 하단 */
 #toast:not(#_a):not(#_b):not(#_c):not(#_d):not(#_e):not(#_f):not(#_g):not(#_h):not(#_i) { top: auto; bottom: 32px; left: auto; right: 32px; transform: none; }
 
-/* 맥락적 도움말: ⓘ 아이콘 버튼 → 둥근 네모 팝오버(말풍선 꼬리·색 띠 없음). 구조·동작은 KRDS 맥락적 도움말(버튼 aria-expanded/Esc/바깥 클릭/초점 복귀)을 따른다
+/* 맥락적 도움말: KRDS(krds.go.kr 컴포넌트 > 맥락적 도움말) 표준 값을 그대로 쓴다. 1rem=10px 기준 값을 px 로 환산.
+ * 아이콘 버튼 24→ 정보(ⓘ) 아이콘(회색) · 팝오버는 말풍선 꼬리 없이 둥근 네모(12px) · 제목 17px/700 · 본문 15px
  * 마크업: .krds-contextual-help[.top|.bottom][.left|.center|.right] > .tooltip-txt + .tooltip-action > button.tooltip-btn + .tooltip-popover(.tooltip-title, .tooltip-contents, button.tooltip-close) */
-.krds-contextual-help { --kch-offset-x: 0px; display: flex; align-items: center; justify-content: flex-start; flex-direction: row; gap: 10px; }
+.krds-contextual-help { --kch-offset-x: 0px; display: flex; align-items: center; justify-content: flex-start; flex-direction: row; gap: 4px; }
 .krds-contextual-help .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .krds-contextual-help .tooltip-txt { font-size: 15px; }
 .krds-contextual-help .tooltip-action { position: relative; display: flex; align-items: center; }
-.krds-contextual-help .tooltip-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%;
-  background: transparent; color: var(--color-brand); cursor: pointer; transition: background-color .15s; }
+.krds-contextual-help .tooltip-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: #33363d; cursor: pointer; }
 .krds-contextual-help .tooltip-btn::after { content: ""; position: absolute; inset: -8px; }
-.krds-contextual-help .tooltip-btn:hover { background: var(--color-brand-soft); }
-.krds-contextual-help .tooltip-btn[aria-expanded="true"] { background: var(--color-brand-soft); }
-.krds-contextual-help .tooltip-btn:focus-visible, .krds-contextual-help .tooltip-close:focus-visible { outline: 3px solid var(--color-link); outline-offset: 2px; }
-.krds-contextual-help .svg-icon { display: inline-block; width: 22px; height: 22px; flex: none; background-color: currentColor;
-  -webkit-mask: no-repeat center / contain; mask: no-repeat center / contain; }
+.krds-contextual-help .tooltip-btn:hover { background: #eef2f7; }
+.krds-contextual-help .tooltip-btn:active, .krds-contextual-help .tooltip-btn[aria-expanded="true"] { background: #dde4ee; }
+.krds-contextual-help .tooltip-btn:focus-visible, .krds-contextual-help .tooltip-close:focus-visible { outline: 3px solid #0b78cb; outline-offset: 1px; }
+.krds-contextual-help .svg-icon { display: inline-block; width: 20px; height: 20px; flex: none; background-color: currentColor; -webkit-mask: no-repeat center / contain; mask: no-repeat center / contain; }
 .krds-contextual-help .ico-tooltip { -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5229 22 12C22 6.47719 17.5228 2 12 2C6.47715 2 2 6.4772 2 12ZM12 20.4C7.36081 20.4 3.6 16.6392 3.6 12C3.6 7.36085 7.36081 3.6 12 3.6C16.6391 3.6 20.4 7.36085 20.4 12C20.4 16.6392 16.6392 20.4 12 20.4ZM13.0992 8.24101C13.0992 8.90376 12.562 9.44101 11.8992 9.44101C11.2365 9.44101 10.6992 8.90376 10.6992 8.24101C10.6992 7.57827 11.2365 7.04101 11.8992 7.04101C12.562 7.04101 13.0992 7.57827 13.0992 8.24101ZM10.1992 10.6312C10.1992 10.5207 10.2888 10.4312 10.3992 10.4312H12.9008C13.0112 10.4312 13.1008 10.5207 13.1008 10.6312V15.5937H13.8C13.9105 15.5937 14 15.6833 14 15.7937V16.5937C14 16.7042 13.9105 16.7937 13.8 16.7937H10.2C10.0895 16.7937 10 16.7042 10 16.5937V15.7937C10 15.6833 10.0895 15.5937 10.2 15.5937H11.3008V11.8312C11.3008 11.7207 11.2112 11.6312 11.1008 11.6312H10.3992C10.2888 11.6312 10.1992 11.5416 10.1992 11.4312V10.6312Z' fill='%2333363D'/%3E %3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5229 22 12C22 6.47719 17.5228 2 12 2C6.47715 2 2 6.4772 2 12ZM12 20.4C7.36081 20.4 3.6 16.6392 3.6 12C3.6 7.36085 7.36081 3.6 12 3.6C16.6391 3.6 20.4 7.36085 20.4 12C20.4 16.6392 16.6392 20.4 12 20.4ZM13.0992 8.24101C13.0992 8.90376 12.562 9.44101 11.8992 9.44101C11.2365 9.44101 10.6992 8.90376 10.6992 8.24101C10.6992 7.57827 11.2365 7.04101 11.8992 7.04101C12.562 7.04101 13.0992 7.57827 13.0992 8.24101ZM10.1992 10.6312C10.1992 10.5207 10.2888 10.4312 10.3992 10.4312H12.9008C13.0112 10.4312 13.1008 10.5207 13.1008 10.6312V15.5937H13.8C13.9105 15.5937 14 15.6833 14 15.7937V16.5937C14 16.7042 13.9105 16.7937 13.8 16.7937H10.2C10.0895 16.7937 10 16.7042 10 16.5937V15.7937C10 15.6833 10.0895 15.5937 10.2 15.5937H11.3008V11.8312C11.3008 11.7207 11.2112 11.6312 11.1008 11.6312H10.3992C10.2888 11.6312 10.1992 11.5416 10.1992 11.4312V10.6312Z' fill='%2333363D'/%3E %3C/svg%3E"); }
 .krds-contextual-help .ico-modal-close { -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M20.4822 4.64622C20.7946 4.3338 20.7946 3.82727 20.4822 3.51485C20.1698 3.20243 19.6633 3.20243 19.3509 3.51485L11.9983 10.8674L4.6455 3.5145C4.33308 3.20208 3.82655 3.20208 3.51413 3.5145C3.20171 3.82692 3.20171 4.33345 3.51413 4.64587L10.867 11.9987L3.51166 19.354C3.19924 19.6665 3.19924 20.173 3.51166 20.4854C3.82408 20.7978 4.33061 20.7978 4.64303 20.4854L11.9983 13.1301L19.3533 20.4851C19.6657 20.7975 20.1723 20.7975 20.4847 20.4851C20.7971 20.1726 20.7971 19.6661 20.4847 19.3537L13.1297 11.9987L20.4822 4.64622Z' fill='%232D2D2D'/%3E %3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M20.4822 4.64622C20.7946 4.3338 20.7946 3.82727 20.4822 3.51485C20.1698 3.20243 19.6633 3.20243 19.3509 3.51485L11.9983 10.8674L4.6455 3.5145C4.33308 3.20208 3.82655 3.20208 3.51413 3.5145C3.20171 3.82692 3.20171 4.33345 3.51413 4.64587L10.867 11.9987L3.51166 19.354C3.19924 19.6665 3.19924 20.173 3.51166 20.4854C3.82408 20.7978 4.33061 20.7978 4.64303 20.4854L11.9983 13.1301L19.3533 20.4851C19.6657 20.7975 20.1723 20.7975 20.4847 20.4851C20.7971 20.1726 20.7971 19.6661 20.4847 19.3537L13.1297 11.9987L20.4822 4.64622Z' fill='%232D2D2D'/%3E %3C/svg%3E"); }
-.krds-contextual-help .tooltip-popover { display: block; position: absolute; z-index: 40; width: 380px; max-width: calc(100vw - 16px); box-sizing: border-box; overflow: visible;
-  padding: 0; border-radius: 14px; background: #fff; border: 1px solid var(--color-rule-3); text-align: left; font-weight: 400; word-break: keep-all;
-  box-shadow: 0 12px 32px rgba(22, 34, 79, .18), 0 2px 6px rgba(22, 34, 79, .08); }
+.krds-contextual-help .tooltip-popover { display: block; position: absolute; z-index: 40; width: 360px; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 24px; border-radius: 12px;
+  background: #ffffff; border: 1px solid #b1b8be; box-shadow: 0 0 2px 0 #00000014, 0 8px 16px 0 #0000001f; text-align: left; font-weight: 400; word-break: keep-all; }
 .krds-contextual-help .tooltip-popover[hidden] { display: none; }
-.krds-contextual-help .tooltip-title { display: block; margin: 0; padding: 20px 52px 0 22px; color: var(--color-ink); font-size: 16px; font-weight: 800; line-height: 1.4; }
-.krds-contextual-help .tooltip-contents { display: block; margin: 0; padding: 12px 22px 20px; font-size: 13.5px; line-height: 1.6; color: var(--color-ink-1); }
-.krds-contextual-help .tooltip-contents p { margin: 0 0 10px; color: var(--color-ink-2); }
-.krds-contextual-help .tooltip-contents dl { margin: 0; }
-.krds-contextual-help .tooltip-contents dt { margin: 0; padding-top: 10px; border-top: 1px solid var(--color-rule-2); font-size: 12.5px; font-weight: 800; color: var(--color-brand); }
-.krds-contextual-help .tooltip-contents dt:first-child { border-top: 0; padding-top: 0; }
-.krds-contextual-help .tooltip-contents dd { margin: 2px 0 10px; }
-.krds-contextual-help .tooltip-contents dd:last-child { margin-bottom: 0; }
-.krds-contextual-help .tooltip-close { position: absolute; top: 14px; right: 14px; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
-  padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--color-ink-3); cursor: pointer; }
-.krds-contextual-help .tooltip-close:hover { background: var(--color-rule-2); color: var(--color-ink); }
-.krds-contextual-help .tooltip-close .svg-icon { width: 18px; height: 18px; }
+.krds-contextual-help .tooltip-title { display: block; margin: 0; padding-right: 32px; font-size: 17px; font-weight: 700; line-height: 1.5; color: #131416; }
+.krds-contextual-help .tooltip-contents { display: block; margin: 16px 0 0; font-size: 15px; line-height: 1.5; color: #1e2124; }
+.krds-contextual-help .tp-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; }
+.krds-contextual-help .tp-name { font-size: 15px; font-weight: 700; color: #131416; }
+.krds-contextual-help .tp-desc { margin: 4px 0 0; font-size: 14px; line-height: 1.55; font-weight: 400; color: #464c53; }
+.krds-contextual-help .tp-foot { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid #e6e8ea; font-size: 13px; line-height: 1.5; color: #6d7882; }
+.krds-contextual-help .tooltip-close { position: absolute; top: 24px; right: 24px; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: #2d2d2d; cursor: pointer; }
+.krds-contextual-help .tooltip-close:hover { background: #eef2f7; }
+.krds-contextual-help .tooltip-close .svg-icon { width: 20px; height: 20px; }
 .krds-contextual-help.left .tooltip-popover { left: 0; margin-left: var(--kch-offset-x); }
 .krds-contextual-help.center .tooltip-popover { left: 50%; transform: translateX(-50%); }
 .krds-contextual-help.right .tooltip-popover { right: 0; margin-right: var(--kch-offset-x); }
-.krds-contextual-help.top .tooltip-popover { bottom: 100%; margin-bottom: 10px; }
-.krds-contextual-help.bottom .tooltip-popover { top: 100%; margin-top: 10px; }
+.krds-contextual-help.top .tooltip-popover { bottom: 100%; margin-bottom: 8px; }
+.krds-contextual-help.bottom .tooltip-popover { top: 100%; margin-top: 8px; }
 
 
 /* 선택한 데이터 탭: 선택 여부와 관계없이 크기를 같게(작은 쪽 기준), 선택은 색으로만 구분한다 */
@@ -1621,3 +1618,75 @@ body { font-size: 13px; }
 
 /* 이상치 탐지 알고리즘 카드: 선택하면 임계값이 드롭다운(36px)으로 바뀌어 카드가 커지고 구분선이 어긋나므로, 모든 카드의 파라미터 행 높이를 같게 고정한다 */
 #algo-grid [data-algo] > div:last-child { box-sizing: border-box; min-height: 45px; align-items: center; }
+
+/* 결과 리포트(4-2): 모든 표의 열 제목(thead th)을 가운데 정렬한다. 행 제목(tbody th)은 그대로 둔다 (이슈 #3) */
+#main-content #report-root table thead th { text-align: center; }
+/* 스크롤되는 표(차트 원시 데이터·표본별 원시데이터): 머리를 th 에 붙여 고정하고, 선은 border-collapse 대신 셀 테두리로 그려
+ * 스크롤할 때 머리와 첫 행 사이에 틈이 생기거나 행·구분선이 머리 뒤로 비치지 않게 한다 (이슈 #3) */
+#main-content .scroll-tbl table { border-collapse: separate; border-spacing: 0; }
+#main-content .scroll-tbl :is(th, td) { border-style: solid; border-color: var(--color-rule); border-width: 0 1px 1px 0; }
+#main-content .scroll-tbl :is(th, td):last-child { border-right-width: 0; }
+#main-content .scroll-tbl tbody tr:last-child td { border-bottom-width: 0; }
+#main-content .scroll-tbl thead th { position: sticky; top: 0; z-index: 2; background-clip: padding-box; background-color: #f2f4f6; }
+
+/* 2단계 진단 표 아래 안내 — 역할이 다른 두 묶음: ① 이번 결과에 대한 메시지(.jn-group) ② 표 읽는 법(.jn-legend). 묶음 사이는 머리선(범례가 위, 메시지가 아래).
+ * 메시지는 기존 경고 메시지(.krds-msg .krds-warning)와 같은 틀(상자 없음, 색 글자 + 아이콘)이고, 제목 줄과 설명 줄을 나눠 쓴다. */
+#judge-note { margin-top: 16px; }
+#judge-note .jn-group { display: grid; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--color-rule); }
+#judge-note .krds-msg { display: flex; align-items: flex-start; gap: 10px; padding: 0; }
+#judge-note .jn-text { min-width: 0; }
+#judge-note .jn-title { font-weight: 700; line-height: 1.5; }
+#judge-note .jn-desc { margin: 2px 0 0; font-weight: 400; color: var(--color-ink-1); word-break: keep-all; }
+#judge-note .jn-desc b { font-weight: 700; color: var(--color-ink); }
+#judge-note .krds-info { color: var(--color-brand); }
+#judge-note .krds-info::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e2c5d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4M12 8h.01'/%3E%3C/svg%3E"); }
+#judge-note .krds-note { color: var(--color-ink-2); }
+#judge-note .krds-note::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7684' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M8 12h8'/%3E%3C/svg%3E"); }
+#judge-note .jn-legend { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; font-size: 14px; line-height: 1.55; color: var(--color-ink-2); }
+#judge-note .jn-lg-title { font-weight: 700; color: var(--color-ink); }
+#judge-note .jn-legend b { font-weight: 600; color: var(--color-ink-1); }
+#judge-note .jn-legend b.text-warn-ink { font-weight: 700; }   /* 표의 '검토 필요' 글자와 같은 서식 */
+#judge-note .jn-foot { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--color-ink-3); }
+
+/* 공통 메시지 구조: 제목 줄 + 설명 줄(+ 링크). 2단계 진단 안내와 4단계 스케일링 안내가 함께 쓴다 */
+.krds-msg .jn-text { min-width: 0; }
+.krds-msg .jn-title { font-weight: 700; line-height: 1.5; }
+.krds-msg .jn-desc { margin: 2px 0 0; font-weight: 400; color: var(--color-ink-1); word-break: keep-all; }
+.krds-msg .jn-desc b { font-weight: 700; color: var(--color-ink); }
+.krds-msg .jn-link { display: inline-block; margin-top: 4px; font-weight: 600; color: var(--color-brand); text-decoration: underline; text-underline-offset: 3px; }
+.krds-msg .jn-link:hover { color: var(--color-brand-dark); }
+.krds-info { color: var(--color-brand); }
+.krds-info::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e2c5d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4M12 8h.01'/%3E%3C/svg%3E"); }
+
+/* 차트 내보내기 메뉴 (4-2 리포트 차트 카드·자세히 보기): 아이콘 버튼 하나 → PNG·JPEG 저장, 인쇄.
+ * 접근성: 보이는 크기 36px + 터치 영역 44px, 포커스는 윤곽선(색만으로 구분하지 않음), 메뉴 항목 호버와 포커스 모두 윤곽/배경 표시 */
+.cexp { position: relative; display: inline-flex; flex: none; }
+.cexp-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 9px;
+  background: #f2f4f6; color: var(--color-ink-2); cursor: pointer; transition: background-color .12s ease-out, border-color .12s ease-out, color .12s ease-out; }
+.cexp-btn::after { content: ""; position: absolute; inset: -4px; }                      /* 터치 영역 44×44px */
+.cexp-btn:hover, .cexp-btn[aria-expanded="true"] { background: var(--color-brand-soft); color: var(--color-brand); }
+.cexp-btn:focus-visible { outline: 3px solid var(--color-link); outline-offset: 2px; transition: none; }
+.cexp-ico { width: 17px; height: 17px; stroke-width: 2; }
+.cexp-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; min-width: 184px; margin: 0; padding: 6px; list-style: none; background: #fff;
+  border: 1px solid var(--color-rule-3); border-radius: 12px; box-shadow: 0 8px 20px rgba(16, 24, 40, .14); }
+.cexp-menu[hidden] { display: none; }
+.cexp-menu [role="menuitem"] { display: block; width: 100%; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; text-align: left; font-size: 14px; line-height: 1.4; color: var(--color-ink-1); cursor: pointer; white-space: nowrap; }
+.cexp-menu [role="menuitem"]:hover { background: var(--color-brand-soft); color: var(--color-brand); }
+.cexp-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--color-link); outline-offset: -2px; background: var(--color-brand-soft); color: var(--color-brand); }
+.cexp-sep { height: 1px; margin: 4px 6px; background: var(--color-rule); }
+@media (prefers-reduced-motion: reduce) { .cexp-btn { transition: none; } }
+
+/* 이상치 탐지 임계값 선택창: 카드 안에서 작고 가볍게 */
+#algo-grid [data-algo] select[data-thr]:not(#_a):not(#_b) { height: 26px; min-height: 26px; width: auto; min-width: 0; max-width: 100%; padding: 0 22px 0 8px; font-size: 12px; font-weight: 700; border-radius: 6px; background-position: right 5px center; background-size: 12px; }
+
+/* 내보내기 버튼: 헤더 오른쪽(종류 뱃지 옆) · 상세 화면 툴바. 평소엔 배경 없이 옅게, 올리면 면이 생긴다. 높이는 옆 요소와 맞춘다 */
+.cexp-bar .cexp-btn { width: 28px; height: 28px; background: transparent; color: var(--color-ink-3); }
+.cexp-bar:hover .cexp-btn, .cexp-bar .cexp-btn:focus-visible { background: #f2f4f6; color: var(--color-ink-1); }
+.cexp-bar .cexp-btn:hover, .cexp-bar .cexp-btn[aria-expanded="true"] { background: var(--color-brand-soft); color: var(--color-brand); }
+.cexp-badge { display: inline-flex; align-items: center; height: 28px; }
+.cexp-bar-lg .cexp-btn { width: 36px; height: 36px; border-radius: 10px; }
+
+/* 알고리즘 카드 하단: 라벨은 한 줄 고정, 선택창은 남는 폭 안에서 줄어든다(길면 …) — 한 줄 유지 */
+#algo-grid [data-algo] > div:last-child { flex-wrap: nowrap; }
+#algo-grid [data-algo] > div:last-child > span:first-child { white-space: nowrap; word-break: keep-all; flex: none; }
+#algo-grid [data-algo] select[data-thr]:not(#_a):not(#_b) { flex: 0 1 172px; min-width: 0; width: 172px; padding: 0 18px 0 7px; font-size: 11.5px; text-overflow: ellipsis; background-position: right 4px center; }
