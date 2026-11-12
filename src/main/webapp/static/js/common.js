@@ -185,7 +185,7 @@
           return res.json().then(function (j) {
             if (!res.ok) { var e = new Error(errMsg(j, res.status)); e.status = res.status; throw e; }
             // 202 + 작업(JobRead): 백그라운드 작업이 끝날 때까지 기다렸다가 최종 결과를 돌려준다 (호출부는 기존과 동일하게 결과만 받음)
-            if (res.status === 202 && isJob(j)) return waitJob(j, retryAfter(res), method, url, opts.onJob);
+            if (res.status === 202 && isJob(j)) return waitJob(j, retryAfter(res), method, url, opts.onJob, body);
             return j;
           });
         }
@@ -221,11 +221,14 @@
     return i >= 0 ? p.slice(i) : p;
   }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  /** 작업이 끝나면 결과를 읽는다: result → result_url → resource(dataset/analysis) → (탐색 GET) 같은 요청 재전송 */
-  function jobResult(job, method, url) {
+  /** 작업이 끝나면 결과를 읽는다: result → result_url → (탐색 POST) 같은 본문으로 다시 POST → resource(dataset/analysis) → (탐색 GET) 같은 요청 재전송 */
+  function jobResult(job, method, url, body) {
     if (job.result) return Promise.resolve(job.result);
     var ru = apiPath(job.result_url);
     if (ru) return App.get(ru);
+    // 열 목록을 본문으로 받는 탐색 POST(예: POST /datasets/{id}/outliers)의 작업은 result_url 이 null 이다. 작업이 끝난 뒤 같은 본문으로 다시 POST 하면 캐시에서 200 으로 받는다.
+    // (아래 resource 분기로 가면 결과 대신 데이터셋 상세를 조회하게 되므로 반드시 먼저 처리한다)
+    if (job.kind === 'explore' && method === 'POST') return App.api('POST', url, body === undefined ? {} : body);
     if (job.resource_type && job.resource_id) {
       var base = { dataset: '/api/v1/datasets/', analysis: '/api/v1/analyses/' }[job.resource_type];
       if (base) return App.get(base + encodeURIComponent(job.resource_id));
@@ -235,11 +238,11 @@
   }
   /** onJob(job): 상태를 조회할 때마다 호출 (예약 대기 순번·진행 상태 표시용, 선택). 작업 상태는
    *  queued(세션 대기열 예약, queue_position) → pending(워커 대기) → running → succeeded / failed / cancelled */
-  function waitJob(job, delay, method, url, onJob) {
+  function waitJob(job, delay, method, url, onJob, body) {
     var started = Date.now();
     function poll(j, wait) {
       if (onJob) { try { onJob(j); } catch (x) { /* 표시용이라 무시 */ } }
-      if (j.status === 'succeeded') return jobResult(j, method, url);
+      if (j.status === 'succeeded') return jobResult(j, method, url, body);
       if (j.status === 'cancelled') {
         // 분석은 취소돼도 분석 레코드(status=cancelled)가 남으므로 그걸 돌려줘 화면이 상태를 표시하게 한다
         if (j.kind === 'analysis' && (j.result_url || j.resource_id)) {

@@ -217,6 +217,8 @@
       if (c0) notes.push(note('info', '이 기법은 행 전체를 한 번에 판정합니다',
         '변수별로 나누지 않고 한 행(관측치)의 모든 변수를 함께 봅니다. 이상치는 <b>' + A.num(c0.n_outliers) + '행</b>(' + A.fix((c0.ratio || 0) * 100, 2) + '%)이고' + (c0.upper_bound != null ? ', 판정 기준은 <b>D² ' + A.fix(c0.upper_bound, 2) + '</b>입니다' : '') + '. 그래서 표의 변수별 이상치 칸은 비어 있습니다.'));
     }
+    if (combo && colsOmitted) notes.push(note('warn', '대상 열을 지정하지 않고 탐지했습니다',
+      '열이 많아 요청 길이 한계로 식별자·이진 열을 제외하지 못했습니다. 마할라노비스 결과가 3단계 전처리 기준과 다를 수 있습니다.'));
     if (a && (a.id === 'isolation_forest' || a.id === 'lof')) {
       var disc = ruleTargets().filter(function (n) { var c = colInfo(n.column); return c && c.n_unique != null && c.n_unique <= 10; }).map(function (n) { return n.column; });
       if (disc.length) notes.push(note('warn', '이산형 열은 판정이 불안정할 수 있습니다 (' + A.esc(disc.join(', ')) + ')',
@@ -295,12 +297,32 @@
       persist();
     });
   }
-  /** '탐지 실행' 버튼: 선택한 기법·임계값으로 이상치 탐지 */
+  /** '탐지 실행' 버튼: 선택한 기법·임계값으로 이상치 탐지.
+   *  대상 열(식별자·이진 제외)은 요청 본문으로 보낸다(POST /datasets/{id}/outliers) — GET 쿼리로 열 이름을 모두 붙이면 열이 많은 데이터셋에서
+   *  주소가 길어져 앞단이 414·400 으로 거절한다. POST 가 없는 서버(405)에서는 GET 으로 되돌아가고, 주소가 너무 길면 열 지정을 생략한다. */
+  var postOutliers = true;       // 서버가 POST 를 지원하지 않으면(405) 한 번 확인한 뒤로는 GET 을 쓴다
+  var colsOmitted = false;       // GET 으로 되돌아가 열 지정을 생략했는지 (마할라노비스에서만 결과에 영향)
+  var MAX_QUERY_CHARS = 6000;    // 앞단 한계(약 8KB)보다 여유를 둔 GET 주소 길이 상한
+  function requestOutliers(req, cols) {
+    var base = '/api/v1/datasets/' + encodeURIComponent(dsId) + '/outliers';
+    function viaGet() {
+      var withCols = base + A.qs({ method: req.method, threshold: req.threshold, columns: cols.length ? cols : null });
+      colsOmitted = withCols.length > MAX_QUERY_CHARS && cols.length > 0;
+      return A.get(colsOmitted ? base + A.qs({ method: req.method, threshold: req.threshold }) : withCols);
+    }
+    if (!postOutliers) return viaGet();
+    var body = { method: req.method, threshold: req.threshold };
+    if (cols.length) body.columns = cols;
+    return A.post(base, body).then(function (list) { colsOmitted = false; return list; }, function (e) {
+      if (e && e.status === 405) { postOutliers = false; return viaGet(); }   // POST 가 없는 이전 서버
+      throw e;
+    });
+  }
   function runDetect() {
     var req = { method: sel.method, threshold: sel.threshold };
     // 화면 표·전처리와 같은 변수 집합(식별자·이진 열 제외)으로 탐지한다. 마할라노비스는 변수 전체의 조합이라 열 집합이 결과와 자유도를 좌우한다.
     var cols = ruleTargets().map(function (n) { return n.column; });
-    return A.get('/api/v1/datasets/' + encodeURIComponent(dsId) + '/outliers' + A.qs({ method: req.method, threshold: req.threshold, columns: cols.length ? cols : null })).then(function (list) {
+    return requestOutliers(req, cols).then(function (list) {
       profile.outliers = list || [];
       active = req;
       if (optLocked('outlier_treatment', pcfg.outlier_treatment)) {

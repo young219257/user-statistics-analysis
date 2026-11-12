@@ -3,6 +3,7 @@
 기대값은 qa_main_utf8.csv 를 pandas 로 직접 계산한다. 서버(분석 API)의 알려진 결함으로 아직 실패하는 케이스는
 xfail 로 표시하고 사유(결함 번호)를 적는다. 결함이 고쳐지면 XPASS 로 알려 주므로 xfail 표시를 제거한다.
 """
+import json
 import re
 import time
 
@@ -304,3 +305,78 @@ def test_UT_M02_13_discrete_column_note_for_if_and_lof(page):
     detect(page, 5)
     note = page.locator("#judge-note").inner_text()
     assert "이산형" in note and "Isolation Forest" in note
+
+
+# ------------------------------------------------------------------ 이상치 탐지 요청 방식 (서버 #36: 열 목록을 본문으로 받는 POST)
+def _outlier_report(col="study_hours", n=3):
+    return {"column": col, "method": "iqr", "n_outliers": n, "ratio": n / 400, "lower_bound": 1.0, "upper_bound": 15.0, "n_lower": 0, "n_upper": n,
+            "skewness": 0.1, "recommendation": "keep", "recommendation_reason": "", "sample_indices": [1, 2, 3][:n], "sample_values": [20.0, 21.0, 22.0][:n]}
+
+
+def test_UT_M02_14_outliers_post_job_reposts_same_body(page):
+    """탐지는 POST /outliers 로 본문에 대상 열을 보낸다. 작업(202, result_url=null)이 끝나면 같은 본문으로 다시 POST 해 결과를 받고, 데이터셋 상세를 결과로 쓰지 않는다"""
+    posts = []
+
+    def handler(route):
+        req = route.request
+        if req.method != "POST":
+            return route.continue_()
+        posts.append(req.post_data_json)
+        if len(posts) == 1:       # 처음: 캐시에 없어 202 + 작업 (POST 는 result_url 이 null)
+            ds = re.search(r"/datasets/([^/]+)/outliers", req.url).group(1)
+            job = {"id": "job-1", "status": "succeeded", "status_url": "/api/v1/jobs/job-1", "kind": "explore", "resource_type": "dataset", "resource_id": ds, "result_url": None}
+            return route.fulfill(status=202, content_type="application/json", body=json.dumps(job))
+        return route.fulfill(status=200, content_type="application/json", body=json.dumps([_outlier_report()]))   # 두 번째: 캐시에서 200
+
+    page.route("**/api/v1/datasets/*/outliers", handler)
+    _m02(page)
+    detect(page, 0)
+    assert len(posts) == 2 and posts[0] == posts[1], posts
+    assert posts[0]["method"] == "iqr" and posts[0]["threshold"] == 1.5 and isinstance(posts[0]["columns"], list) and "study_hours" in posts[0]["columns"]
+    assert "student_id" not in posts[0]["columns"]                       # 식별자 제외
+    assert var_rows(page)["study_hours"][2].startswith("3")             # 결과가 이상치 목록으로 반영됨(데이터셋 상세가 아님)
+
+
+def test_UT_M02_14_outliers_falls_back_to_get_when_post_missing(page):
+    """POST 가 없는 서버(405)에서는 GET 으로 되돌아가 탐지가 동작하고, 이후에는 POST 를 다시 시도하지 않는다"""
+    seen = []
+
+    def handler(route):
+        req = route.request
+        seen.append(req.method)
+        if req.method == "POST":
+            return route.fulfill(status=405, content_type="application/json", body='{"detail":"Method Not Allowed"}')
+        return route.continue_()
+
+    page.route("**/api/v1/datasets/*/outliers*", handler)
+    _m02(page)
+    detect(page, 0)
+    assert seen[:2] == ["POST", "GET"], seen
+    assert page.locator("#card-outliers").inner_text().strip() != "탐지 전"
+    detect(page, 1)                                                      # 다른 기법으로 다시 탐지
+    assert seen.count("POST") == 1, seen                                 # 405 를 기억해 POST 를 다시 시도하지 않음
+
+
+def _wide_csv(tmp_path, n_cols=320, n_rows=200):
+    """한글 열 이름 n_cols 개(열당 주소 인코딩 약 90자)인 데이터 — 열 목록을 GET 쿼리로 보내면 주소 길이 한계(약 8KB)를 넘는다"""
+    rng = np.random.default_rng(7)
+    df = pd.DataFrame(rng.normal(50, 10, (n_rows, n_cols)), columns=[f"유초중등학생수_합계_{i:03d}" for i in range(n_cols)]).round(2)
+    df.insert(0, "학교코드", [f"S{i:05d}" for i in range(n_rows)])
+    df.iloc[3, 1] = 400.0                                              # 눈에 띄는 이상치 하나
+    path = tmp_path / "wide.csv"
+    df.to_csv(path, index=False, encoding="utf-8-sig")
+    return path
+
+
+def test_UT_M02_14_wide_dataset_outliers_no_400(page, tmp_path):
+    """열이 320개(한글 이름)인 데이터에서도 이상치 탐지가 400/414 없이 동작한다 (열 목록을 주소에 싣지 않음)"""
+    bad, posts = [], []
+    page.on("response", lambda r: bad.append((r.status, r.request.method, r.url[:80])) if r.status >= 400 and "/outliers" in r.url and not (r.status == 405 and r.request.method == "POST") else None)
+    page.on("request", lambda r: posts.append(r.post_data_json) if r.method == "POST" and r.url.rstrip("/").endswith("/outliers") else None)
+    start_with(page, _wide_csv(tmp_path))
+    to_m02(page)
+    detect(page, 0)
+    assert not bad, bad
+    assert page.locator("#card-outliers").inner_text().strip() != "탐지 전"
+    if posts:                                                            # POST 를 지원하는 서버: 대상 열 전체를 본문으로 보낸다
+        assert len(posts[0]["columns"]) >= 300 and "학교코드" not in posts[0]["columns"]

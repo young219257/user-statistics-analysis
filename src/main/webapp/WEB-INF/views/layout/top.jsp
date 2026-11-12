@@ -11,7 +11,7 @@
   <link rel="icon" type="image/svg+xml" href="${ctx}/static/vendor/edmgr-header-emblem.svg">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-  <link rel="stylesheet" href="${ctx}/static/css/app.css?v=20261158">
+  <link rel="stylesheet" href="${ctx}/static/css/app.css?v=20261159">
   <!-- 폐쇄망 배포를 위해 라이브러리를 /static/vendor 에 포함 (Tailwind v4 browser build, Highcharts, Lucide) -->
   <script src="${ctx}/static/vendor/tailwind-browser.js"></script>
   <%-- design.md 토큰: 화면 코드는 brand/link/ink/rule 등 이름만 쓴다. 파랑 계열(blue/indigo/violet/purple/teal)은 하나의 남색-파랑 축, 중립색(slate/gray)은 ink·rule·paper 단계로 통일 --%>

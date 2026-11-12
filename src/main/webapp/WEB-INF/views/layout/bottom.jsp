@@ -117,5 +117,5 @@
 </div>
 
 <script>window.__CTX__ = '${ctx}';</script>
-<script src="${ctx}/static/js/common.js?v=20261158"></script>
-<script src="${ctx}/static/js/viz.js?v=20261158"></script>
+<script src="${ctx}/static/js/common.js?v=20261159"></script>
+<script src="${ctx}/static/js/viz.js?v=20261159"></script>
